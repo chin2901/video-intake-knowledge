@@ -1,0 +1,139 @@
+# =============================================================================
+# production.yaml — Configuración para entornos de producción
+# =============================================================================
+#
+# Esta configuración es para entornos de producción con políticas estrictas,
+# retención de artefactos, escaneo de seguridad y controles de acceso.
+#
+# Usar cuando:
+#   - El sistema está en producción con usuarios reales.
+#   - Se requieren políticas de seguridad estrictas.
+#   - Se necesita retención de artefactos y auditoría.
+#   - Se tiene capacidad de escaneo de seguridad (ClamAV opcional).
+#
+# =============================================================================
+
+transcription:
+  strategy_order:
+    - platform_captions
+    - local_captions
+    - whisper
+
+  language: es
+  local_engine: whisper
+  model: small  # Modelo más preciso para producción
+  fallback_enabled: true
+  device: cpu
+
+  # En producción, se puede cambiar a cuda si hay GPU disponible
+  # device: cuda
+
+visual:
+  scene_detection: true
+  frame_sampling: scene_based
+  max_candidate_frames: 20
+  ocr_engine: tesseract
+  vision_fallback_enabled: false
+  scene_detection_threshold: 30.0
+  min_scene_length: 2.0
+
+models:
+  priority:
+    transcript: "local"
+    visual: "local"
+    reasoning: "local"
+
+  # En producción, por defecto no se permite uso de modelos externos
+  # sin autorización explícita.
+  allow_external_providers: false
+  require_explicit_approval_for_paid: true
+
+  # Ejemplo de providers configurados (desactivar en producción por defecto):
+  # configured_providers:
+  #   openai:
+  #     api_key_env: OPENAI_API_KEY
+  #     model: gpt-4o-audio-preview
+  #   anthropic:
+  #     api_key_env: ANTHROPIC_API_KEY
+  #     model: claude-3-5-sonnet-20241022
+
+  configured_providers: {}
+
+security:
+  strict_url_validation: true
+  ssrf_protection: true
+  allowed_domains: []
+
+  # En producción se recomienda activar escaneo de archivos descargados
+  # si ClamAV está disponible en el sistema.
+  scan_downloaded_files: false
+
+  # Redacción de datos sensibles en outputs
+  redact_sensitive_data: true
+
+  # Protección contra prompt injection siempre activa en producción
+  prompt_injection_protection: true
+
+  # Sanitización de nombres de archivos siempre activa
+  sanitize_filenames: true
+
+  # Lista blanca de dominios permitidos (si se quiere restringir)
+  # allowed_domains:
+  #   - youtube.com
+  #   - www.youtube.com
+  #   - facebook.com
+  #   - www.facebook.com
+
+storage:
+  # En producción, se recomienda usar un directorio fuera del repo
+  root_dir: /var/lib/video-intake/artifacts
+
+  # Retención de artefactos: 90 días por defecto
+  artifact_retention_days: 90
+
+  # Límite de almacenamiento: 500 GB
+  max_storage_gb: 500
+
+  # Política de limpieza: por edad
+  cleanup_policy: age
+
+  # Daemon de limpieza (si se implementa en el futuro)
+  # cleanup_daemon_interval_hours: 24
+
+limits:
+  max_video_duration_minutes: 600
+  max_download_size_mb: 5000
+  max_batch_items: 10  # En producción, lotes más pequeños por defecto
+  max_parallel_jobs: 2  # Concurrency limitada en producción
+  timeout_seconds: 3600
+
+acquisition:
+  enabled_sources:
+    - youtube
+    - facebook
+    - instagram
+    - tiktok
+    - local
+
+  # En producción, calidad moderada para balancear calidad y coste
+  preferred_video_quality: 720p
+  preferred_audio_quality: best
+
+  captions_first: true
+  cache_enabled: true
+
+  # En producción, por defecto no se permiten fuentes autenticadas
+  # (el usuario debe autorizar explícitamente)
+  allow_authenticated_sources: false
+
+memory:
+  enabled: true
+  default_provider: local
+  require_confirmation: true
+  max_context_tokens: 4000
+
+host:
+  type: generic
+  session_context_strategy: compact
+  auto_detect_messages: true
+  auto_detect_attachments: true

@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Source",
+  "description": "Schema for a video source (URL or local file)",
+  "type": "object",
+  "required": ["source_type", "url", "platform"],
+  "properties": {
+    "source_type": {
+      "type": "string",
+      "enum": ["youtube", "facebook", "instagram", "tiktok", "local_file"],
+      "description": "Type of video source"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical URL of the video"
+    },
+    "raw_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Original URL as provided by the user"
+    },
+    "platform": {
+      "type": "string",
+      "description": "Platform name (e.g., 'youtube', 'facebook')"
+    },
+    "title": {
+      "type": "string",
+      "description": "Video title if known"
+    },
+    "author": {
+      "type": "string",
+      "description": "Author/channel/creator if known"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Duration in seconds if known"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Thumbnail URL if available"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional platform-specific metadata"
+    }
+  },
+  "additionalProperties": true
+}

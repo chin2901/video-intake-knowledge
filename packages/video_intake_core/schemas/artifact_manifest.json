@@ -1,0 +1,150 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArtifactManifest",
+  "description": "Manifest of all artifacts generated for a video processing job",
+  "type": "object",
+  "required": ["job_id", "created_at_utc", "source", "operations", "status", "tools_used", "parameters"],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "Unique job identifier"
+    },
+    "created_at_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of job creation"
+    },
+    "source": {
+      "$ref": "#/$defs/Source",
+      "description": "Source information for the processed video"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["video", "audio", "transcript", "audio-context", "visual-context", "visual-diagrams", "visual-flows", "visual-schemas", "visual-architectures", "visual-interfaces", "visual-screenshots", "visual-text", "visual-animations", "visual-changes"]
+      },
+      "description": "List of operations selected and executed"
+    },
+    "operations_details": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "selected": {"type": "boolean"},
+          "executed": {"type": "boolean"},
+          "status": {"type": "string", "enum": ["pending", "running", "completed", "failed", "skipped"]},
+          "message": {"type": "string"},
+          "duration_seconds": {"type": "number"}
+        }
+      },
+      "description": "Per-operation status and details"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "failed", "cancelled"],
+      "description": "Overall job status"
+    },
+    "tools_used": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Tools, engines, and libraries used during processing"
+    },
+    "versions_used": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "description": "Versions of tools and dependencies used"
+    },
+    "models_used": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Models used during processing (e.g., whisper-tiny)"
+    },
+    "parameters": {
+      "type": "object",
+      "description": "All parameters used for this job run"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "operation": {"type": "string"},
+          "message": {"type": "string"},
+          "timestamp": {"type": "string", "format": "date-time"}
+        }
+      },
+      "description": "Errors encountered during processing"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "operation": {"type": "string"},
+          "message": {"type": "string"},
+          "timestamp": {"type": "string", "format": "date-time"}
+        }
+      },
+      "description": "Warnings generated during processing"
+    },
+    "timing": {
+      "type": "object",
+      "properties": {
+        "created_at": {"type": "string", "format": "date-time"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "completed_at": {"type": "string", "format": "date-time"},
+        "total_seconds": {"type": "number"}
+      },
+      "description": "Timing information for the job"
+    },
+    "artifact_sizes": {
+      "type": "object",
+      "additionalProperties": {"type": "number"},
+      "description": "Sizes in bytes of each artifact category"
+    },
+    "total_size_bytes": {
+      "type": "number",
+      "description": "Total size of all artifacts in bytes"
+    },
+    "retention_policy": {
+      "type": "object",
+      "properties": {
+        "max_age_days": {"type": "integer"},
+        "max_size_gb": {"type": "number"},
+        "expires_at": {"type": "string", "format": "date-time"}
+      },
+      "description": "Retention policy applied to this job"
+    },
+    "reproduction_info": {
+      "type": "object",
+      "properties": {
+        "yt_dlp_version": {"type": "string"},
+        "ffmpeg_version": {"type": "string"},
+        "ffprobe_version": {"type": "string"},
+        "python_version": {"type": "string"},
+        "package_version": {"type": "string"}
+      },
+      "description": "Information needed to reproduce this extraction"
+    }
+  },
+  "$defs": {
+    "Source": {
+      "type": "object",
+      "required": ["source_type", "url", "platform"],
+      "properties": {
+        "source_type": {"type": "string", "enum": ["youtube", "facebook", "instagram", "tiktok", "local_file"]},
+        "url": {"type": "string", "format": "uri"},
+        "raw_url": {"type": "string", "format": "uri"},
+        "platform": {"type": "string"},
+        "title": {"type": "string"},
+        "author": {"type": "string"},
+        "duration_seconds": {"type": "number", "minimum": 0},
+        "thumbnail_url": {"type": "string", "format": "uri"},
+        "metadata": {"type": "object"}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

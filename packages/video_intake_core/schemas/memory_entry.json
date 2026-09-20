@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MemoryEntry",
+  "description": "A single entry in a memory bank",
+  "type": "object",
+  "required": ["id", "content", "summary", "date", "bank_id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique entry identifier"
+    },
+    "content": {
+      "type": "string",
+      "description": "Full content of the memory entry"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Brief summary (1-2 sentences)"
+    },
+    "source": {
+      "type": "string",
+      "description": "Source of this knowledge (URL, video title, etc.)"
+    },
+    "timestamps": {
+      "type": "array",
+      "items": {"type": "number"},
+      "description": "Relevant timestamps from the source video"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Tags for categorization and search"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this knowledge was captured (YYYY-MM-DD)"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Confidence in the accuracy of this entry"
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Paths or references to related artifacts"
+    },
+    "hashes": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "description": "SHA-256 hashes of related artifacts"
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "entry_id": {"type": "string"},
+          "relation_type": {"type": "string", "enum": ["related-to", "builds-on", "contradicts", "references", "part-of"]},
+          "note": {"type": "string"}
+        }
+      },
+      "description": "Relations to other memory entries"
+    },
+    "knowledge_type": {
+      "type": "string",
+      "enum": ["procedural", "conceptual", "factual", "decision", "recommendation", "warning", "risk", "requirement", "tool", "workflow", "best-practice", "architecture", "code", "other"],
+      "description": "Type of knowledge"
+    },
+    "bank_id": {"type": "string", "description": "ID of the memory bank this entry belongs to"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "metadata": {"type": "object", "description": "Additional arbitrary metadata"}
+  },
+  "additionalProperties": false
+}

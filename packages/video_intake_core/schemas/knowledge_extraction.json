@@ -1,0 +1,257 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KnowledgeExtraction",
+  "description": "Consolidated knowledge extracted from video content (audio + visual)",
+  "type": "object",
+  "required": ["executive_summary", "extraction_timestamp", "source", "confidence"],
+  "properties": {
+    "executive_summary": {
+      "type": "string",
+      "description": "High-level summary of all extracted knowledge (fits in 1-2 paragraphs)"
+    },
+    "index": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "section": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "summary": {"type": "string"},
+          "key_points": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "description": "Chapter/section index with key points"
+    },
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "definition": {"type": "string"},
+          "category": {"type": "string"},
+          "related_to": {"type": "array", "items": {"type": "string"}},
+          "first_appeared": {"type": "number"}
+        }
+      },
+      "description": "Key concepts explained or referenced"
+    },
+    "tools_and_technologies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["tool", "platform", "library", "framework", "service", "protocol", "language", "standard", "hardware", "other"]},
+          "description": {"type": "string"},
+          "use_case": {"type": "string"},
+          "alternatives_mentioned": {"type": "array", "items": {"type": "string"}},
+          "mentioned_at": {"type": "number"}
+        }
+      },
+      "description": "Tools, technologies, platforms, and services mentioned"
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "decision": {"type": "string"},
+          "context": {"type": "string"},
+          "rationale": {"type": "string"},
+          "tradeoffs": {"type": "array", "items": {"type": "string"}},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Decisions discussed or made"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requirement": {"type": "string"},
+          "category": {"type": "string", "enum": ["functional", "non-functional", "constraint", "dependency", "interface", "data"]},
+          "priority": {"type": "string", "enum": ["must", "should", "could", "won't"]},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Requirements identified"
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "constraint": {"type": "string"},
+          "type": {"type": "string", "enum": ["technical", "business", "regulatory", "resource", "time", "budget", "other"]},
+          "impact": {"type": "string"},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Constraints identified"
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "risk": {"type": "string"},
+          "type": {"type": "string", "enum": ["technical", "business", "operational", "security", "compliance", "financial", "reputation", "other"]},
+          "likelihood": {"type": "string", "enum": ["low", "medium", "high"]},
+          "impact": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+          "mitigation": {"type": "string"},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Risks identified"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "warning": {"type": "string"},
+          "severity": {"type": "string", "enum": ["info", "warning", "critical"]},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Warnings and caveats"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "recommendation": {"type": "string"},
+          "rationale": {"type": "string"},
+          "priority": {"type": "string", "enum": ["high", "medium", "low"]},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Recommendations from the content"
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["person", "organization", "product", "service", "technology", "product", "event", "location", "concept", "measurement", "other"]},
+          "description": {"type": "string"},
+          "attributes": {"type": "object"},
+          "first_mentioned": {"type": "number"}
+        }
+      },
+      "description": "Named entities"
+    },
+    "potential_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task": {"type": "string"},
+          "category": {"type": "string", "enum": ["implementation", "research", "decision", "review", "migration", "testing", "documentation", "other"]},
+          "context": {"type": "string"},
+          "suggested_owner": {"type": "string"},
+          "suggested_priority": {"type": "string", "enum": ["high", "medium", "low"]},
+          "related_timestamps": {"type": "array", "items": {"type": "number"}}
+        }
+      },
+      "description": "Potential action items derived from content"
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {"type": "string"},
+          "category": {"type": "string", "enum": ["technical", "business", "architectural", "operational", "research", "decision", "other"]},
+          "context": {"type": "string"},
+          "raised_by": {"type": "string"},
+          "raised_at": {"type": "number"}
+        }
+      },
+      "description": "Open questions from the content"
+    },
+    "quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {"type": "string"},
+          "speaker": {"type": "string"},
+          "start": {"type": "number"},
+          "end": {"type": "number"},
+          "why_notable": {"type": "string"}
+        }
+      },
+      "description": "Notable quotes with context"
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fact": {"type": "string"},
+          "type": {"type": "string", "enum": ["stated", "observed", "derived", "measured"]},
+          "evidence": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+        }
+      },
+      "description": "Facts stated or observed directly"
+    },
+    "inferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "inference": {"type": "string"},
+          "basis": {"type": "string"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+          "note": {"type": "string", "description": "Note that this is an inference, not a stated fact"}
+        }
+      },
+      "description": "Inferences derived by the system (explicitly labeled)"
+    },
+    "confidence": {
+      "type": "object",
+      "properties": {
+        "overall": {"type": "string", "enum": ["high", "medium", "low"]},
+        "by_section": {
+          "type": "object",
+          "additionalProperties": {"type": "string", "enum": ["high", "medium", "low"]}
+        },
+        "notes": {"type": "string"}
+      },
+      "description": "Confidence assessment per section"
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "url": {"type": "string"},
+        "title": {"type": "string"},
+        "author": {"type": "string"},
+        "platform": {"type": "string"},
+        "duration_seconds": {"type": "number"},
+        "published_date": {"type": "string"}
+      },
+      "description": "Source video metadata"
+    },
+    "extraction_timestamp": {"type": "string", "format": "date-time"},
+    "processing_info": {
+      "type": "object",
+      "properties": {
+        "transcription_model": {"type": "string"},
+        "transcription_language": {"type": "string"},
+        "visual_engine": {"type": "string"},
+        "ocr_engine": {"type": "string"},
+        "total_duration_processed": {"type": "number"},
+        "warnings_flags": {"type": "array", "items": {"type": "string"}}
+      },
+      "description": "Processing metadata"
+    }
+  },
+  "additionalProperties": false
+}

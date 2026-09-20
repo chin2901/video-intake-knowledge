@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VisualContext",
+  "description": "Structured context extracted from video visual content",
+  "type": "object",
+  "required": ["info", "visual_summary", "extraction_timestamp"],
+  "properties": {
+    "info": {
+      "type": "object",
+      "properties": {
+        "video_title": {"type": "string"},
+        "duration_seconds": {"type": "number"},
+        "source_url": {"type": "string"},
+        "extraction_method": {"type": "string"}
+      },
+      "description": "Video metadata for context"
+    },
+    "scenes_detected": {
+      "type": "integer",
+      "description": "Number of scenes detected in the video"
+    },
+    "keyframes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "description": {"type": "string"},
+          "width": {"type": "integer"},
+          "height": {"type": "integer"}
+        }
+      },
+      "description": "Extracted keyframes with metadata"
+    },
+    "ocr_blocks": {
+      "type": "array",
+      "$ref": "#/$defs/OCRBlock"
+    },
+    "visual_summary": {
+      "type": "string",
+      "description": "Overall summary of visual content"
+    },
+    "structured_context": {
+      "type": "object",
+      "properties": {
+        "diagrams_detected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {"type": "string"},
+              "timestamp": {"type": "number"},
+              "frame": {"type": "string"},
+              "elements": {"type": "array", "items": {"type": "string"}},
+              "relationships": {"type": "array", "items": {"type": "string"}},
+              "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+            }
+          },
+          "description": "Diagrams detected in the video"
+        },
+        "flows_workflows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {"type": "string"},
+              "steps": {"type": "array", "items": {"type": "string"}},
+              "timestamp": {"type": "number"},
+              "frame": {"type": "string"}
+            }
+          },
+          "description": "Workflow/process flows detected"
+        },
+        "architectures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {"type": "string"},
+              "components": {"type": "array", "items": {"type": "string"}},
+              "connections": {"type": "array", "items": {"type": "string"}},
+              "timestamp": {"type": "number"},
+              "frame": {"type": "string"}
+            }
+          },
+          "description": "Architectural diagrams or system designs"
+        },
+        "interfaces": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {"type": "string"},
+              "type": {"type": "string", "enum": ["ui", "dashboard", "terminal", "code_editor", "form", "table", "other"]},
+              "elements": {"type": "array", "items": {"type": "string"}},
+              "timestamp": {"type": "number"},
+              "frame": {"type": "string"}
+            }
+          },
+          "description": "UI interfaces, dashboards, terminals, or code shown"
+        },
+        "text_content": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {"type": "string"},
+              "timestamp": {"type": "number"},
+              "frame": {"type": "string"},
+              "location": {"type": "string"}
+            }
+          },
+          "description": "Significant text content visible in the video"
+        },
+        "visual_changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": {"type": "string"},
+              "from_timestamp": {"type": "number"},
+              "to_timestamp": {"type": "number"},
+              "type": {"type": "string", "enum": ["screen_change", "panel_change", "modal_open", "navigation", "process_step", "content_update"]}
+            }
+          },
+          "description": "Changes between screens or visual states"
+        }
+      },
+      "description": "Structured breakdown of visual content by category"
+    },
+    "diagrams_inferred": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string", "enum": ["architecture", "sequence", "flow", "class", "component", "deployment", "network", "unknown"]},
+          "description": {"type": "string"},
+          "elements": {"type": "array", "items": {"type": "string"}},
+          "relationships": {"type": "array", "items": {"type": "string"}},
+          "timestamp": {"type": "number"},
+          "frame": {"type": "string"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+        }
+      },
+      "description": "Diagrams or visual representations inferred from the content"
+    },
+    "relationships_detected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {"type": "string"},
+          "to": {"type": "string"},
+          "relationship": {"type": "string"},
+          "evidence": {"type": "string"},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Relationships between entities or components detected visually"
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "aspect": {"type": "string"},
+          "uncertainty": {"type": "string"},
+          "reason": {"type": "string"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+        }
+      },
+      "description": "Uncertainties and limitations in visual analysis"
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"}
+      },
+      "description": "Evidence (frame paths and timestamps) supporting each visual finding"
+    },
+    "frame_paths": {
+      "type": "object",
+      "additionalProperties": {"type": "array", "items": {"type": "string"}},
+      "description": "Mapping of content categories to frame file paths"
+    },
+    "extraction_timestamp": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "OCRBlock": {
+      "type": "object",
+      "required": ["text", "frame_path", "timestamp", "confidence"],
+      "properties": {
+        "text": {"type": "string"},
+        "text_normalized": {"type": "string"},
+        "frame_path": {"type": "string"},
+        "timestamp": {"type": "number", "minimum": 0},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "engine": {"type": "string"},
+        "language": {"type": "string"},
+        "bounding_box": {
+          "type": "object",
+          "properties": {
+            "x": {"type": "integer", "minimum": 0},
+            "y": {"type": "integer", "minimum": 0},
+            "width": {"type": "integer", "minimum": 0},
+            "height": {"type": "integer", "minimum": 0}
+          }
+        },
+        "frame_width": {"type": "integer", "minimum": 1},
+        "frame_height": {"type": "integer", "minimum": 1},
+        "is_diagram": {"type": "boolean"},
+        "is_code": {"type": "boolean"},
+        "element_type": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

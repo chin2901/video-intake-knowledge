@@ -1,0 +1,13 @@
+1
+00:00:00,000 --> 00:00:03,000
+Este es un vídeo de ejemplo para pruebas del sistema.
+
+2
+00:00:03,500 --> 00:00:07,000
+La extracción de conocimiento permite convertir vídeos en información
+utilizable por agentes de IA.
+
+3
+00:00:07,500 --> 00:00:10,000
+El sistema soporta múltiples fuentes: YouTube, Facebook, Instagram
+y TikTok, además de archivos locales.

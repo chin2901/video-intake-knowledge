@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MemoryBank",
+  "description": "A memory bank — a collection of related memory entries",
+  "type": "object",
+  "required": ["id", "name", "description", "scope", "retention_policy", "provider"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique bank identifier"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name of the memory bank"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of what this bank is for"
+    },
+    "scope": {
+      "type": "string",
+      "description": "Scope or domain this bank covers (e.g., 'project-x', 'general', 'video-knowledge')"
+    },
+    "purpose": {
+      "type": "string",
+      "description": "Purpose statement for this bank"
+    },
+    "retention_policy": {
+      "type": "object",
+      "properties": {
+        "max_age_days": {"type": "integer", "description": "Automatically expire entries older than this"},
+        "max_entries": {"type": "integer", "description": "Maximum number of entries"},
+        "auto_prune": {"type": "boolean", "description": "Whether to auto-prune stale entries"},
+        "prune_strategy": {"type": "string", "enum": ["least-recently-used", "least-confident", "oldest-first", "none"]}
+      },
+      "description": "Retention policy for entries in this bank"
+    },
+    "sensitivity": {
+      "type": "string",
+      "enum": ["public", "internal", "confidential", "restricted"],
+      "description": "Sensitivity level of the bank's content"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Tags for this bank"
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "read": {"type": "array", "items": {"type": "string"}, "description": "Roles/users that can read"},
+        "write": {"type": "array", "items": {"type": "string"}, "description": "Roles/users that can write"},
+        "admin": {"type": "array", "items": {"type": "string"}, "description": "Roles/users that can administer"}
+      },
+      "description": "Access permissions"
+    },
+    "provider": {
+      "type": "string",
+      "description": "Memory provider backing this bank (e.g., 'hindsight', 'sqlite', 'json')"
+    },
+    "entry_count": {
+      "type": "integer",
+      "description": "Approximate number of entries in this bank"
+    },
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "config": {"type": "object", "description": "Provider-specific configuration"}
+  },
+  "additionalProperties": false
+}

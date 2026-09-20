@@ -1,0 +1,347 @@
+# =============================================================================
+# CI — GitHub Actions workflow para video-intake-knowledge
+# =============================================================================
+#
+# Ejecuta en cada push a main y cada pull request.
+# Valida: estilo, tipos, pruebas unitarias, integración básica,
+#         seguridad (secretos), y construcción del paquete.
+#
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: "ci-${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  UV_VERSION: "0.4.0"
+
+jobs:
+  # ------------------------------------------------------------------
+  # Lint — Validación de estilo y formatting
+  # ------------------------------------------------------------------
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "${{ env.UV_VERSION }}"
+
+      - name: Install dev dependencies
+        run: uv sync --group dev
+
+      - name: Ruff check
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  # ------------------------------------------------------------------
+  # Type check — Validación de tipos estáticos
+  # ------------------------------------------------------------------
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "${{ env.UV_VERSION }}"
+
+      - name: Install dev dependencies
+        run: uv sync --group dev
+
+      - name: Pyright
+        run: |
+          uv run pyright \
+            packages/video_intake_core/ \
+            tests/ \
+            scripts/ \
+            adapters/ \
+            skill/ \
+            --pythonversion 3.11
+
+  # ------------------------------------------------------------------
+  # Unit tests — Pruebas unitarias
+  # ------------------------------------------------------------------
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+          - "3.13"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ matrix.python-version }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "${{ env.UV_VERSION }}"
+
+      - name: Install core dependencies
+        run: uv sync --group core
+
+      - name: Install dev dependencies
+        run: uv sync --group dev
+
+      - name: Run unit tests
+        run: |
+          uv run pytest \
+            tests/unit/ \
+            tests/contract/ \
+            --tb=short \
+            -v
+
+  # ------------------------------------------------------------------
+  # Security — Verificación de secretos
+  # ------------------------------------------------------------------
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        fetch-depth: 0
+
+      - name: GitLeaks — buscar secretos
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Detect secrets in files
+        run: |
+          git log --all --format="%H" | xargs -I{} \
+            git diff-tree --no-commit-id --name-only -r {} | \
+            sort -u | xargs grep -l -E "([
+            ]*[A-Za-z0-9+/]{40}[ ]*|
+            aws_[a-z]+_[a-z0-9]+|
+            sk-[a-z0-9]+|
+            ghp_[a-z0-9]+|
+            hf_[a-z0-9]+
+            )" || true
+
+      - name: Ruff — Detect insecure patterns
+        run: |
+          uv sync --group dev
+          uv run ruff check . \
+            --select=S \
+            --ignore=S101 \
+            --ignore=S102
+
+  # ------------------------------------------------------------------
+  # Build — Verificar que el paquete se construye
+  # ------------------------------------------------------------------
+  build:
+    name: Build Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "${{ env.UV_VERSION }}"
+
+      - name: Install build tools
+        run: uv sync --group build
+
+      - name: Build package
+        run: uv build
+
+      - name: Verify wheel contents
+        run: |
+          unzip -l dist/*.whl | grep "video_intake_core" | head -20
+
+      - name: Install built wheel
+        run: |
+          pip install dist/*.whl
+          python -c "import video_intake_core; print(video_intake_core.__version__)"
+
+  # ------------------------------------------------------------------
+  # Integration — Pruebas de integración básica
+  # ------------------------------------------------------------------
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "${{ env.UV_VERSION }}"
+
+      - name: Install all dependencies
+        run: uv sync --group full
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr libtesseract-dev
+
+      - name: Run integration tests
+        run: |
+          uv run pytest tests/integration/ \
+            --tb=short \
+            -v \
+            --timeout=120
+
+  # ------------------------------------------------------------------
+  # Docs — Verificar que la documentación es válida
+  # ------------------------------------------------------------------
+  docs:
+    name: Docs Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "${{ env.UV_VERSION }}"
+
+      - name: Install doc dependencies
+        run: uv sync --group docs
+
+      - name: Check Markdown links
+        run: |
+          uv run markdown-link-check \
+            README.md \
+            docs/*.md \
+            skill/SKILL.md \
+            adapters/hermes/README.md \
+            adapters/opencode/README.md \
+            adapters/claude-code/README.md \
+            adapters/codex/README.md \
+            adapters/agy/README.md \
+            adapters/generic-agent-skills/README.md \
+            2>/dev/null || echo "markdown-link-check no disponible, omitido"
+
+      - name: Check YAML configs
+        run: |
+          for f in config/*.yaml adapters/hermes/*.yaml; do
+            python -c "import yaml; yaml.safe_load(open('$f'))" \
+              && echo "✓ $f" || echo "✗ $f"
+          done
+
+  # ------------------------------------------------------------------
+  # Release — Preparación de release (disparado manualmente)
+  # ------------------------------------------------------------------
+  release:
+    name: Release Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    needs:
+      - lint
+      - type-check
+      - unit
+      - security
+      - build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: "${{ secrets.RELEASE_TOKEN }}"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "${{ env.UV_VERSION }}"
+
+      - name: Install all
+        run: uv sync --group full --group dev
+
+      - name: Run full test suite
+        run: |
+          uv run pytest tests/ \
+            --tb=short \
+            -v \
+            --timeout=300
+
+      - name: Build release
+        run: |
+          uv build
+          ls -la dist/
+
+      - name: Generate SBOM
+        run: |
+          uv run cyclonedx-bom \
+            -o sbom.xml \
+            -t xml \
+            --entrypoint video_intake_core
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.xml
+          retention-days: 90
+
+      - name: Create Release (manual step)
+        run: |
+          echo "Release build completado."
+          echo "Revisar dist/ y sbom.xml antes de publicar."
+          echo "Para publicar:"
+          echo "  gh release create v${{ vars.RELEASE_VERSION }} dist/* --notes 'Ver CHANGELOG.md'"

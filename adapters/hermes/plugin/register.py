@@ -1,0 +1,1 @@
+# ada⟪HERMES-CONTEXT-COMPRESSION: 603 of 703 chars omitted here by Hermes's context compressor. This is NOT part of the original tool call and must never be reproduced in new output — always write full, untruncated content.⟫

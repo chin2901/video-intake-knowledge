@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BuildProposal",
+  "description": "Proposal for creating a new asset (tool, skill, agent, plugin, etc.) from extracted knowledge",
+  "type": "object",
+  "required": ["name", "asset_type", "purpose", "problem_solved", "evidence", "recommendation"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Proposed name for the asset (slug-friendly)"
+    },
+    "asset_type": {
+      "type": "string",
+      "enum": ["tool", "skill", "agent", "plugin", "workflow", "template", "document", "knowledge_base", "script", "cli", "integration", "schema", "prompt", "checklist", "implementation_plan", "other"],
+      "description": "Type of asset to create"
+    },
+    "purpose": {
+      "type": "string",
+      "description": "What the asset is for — one sentence description"
+    },
+    "problem_solved": {
+      "type": "string",
+      "description": "What problem this asset solves"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "quote": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "source": {"type": "string"}
+        }
+      },
+      "description": "Evidence from the video supporting this proposal"
+    },
+    "reusable_knowledge": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Knowledge elements from the video that would be reusable in this asset"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["package", "tool", "api", "service", "data", "model", "other"]},
+          "required": {"type": "boolean"},
+          "notes": {"type": "string"}
+        }
+      },
+      "description": "Dependencies needed to build/run this asset"
+    },
+    "existing_tools_reusable": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Existing tools, libraries, or assets that can be reused"
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "risk": {"type": "string"},
+          "severity": {"type": "string", "enum": ["low", "medium", "high"]},
+          "mitigation": {"type": "string"}
+        }
+      },
+      "description": "Risks associated with building this asset"
+    },
+    "autonomy_level": {
+      "type": "string",
+      "enum": ["fully-autonomous", "supervised", "human-in-loop", "manual-review"],
+      "description": "Recommended autonomy level for this asset"
+    },
+    "host_compatibility": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "host": {"type": "string", "enum": ["hermes", "agx", "opencode", "claude-code", "codex", "generic"]},
+          "compatible": {"type": "boolean"},
+          "notes": {"type": "string"}
+        }
+      },
+      "description": "Compatibility matrix across host environments"
+    },
+    "files_to_create": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {"type": "string"},
+          "description": {"type": "string"},
+          "size_estimate": {"type": "string", "enum": ["small", "medium", "large"]},
+          "is_new": {"type": "boolean"},
+          "may_modify": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "description": "Files that would be created or modified"
+    },
+    "tests_needed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "test": {"type": "string"},
+          "type": {"type": "string", "enum": ["unit", "integration", "e2e", "security", "performance"]},
+          "description": {"type": "string"}
+        }
+      },
+      "description": "Tests needed for this asset"
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["build", "defer", "combine-with-existing", "not-worth-it", "needs-more-info"],
+      "description": "Recommendation: build now, defer, combine, or skip"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low"],
+      "description": "Priority of building this asset"
+    },
+    "complexity_estimate": {
+      "type": "string",
+      "enum": ["trivial", "simple", "moderate", "complex", "very-complex"],
+      "description": "Estimated implementation complexity"
+    },
+    "estimated_effort": {
+      "type": "string",
+      "description": "Rough effort estimate (e.g., '2-4 hours', '1 day')"
+    },
+    "confirmation_needed": {
+      "type": "boolean",
+      "description": "Whether explicit user confirmation is needed before building"
+    },
+    "pre_build_summary": {
+      "type": "string",
+      "description": "Summary to show user before confirmation"
+    }
+  },
+  "additionalProperties": false
+}

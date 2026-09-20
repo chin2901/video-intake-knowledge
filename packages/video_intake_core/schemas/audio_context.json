@@ -1,0 +1,226 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AudioContext",
+  "description": "Structured context extracted from video audio/transcript",
+  "type": "object",
+  "required": ["summary", "extraction_timestamp", "source_language", "confidence_level"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "Executive summary of the audio content (3-5 sentences)"
+    },
+    "table_of_contents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "chapter": {"type": "string"},
+          "start": {"type": "number"},
+          "end": {"type": "number"},
+          "summary": {"type": "string"}
+        }
+      },
+      "description": "Chronological chapter/index list"
+    },
+    "topics": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Main topics covered"
+    },
+    "technical_concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "concept": {"type": "string"},
+          "description": {"type": "string"},
+          "first_mentioned_at": {"type": "number"}
+        }
+      },
+      "description": "Technical concepts explained in the audio"
+    },
+    "tools_mentioned": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "purpose": {"type": "string"},
+          "mentioned_at": {"type": "number"}
+        }
+      },
+      "description": "Tools, software, platforms, or services mentioned"
+    },
+    "procedures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string"},
+          "steps": {"type": "array", "items": {"type": "string"}},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Step-by-step procedures described"
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "decision": {"type": "string"},
+          "rationale": {"type": "string"},
+          "alternatives_considered": {"type": "array", "items": {"type": "string"}},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Decisions mentioned or implied"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "requirement": {"type": "string"},
+          "type": {"type": "string", "enum": ["functional", "non-functional", "constraint", "dependency"]},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Requirements stated or implied"
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "constraint": {"type": "string"},
+          "impact": {"type": "string"},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Technical or business constraints"
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "risk": {"type": "string"},
+          "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+          "mitigation": {"type": "string"},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Risks mentioned"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "warning": {"type": "string"},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Warnings issued"
+    },
+    "recommendations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "recommendation": {"type": "string"},
+          "rationale": {"type": "string"},
+          "timestamp": {"type": "number"}
+        }
+      },
+      "description": "Recommendations made"
+    },
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["person", "organization", "product", "tool", "technology", "concept", "location", "event"]},
+          "description": {"type": "string"},
+          "first_mentioned": {"type": "number"}
+        }
+      },
+      "description": "Named entities identified"
+    },
+    "open_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {"type": "string"},
+          "context": {"type": "string"},
+          "raised_at": {"type": "number"}
+        }
+      },
+      "description": "Open questions raised by the content"
+    },
+    "quotes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {"type": "string"},
+          "who": {"type": "string"},
+          "start": {"type": "number"},
+          "end": {"type": "number"},
+          "significance": {"type": "string"}
+        }
+      },
+      "description": "Notable quotes with timestamps"
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fact": {"type": "string"},
+          "evidence": {"type": "string"},
+          "timestamp": {"type": "number"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+        }
+      },
+      "description": "Facts stated directly in the content"
+    },
+    "inferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "inference": {"type": "string"},
+          "basis": {"type": "string"},
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]}
+        }
+      },
+      "description": "Inferences drawn by the system (clearly labeled as such)"
+    },
+    "confidence_per_section": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+          "reason": {"type": "string"}
+        }
+      },
+      "description": "Confidence level per section/topic"
+    },
+    "source_language": {"type": "string", "description": "ISO language code of original audio"},
+    "source_transcript_source": {"type": "string", "enum": ["whisper", "captions", "platform", "manual"]},
+    "extraction_timestamp": {"type": "string", "format": "date-time"},
+    "confidence_level": {"type": "string", "enum": ["high", "medium", "low"]},
+    "warnings_flags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Flags like 'low_audio_quality', 'heavy_accents', 'background_noise'"
+    }
+  },
+  "additionalProperties": false
+}

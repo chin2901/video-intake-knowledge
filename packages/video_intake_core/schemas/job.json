@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Job",
+  "description": "Video processing job definition",
+  "type": "object",
+  "required": ["job_id", "source", "operations", "created_at_utc"],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "description": "Unique job identifier in format vitk_<hash>_<uuid>"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "operations": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Requested operations for this job"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "failed", "cancelled"],
+      "default": "pending"
+    },
+    "progress": {
+      "type": "object",
+      "properties": {
+        "current_operation": {"type": "string"},
+        "total_operations": {"type": "integer", "minimum": 0},
+        "completed_operations": {"type": "integer", "minimum": 0},
+        "percent": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    },
+    "created_at_utc": {"type": "string", "format": "date-time"},
+    "started_at_utc": {"type": "string", "format": "date-time"},
+    "completed_at_utc": {"type": "string", "format": "date-time"},
+    "result_path": {"type": "string", "description": "Path to artifacts directory"},
+    "error_message": {"type": "string"},
+    "cancelled_by": {"type": "string", "description": "User or system that cancelled the job"}
+  },
+  "$defs": {
+    "Source": {
+      "type": "object",
+      "required": ["source_type", "url", "platform"],
+      "properties": {
+        "source_type": {"type": "string", "enum": ["youtube", "facebook", "instagram", "tiktok", "local_file"]},
+        "url": {"type": "string", "format": "uri"},
+        "raw_url": {"type": "string", "format": "uri"},
+        "platform": {"type": "string"},
+        "title": {"type": "string"},
+        "author": {"type": "string"},
+        "duration_seconds": {"type": "number", "minimum": 0},
+        "thumbnail_url": {"type": "string", "format": "uri"},
+        "metadata": {"type": "object"}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

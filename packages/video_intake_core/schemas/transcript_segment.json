@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TranscriptSegment",
+  "description": "A single segment of a video transcript with timestamps",
+  "type": "object",
+  "required": ["start", "end", "text"],
+  "properties": {
+    "index": {
+      "type": "integer",
+      "description": "Segment index (0-based)"
+    },
+    "start": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Start time in seconds"
+    },
+    "end": {
+      "type": "number",
+      "minimum": 0,
+      "description": "End time in seconds"
+    },
+    "text": {
+      "type": "string",
+      "description": "Transcript text for this segment"
+    },
+    "text_normalized": {
+      "type": "string",
+      "description": "Normalized text (punctuation, casing corrected)"
+    },
+    "language": {
+      "type": "string",
+      "description": "Detected language code for this segment (e.g., 'es', 'en')"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Confidence score 0-1 (when available)"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["whisper", "captions", "platform", "manual"],
+      "description": "Source of this transcript segment"
+    },
+    "is_low_quality": {
+      "type": "boolean",
+      "description": "Flag if this segment is likely low quality"
+    },
+    "unclear_mark": {
+      "type": "boolean",
+      "description": "Flag if this segment contains unclear audio"
+    },
+    "translator_notes": {
+      "type": "string",
+      "description": "Notes from the translation/transcription process"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,206 @@
+# =============================================================================
+# default.yaml — Configuración por defecto de video-intake-knowledge
+# =============================================================================
+#
+# Esta es la configuración base. Copia a config/production.yaml o
+# config/offline.yaml según tu entorno y modifica los valores.
+#
+# Puedes sobreescribir cualquier valor con variables de entorno:
+#   VITK_TRANSCRIPTION_LANG=es
+#   VITK_MODEL_PRIORITY_TRANSCRIPT=local;openai/gpt-4o-audio-preview
+#   VITK_SECURITY_STRICT_URL_VALIDATION=true
+#
+# =============================================================================
+
+# ------------------------------------------------------------------
+# Transcription — Estrategia y modelos de transcripción
+# ------------------------------------------------------------------
+transcription:
+  # Orden de estrategias a intentar (primera exitosa gana)
+  strategy_order:
+    - platform_captions
+    - local_captions
+    - whisper
+
+  # Idioma preferido (código ISO 639-1)
+  language: es
+
+  # Motor local de transcripción
+  local_engine: whisper
+
+  # Modelo por defecto (tiny, base, small, medium, large)
+  model: tiny
+
+  # Permitir fallback a estrategias alternativas
+  fallback_enabled: true
+
+  # Dispositivo para inferencia (cpu, cuda, mps)
+  device: cpu
+
+  # Umbral de confianza mínimo (0.0 - 1.0)
+  min_confidence: 0.0
+
+# ------------------------------------------------------------------
+# Visual — Análisis visual y OCR
+# ------------------------------------------------------------------
+visual:
+  # Detección de escenas
+  scene_detection: true
+
+  # Método de muestreo de frames
+  frame_sampling: scene_based
+
+  # Número máximo de frames candidatos para OCR/analysis
+  max_candidate_frames: 20
+
+  # Motor OCR preferido
+  ocr_engine: tesseract
+
+  # Permitir fallback a Vision Models si OCR falla
+  vision_fallback_enabled: false
+
+  # Umbral de detección de escena (píxeles de diferencia)
+  scene_detection_threshold: 30.0
+
+  # Duración mínima de escena (segundos)
+  min_scene_length: 2.0
+
+# ------------------------------------------------------------------
+# Models — Política de uso de modelos de IA
+# ------------------------------------------------------------------
+models:
+  # Orden de preferencia por tipo de modelo
+  priority:
+    transcript: "local"
+    visual: "local"
+    reasoning: "local"
+
+  # Permitir proveedores externos (OpenAI, Anthropic, etc.)
+  allow_external_providers: false
+
+  # Si un modelo es de pago, requerir aprobación explícita
+  require_explicit_approval_for_paid: true
+
+  # Proveedores configurados (llaves en variables de entorno)
+  configured_providers: {}
+
+# ------------------------------------------------------------------
+# Security — Protecciones de seguridad
+# ------------------------------------------------------------------
+security:
+  # Validación estricta de URLs
+  strict_url_validation: true
+
+  # Protección SSRF (evitar acceso a redes internas)
+  ssrf_protection: true
+
+  # Dominios permitidos (vacío = todos los compatibles)
+  allowed_domains: []
+
+  # Escanear archivos descargados (opcional)
+  scan_downloaded_files: false
+
+  # Redactar datos sensibles en outputs
+  redact_sensitive_data: false
+
+  # Protección contra prompt injection
+  prompt_injection_protection: true
+
+  # Sanitizar nombres de archivos
+  sanitize_filenames: true
+
+# ------------------------------------------------------------------
+# Storage — Almacenamiento de artefactos
+# ------------------------------------------------------------------
+storage:
+  # Directorio raíz de artefactos
+  root_dir: ./artifacts
+
+  # Retención de artefactos (días)
+  artifact_retention_days: 90
+
+  # Límite de almacenamiento total (GB)
+  max_storage_gb: 100
+
+  # Política de limpieza: age | none | manual
+  cleanup_policy: age
+
+# ------------------------------------------------------------------
+# Limits — Límites de procesamiento
+# ------------------------------------------------------------------
+limits:
+  # Duración máxima de video (minutos)
+  max_video_duration_minutes: 600
+
+  # Tamaño máximo de descarga (MB)
+  max_download_size_mb: 5000
+
+  # Máximo de elementos en un batch
+  max_batch_items: 50
+
+  # Máximo de jobs en paralelo
+  max_parallel_jobs: 4
+
+  # Timeout por operación (segundos)
+  timeout_seconds: 3600
+
+# ------------------------------------------------------------------
+# Acquisition — Fuentes y preferencias de adquisición
+# ------------------------------------------------------------------
+acquisition:
+  # Fuentes habilitadas
+  enabled_sources:
+    - youtube
+    - facebook
+    - instagram
+    - tiktok
+    - local
+
+  # Calidad preferida de video
+  preferred_video_quality: best
+
+  # Calidad preferida de audio
+  preferred_audio_quality: best
+
+  # Intentar captions antes que transcripción
+  captions_first: true
+
+  # Habilitar caché de descargas
+  cache_enabled: true
+
+# ------------------------------------------------------------------
+# Memory — Integración con banco de memoria independiente
+# ------------------------------------------------------------------
+memory:
+  # Habilitar integración con banco de memoria
+  enabled: true
+
+  # Proveedor por defecto
+  default_provider: local
+
+  # Confirmar antes de almacenar en memoria
+  require_confirmation: true
+
+  # Ruta a la base de datos del banco de memoria
+  # Por defecto: /srv/video-intake-knowledge/memory/memory.db
+  # La memoria es independiente del resto del proyecto.
+  db_path: "/srv/video-intake-knowledge/memory/memory.db"
+
+  # Tokens máximos para contexto de sesión
+  max_context_tokens: 4000
+
+# ------------------------------------------------------------------
+# Host — Comportamiento del agente anfitrión
+# ------------------------------------------------------------------
+host:
+  # Tipo de host (hermes, agy, opencode, claude_code, codex, generic)
+  type: generic
+
+  # Estrategia de contexto de sesión
+  session_context_strategy: compact
+
+  # Detectar automáticamente mensajes con URLs de video
+  auto_detect_messages: true
+
+  # Detectar automáticamente attachments con videos
+  auto_detect_attachments: true
