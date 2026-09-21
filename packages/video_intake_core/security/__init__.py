@@ -25,6 +25,8 @@ from video_intake_core.utils import (
     VIDEO_EXTENSIONS,
     sanitize_for_prompt as _sanitize_for_prompt,
     redact_sensitive_data as _redact_sensitive_data,
+    is_safe_url,
+    validate_url,
 )
 
 __all__ = [
@@ -33,6 +35,8 @@ __all__ = [
     "check_download_size",
     "sanitize_for_prompt",
     "redact_sensitive_data",
+    "is_safe_url",
+    "validate_url",
     "SSRF_BLOCKED_HOSTS",
 ]
 
