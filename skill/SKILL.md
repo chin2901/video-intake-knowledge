@@ -582,4 +582,4 @@ video-intake models install tiny
 
 ## Licencia
 
-MIT License. Ver LICENSE.
+Apache-2.0 License. Ver LICENSE.
