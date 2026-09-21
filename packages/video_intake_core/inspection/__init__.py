@@ -386,3 +386,126 @@ def inspect_multiple(paths: list[str]) -> list[dict[str, Any]]:
                 "exists": Path(path).exists() if not path.startswith(("http://", "https://")) else None,
             })
     return results
+
+
+# ---------------------------------------------------------------------------
+# Contract API wrapper functions
+# ---------------------------------------------------------------------------
+
+
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class VideoInfo:
+    """Video inspection result (contract API)."""
+    url: str = ""
+    title: str = ""
+    description: str = ""
+    uploader: str = ""
+    duration: float = 0.0
+    duration_string: str = ""
+    thumbnail: str = ""
+    webpage_url: str = ""
+    extractor: str = ""
+    format_count: int = 0
+    video_quality: int = 0
+    audio_available: bool = False
+    view_count: int = 0
+    like_count: int = 0
+    language: str = ""
+    formats: list = None
+    subtitles: dict = None
+    automatic_captions: dict = None
+    captions: dict = None
+    is_live: bool = False
+    error: str | None = None
+
+    def __post_init__(self):
+        if self.formats is None:
+            self.formats = []
+        if self.subtitles is None:
+            self.subtitles = {}
+        if self.automatic_captions is None:
+            self.automatic_captions = {}
+        if self.captions is None:
+            self.captions = {}
+
+
+def inspect_video(
+    source: str | Path,
+) -> VideoInfo:
+    """Inspect a video file or URL (contract API).
+
+    Args:
+        source: Path to local video file or URL.
+
+    Returns:
+        VideoInfo with inspection results.
+    """
+    if isinstance(source, Path) or (isinstance(source, str) and not source.startswith(("http://", "https://"))):
+        result = inspect_video_file(source)
+    else:
+        result = inspect_download_url(source)
+
+    return VideoInfo(
+        url=result.get("url", result.get("path", "")),
+        title=result.get("title", ""),
+        description=result.get("description", ""),
+        uploader=result.get("uploader", ""),
+        duration=result.get("duration", 0.0),
+        duration_string=result.get("duration_string", ""),
+        thumbnail=result.get("thumbnail", ""),
+        webpage_url=result.get("webpage_url", ""),
+        extractor=result.get("extractor", ""),
+        format_count=result.get("format_count", 0),
+        video_quality=result.get("video_quality", 0),
+        audio_available=result.get("audio_available", False),
+        view_count=result.get("view_count", 0),
+        like_count=result.get("like_count", 0),
+        language=result.get("language", ""),
+        formats=result.get("formats", []),
+        subtitles=result.get("subtitles", {}),
+        automatic_captions=result.get("automatic_captions", {}),
+        captions=result.get("captions", {}),
+        is_live=result.get("is_live", False),
+        error=result.get("error"),
+    )
+
+
+def inspect_local_video(
+    path: str | Path,
+) -> VideoInfo:
+    """Inspect a local video file (contract API).
+
+    Args:
+        path: Path to local video file.
+
+    Returns:
+        VideoInfo with inspection results.
+    """
+    result = inspect_video_file(path)
+    return VideoInfo(
+        url=result.get("path", ""),
+        title=result.get("filename", ""),
+        duration=result.get("duration", 0.0),
+        video_quality=result.get("video", {}).get("height", 0),
+        audio_available=result.get("has_audio", False),
+        language="",
+        error=result.get("error"),
+    )
+
+
+def inspect_remote_video(
+    url: str,
+) -> VideoInfo:
+    """Inspect a remote video URL (contract API).
+
+    Args:
+        url: Video URL.
+
+    Returns:
+        VideoInfo with inspection results.
+    """
+    return inspect_video(url)

@@ -11,7 +11,6 @@ import hashlib
 import re
 from pathlib import Path
 
-
 # ----------------------------------------------------------------------
 # Filename and path sanitization
 # ----------------------------------------------------------------------
@@ -30,8 +29,8 @@ def sanitize_filename(name: str, max_length: int = 200) -> str:
     """
     Sanitize a string to be safe as a filename.
 
-    Removes path separators, control characters, null bytes, and collapses
-    whitespace. Keeps alphanumeric characters, hyphens, underscores, and dots.
+    Removes path separators, control characters, null bytes. Keeps alphanumeric
+    characters, spaces, hyphens, underscores, and dots.
 
     Args:
         name: Raw name to sanitize.
@@ -42,36 +41,32 @@ def sanitize_filename(name: str, max_length: int = 200) -> str:
     """
     if not name:
         return "untitled"
-
     # Remove control characters and null bytes
     name = _CONTROL_CHARS.sub("", name)
-
     # Remove path separators and dangerous characters
     name = name.replace("\\", "_").replace("/", "_")
     name = name.replace("\x00", "")
-
-    # Replace whitespace runs with single underscore
-    name = re.sub(r"\s+", "_", name)
-
-    # Keep only safe characters: alphanumeric, hyphen, underscore, dot
+    # Keep safe characters: alphanumeric, space, hyphen, underscore, dot
     # Also allow some unicode letters for international titles
     name = re.sub(r"[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑäëïöüÄËÏÖÜÀàÈèÌìÒòÙù\s\-_.]", "", name)
-
-    # Collapse multiple dots/hyphens/underscores
+    # Collapse multiple dots/hyphens/underscores/spaces
     name = re.sub(r"\.{2,}", ".", name)
     name = re.sub(r"-{2,}", "-", name)
     name = re.sub(r"_{2,}", "_", name)
-
-    # Strip leading/trailing dots, hyphens, underscores
-    name = name.strip(".-_")
-
-    # Limit length
+    name = re.sub(r"\s{2,}", " ", name)
+    # Strip leading/trailing dots, hyphens, underscores, spaces
+    name = name.strip(" .-_")
+    # Limit length - preserve extension if possible
     if len(name) > max_length:
-        name = name[: max_length - 3] + "..."
-
+        # Try to preserve extension
+        if "." in name and name.rfind(".") > max_length - 10:
+            # Extension is near the end, keep it
+            ext_start = name.rfind(".")
+            name = name[:max_length - (len(name) - ext_start) - 3] + "..." + name[ext_start:]
+        else:
+            name = name[:max_length - 3] + "..."
     if not name:
         name = "untitled"
-
     return name
 
 
@@ -125,7 +120,7 @@ def is_video_file_ext(path: str | Path) -> bool:
     return Path(path).suffix.lower() in VIDEO_EXTENSIONS
 
 
-def compute_sha256(file_path: str | Path, chunk_size: int = 65536) -> str:
+def _compute_sha256(file_path: str | Path, chunk_size: int = 65536) -> str:
     """
     Compute SHA-256 hash of a file.
 
@@ -148,9 +143,36 @@ def compute_sha256(file_path: str | Path, chunk_size: int = 65536) -> str:
 
     hasher = hashlib.sha256()
     with open(path, "rb") as f:
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                break
+        for chunk in iter(lambda: f.read(chunk_size), b""):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def compute_sha256(file_path: str | Path) -> str:
+    """Compute SHA-256 hash of a file (contract API).
+
+    Args:
+        file_path: Path to the file.
+
+    Returns:
+        Hexadecimal SHA-256 digest string.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        IOError: If the file cannot be read.
+    """
+    return _compute_sha256(file_path)
+
+
+def ensure_dir(path: str | Path) -> Path:
+    """Ensure a directory exists, creating it if necessary (contract API).
+
+    Args:
+        path: Path to the directory.
+
+    Returns:
+        The created/verified directory path.
+    """
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
+    return path

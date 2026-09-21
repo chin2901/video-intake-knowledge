@@ -25,8 +25,8 @@ from video_intake_core.utils import (
     VIDEO_EXTENSIONS,
     sanitize_for_prompt as _sanitize_for_prompt,
     redact_sensitive_data as _redact_sensitive_data,
-    is_safe_url,
-    validate_url,
+    validate_url as _validate_url,
+    ValidationResult,
 )
 
 __all__ = [
@@ -309,15 +309,13 @@ def sanitize_for_prompt(text: str) -> str:
     return text.strip()
 
 
-def redact_sensitive_data(text: str, custom_patterns: list[tuple[str, str]] | None = None) -> str:
-    """Redact sensitive data patterns from text.
+def redact_sensitive_data(text: str) -> str:
+    """Redact sensitive data patterns from text (contract API).
 
-    Default patterns: emails, phone numbers, credit card numbers, IDs.
-    Custom patterns can be added.
+    Default patterns: emails, phone numbers, credit card numbers, IPs, SSNs.
 
     Args:
         text: Text to redact.
-        custom_patterns: Additional (pattern, replacement) tuples.
 
     Returns:
         Text with sensitive data replaced by redaction markers.
@@ -325,29 +323,8 @@ def redact_sensitive_data(text: str, custom_patterns: list[tuple[str, str]] | No
     if not text:
         return ""
 
-    patterns: list[tuple[str, str]] = [
-        # Email addresses
-        (r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "[EMAIL_REDACTED]"),
-        # Phone numbers (international and local formats)
-        (r"\b(?:\+?\d{1,3}[-.\\s]?)?\(?\d{2,4}\)?[-.\\s]?\d{3,4}[-.\\s]?\d{3,4}(?:\s?(?:ext|x|ext\.)\s?\d{1,5})?\b", "[PHONE_REDACTED]"),
-        # Credit card numbers (Visa, MC, Amex, Discover patterns)
-        (r"\b(?:\\d{4}[-\\s]?){3}\d{1,4}\b", "[CARD_REDACTED]"),
-        # API keys / tokens (heuristic: base64-like strings > 20 chars)
-        (r"\b[A-Za-z0-9+/=]{32,}\b", "[TOKEN_REDACTED]"),
-        # AWS access keys
-        (r"\b[A-Z0-9]{20}\b", "[AWS_KEY_REDACTED]"),
-        # Generic long alphanumeric IDs
-        (r"\b[A-Z]{2,}[0-9]{6,}[A-Z0-9]?\b", "[ID_REDACTED]"),
-    ]
-
-    if custom_patterns:
-        patterns.extend(custom_patterns)
-
-    result = text
-    for pattern, replacement in patterns:
-        result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
-
-    return result
+    # Use the validation module's redact_sensitive_data which has comprehensive patterns
+    return _redact_sensitive_data(text)
 
 
 # ----------------------------------------------------------------------
@@ -381,6 +358,135 @@ def is_safe_mime(mime_type: str) -> bool:
 
     mime_lower = mime_type.lower()
     return mime_lower in safe_videos or mime_lower in safe_images or "video/" in mime_lower or "image/" in mime_lower
+
+
+# Module-level validate_url with contract API signature
+def validate_url(url: str, allowed_domains: list[str] | None = None) -> ValidationResult:
+    """Validate a URL with optional allowed domains check (contract API).
+
+    Args:
+        url: The URL to validate.
+        allowed_domains: Optional list of allowed domains.
+
+    Returns:
+        ValidationResult with is_valid, normalized, and error.
+    """
+    import urllib.parse
+    from ipaddress import IPv4Address, IPv4Network
+    
+    # Blocked networks
+    blocked_networks = [
+        IPv4Network("10.0.0.0/8"),
+        IPv4Network("172.16.0.0/12"),
+        IPv4Network("192.168.0.0/16"),
+        IPv4Network("169.254.0.0/16"),  # link-local
+        IPv4Network("0.0.0.0/8"),
+        IPv4Network("100.64.0.0/10"),   # CGNAT
+        IPv4Network("127.0.0.0/8"),      # loopback
+        IPv4Network("224.0.0.0/4"),     # multicast
+        IPv4Network("240.0.0.0/4"),     # reserved
+        IPv4Network("255.255.255.255/32"),
+    ]
+    
+    blocked_hosts = {
+        "localhost", "127.0.0.1", "::1", "0.0.0.0", "0",
+        "metadata.google.internal", "metadata.google",
+        "169.254.169.254", "metadata.google.com",
+        "metadata.google.internal.", "vpc-internal.meta.internal",
+    }
+    
+    try:
+        parsed = urllib.parse.urlparse(url)
+        scheme = parsed.scheme.lower()
+        
+        if scheme not in ("http", "https"):
+            return ValidationResult(
+                is_valid=False,
+                normalized="",
+                error=f"URL scheme '{scheme}' not allowed. Only http and https are permitted."
+            )
+        
+        if not parsed.hostname:
+            return ValidationResult(
+                is_valid=False,
+                normalized="",
+                error=f"URL has no hostname: {url}"
+            )
+        
+        host = parsed.hostname.lower()
+        
+        # Check blocked hosts
+        if host in blocked_hosts:
+            error_msg = "URL host is blocked: " + host
+            if host in ("169.254.169.254", "metadata.google.internal", "metadata.google", "metadata.google.com", "metadata.google.internal.", "vpc-internal.meta.internal"):
+                error_msg = "SSRF blocked: " + host
+            return ValidationResult(
+                is_valid=False,
+                normalized="",
+                error=error_msg
+            )
+        
+        # Check blocked IP ranges
+        try:
+            addr = IPv4Address(host)
+            for net in blocked_networks:
+                if addr in net:
+                    return ValidationResult(
+                        is_valid=False,
+                        normalized="",
+                        error=f"URL host resolves to a blocked IP address: {host}"
+                    )
+        except ValueError:
+            pass  # Not an IP literal
+        
+        # Check for .local domains
+        if host.endswith(".local"):
+            return ValidationResult(
+                is_valid=False,
+                normalized="",
+                error=f"URL host is a local/mDNS name: {host}"
+            )
+        
+        # Check allowed domains
+        if allowed_domains:
+            if not any(host == d or host.endswith("." + d) for d in allowed_domains):
+                return ValidationResult(
+                    is_valid=False,
+                    normalized="",
+                    error=f"URL host '{host}' not in allowed domains"
+                )
+        
+        # Normalize: remove default ports, lowercase scheme and host
+        netloc = host
+        if parsed.port and parsed.port not in (80, 443):
+            netloc = f"{netloc}:{parsed.port}"
+        
+        normalized = urllib.parse.urlunparse(
+            (scheme, netloc, parsed.path, parsed.params, parsed.query, "")
+        )
+        
+        return ValidationResult(is_valid=True, normalized=normalized, error=None)
+        
+    except Exception as e:
+        return ValidationResult(
+            is_valid=False,
+            normalized="",
+            error=f"Validation error: {e}"
+        )
+
+
+def is_safe_url(url: str, internal_ranges: list[str] | None = None) -> bool:
+    """Check if a URL is safe from SSRF (contract API).
+
+    Args:
+        url: The URL to check.
+        internal_ranges: Optional list of internal IP ranges to check against.
+
+    Returns:
+        True if safe, False otherwise.
+    """
+    result = validate_url(url)
+    return result.is_valid
 
 
 # ----------------------------------------------------------------------
@@ -452,8 +558,10 @@ class PromptInjectionProtection:
 
     # Patterns that indicate potential injection attempts
     INJECTION_PATTERNS = [
-        (r"ignore\s+(previous|all|above|below)\s+instructions?", "instruction_ignore"),
+        (r"ignore\s+(previous|all|above|below)\s+(instructions?|commands?)", "instruction_ignore"),
+        (r"ignore\s+las\s+instrucciones\s+anteriores", "instruction_ignore"),
         (r"disregard\s+(previous|all|above|below)\s+(rules|instructions)?", "instruction_ignore"),
+        (r"disregard\s+your\s+programming", "instruction_ignore"),
         (r"you\s+are\s+now\s+(a|an)\s+\w+", "role_override"),
         (r"system\s*:\s*.*", "system_override"),
         (r"forget\s+(everything|all|previous)\s+instructions?", "instruction_reset"),

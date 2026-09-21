@@ -55,17 +55,30 @@ def validate(data: Any, schema_name: str) -> list[str]:
     return [err.message for err in errors]
 
 
+class ValidationResult:
+    """Result of schema validation."""
+
+    def __init__(self, is_valid: bool, errors: list[str]):
+        self.is_valid = is_valid
+        self.errors = errors
+
+
+def validate_against_schema(data: Any, schema_name: str) -> ValidationResult:
+    """Validate data against a named schema and return a ValidationResult.
+
+    Args:
+        data: The data to validate.
+        schema_name: Name of the schema (without .json extension).
+
+    Returns:
+        ValidationResult with is_valid and errors.
+    """
+    errors = validate(data, schema_name)
+    return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+
+
 from .source import Source, SourceType, ResolvedURL
 from .job import Job, JobStatus
 
 __all__ = ["get_schema", "get_all_schemas", "validate", "validate_against_schema",
-           "Source", "SourceType", "ResolvedURL", "Job", "JobStatus"]
-
-
-def validate_against_schema(data: Any, schema_name: str) -> list[str]:
-    """Validate data against a named schema.
-    
-    Alias for validate(). Validates data against a JSON schema
-    and returns a list of error messages.
-    """
-    return validate(data, schema_name)
+           "Source", "SourceType", "ResolvedURL", "Job", "JobStatus", "ValidationResult"]

@@ -28,12 +28,12 @@ logger = logging.getLogger(__name__)
 
 # URL pattern matchers
 YOUTUBE_PATTERNS = [
-    re.compile(r"^https?://(www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})", re.IGNORECASE),
-    re.compile(r"^https?://youtu\.be/([a-zA-Z0-9_-]{11})", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]{11})", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?youtube\.com/embed/([a-zA-Z0-9_-]{11})", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?youtube\.com/live/([a-zA-Z0-9_-]{11})", re.IGNORECASE),
-    re.compile(r"^https?://m\.youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})", re.IGNORECASE),
+    re.compile(r"^https?://(www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://youtu\.be/([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.)?youtube\.com/shorts/([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.)?youtube\.com/embed/([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.)?youtube\.com/live/([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://m\.youtube\.com/watch\?v=([a-zA-Z0-9_-]+)", re.IGNORECASE),
 ]
 
 FACEBOOK_PATTERNS = [
@@ -41,6 +41,7 @@ FACEBOOK_PATTERNS = [
     re.compile(r"^https?://(www\.)?facebook\.com/video\.php\?v=(\d+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?facebook\.com/reel/(\d+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?facebook\.com/share/r/([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.)?facebook\.com/share/v/([a-zA-Z0-9_-]+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?facebook\.com/([a-zA-Z0-9_.]+)/videos/(\d+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?facebook\.com/([a-zA-Z0-9_.]+)/watch/(\d+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?facebook\.com/?video/v/(\d+)", re.IGNORECASE),
@@ -146,7 +147,7 @@ def resolve_url(url: str, follow_redirects: bool = True) -> ResolvedURL:
             if match:
                 groups = match.groups()
                 for g in groups:
-                    if len(g) == 11 and g.replace("_", "").replace("-", "").isalnum():
+                    if g.replace("_", "").replace("-", "").isalnum():
                         canonical_id = g
                         break
                 if canonical_id:
@@ -162,6 +163,11 @@ def resolve_url(url: str, follow_redirects: bool = True) -> ResolvedURL:
                     if g.isdigit() and len(g) >= 6:
                         canonical_id = g
                         resolved_url = f"https://www.facebook.com/video.php?v={canonical_id}"
+                        break
+                    # Handle share/v/ pattern with alphanumeric ID
+                    if len(g) >= 6 and re.match(r"^[a-zA-Z0-9_-]+$", g):
+                        canonical_id = g
+                        resolved_url = f"https://www.facebook.com/share/v/{canonical_id}/"
                         break
                 if canonical_id:
                     break
@@ -261,7 +267,7 @@ def extract_all_video_urls(text: str) -> list[str]:
         r"(?:"
         r"youtube\.com/(?:watch\?v=|shorts/|embed/|live/)|"
         r"youtu\.be/|"
-        r"facebook\.com/(?:watch\.php\?v=|video\.php\?v=|reel/|share/r/|/videos/|/watch/)|"
+        r"facebook\.com/(?:watch\.php\?v=|video\.php\?v=|reel/|share/r/|share/v/|/videos/|/watch/)|"
         r"instagram\.com/(?:reel/|p/|tv/|reels/)|"
         r"tiktok\.com/(?:@[^/]+/video/|t/)|"
         r"(?:vm|va|vt)\.tiktok\.com/"
@@ -312,6 +318,7 @@ def create_source_id(source: Source) -> str:
 __all__ = [
     "detect_source_type",
     "detect_source",
+    "detect_video_sources",
     "resolve_url",
     "extract_video_id",
     "is_video_url",
@@ -325,5 +332,77 @@ __all__ = [
 ]
 
 # Alias for backwards compatibility and CLI usage
-detect_video_sources = detect_source
 detect_video_source_type = detect_source_type
+
+
+class VideoSource:
+    """Lightweight source object for detect_video_sources results."""
+
+    def __init__(
+        self,
+        source_type: str,
+        url: str,
+        resolved_path: str | None = None,
+        video_id: str | None = None,
+        title: str | None = None,
+    ):
+        self.source_type = source_type
+        self.url = url
+        self.resolved_path = resolved_path
+        self.id = video_id
+        self.title = title
+
+
+def detect_video_sources(text: str) -> list[VideoSource]:
+    """Detect all video sources in a text string.
+
+    Extracts URLs and local file paths, identifies their types,
+    and returns a list of VideoSource objects.
+
+    Args:
+        text: Text to search for video sources.
+
+    Returns:
+        List of VideoSource objects with source_type, url, resolved_path, id, title.
+    """
+    sources: list[VideoSource] = []
+
+    # Extract all video URLs from text
+    urls = extract_all_video_urls(text)
+    for url in urls:
+        source = detect_source(url)
+        if source:
+            # Extract video ID from URL
+            video_id = extract_video_id(url)
+            sources.append(
+                VideoSource(
+                    source_type=source.source_type.value,
+                    url=source.url,
+                    video_id=video_id,
+                    title=source.title,
+                )
+            )
+
+    # Also check for local file paths in text
+    # Look for patterns like /path/to/video.mp4
+    import re
+
+    path_pattern = re.compile(
+        r"(?:^|\s)(/[^\s]+\.(?:mp4|mov|mkv|webm|avi|m4v|mpeg|mpg|flv|wmv))",
+        re.IGNORECASE,
+    )
+    for match in path_pattern.finditer(text):
+        file_path = match.group(1)
+        path = Path(file_path)
+        if path.exists() and path.is_file():
+            sources.append(
+                VideoSource(
+                    source_type="local",
+                    url=f"file://{path.resolve()}",
+                    resolved_path=str(path.resolve()),
+                    video_id=None,
+                    title=path.stem,
+                )
+            )
+
+    return sources

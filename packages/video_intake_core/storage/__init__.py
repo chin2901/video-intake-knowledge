@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import shutil
+import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -33,6 +36,71 @@ ARTIFACT_TYPES = frozenset({
     "export.json",
     "export.html",
 })
+
+
+class ArtifactType(str):
+    """Artifact type identifier with validation."""
+
+    VIDEO = "video"
+    AUDIO = "audio"
+    TRANSCRIPT = "transcript"
+    OCR = "ocr"
+    CONTEXT = "context"
+    FRAMES = "frames"
+    METADATA = "metadata"
+    SOURCE = "source"
+    PROVENANCE = "provenance"
+    EXPORT = "export"
+
+    @classmethod
+    def validate(cls, value: str) -> "ArtifactType":
+        """Validate and return an ArtifactType."""
+        if value not in ARTIFACT_TYPES:
+            raise ValueError(f"Unknown artifact type: {value}. Valid types: {sorted(ARTIFACT_TYPES)}")
+        return cls(value)
+
+
+class ArtifactKind:
+    """Categorizes artifact types by kind."""
+
+    ORIGINAL = "original"
+    PROCESSED = "processed"
+    TRANSCRIPT = "transcript"
+    CAPTION = "caption"
+    METADATA = "metadata"
+    AUDIO = "audio"
+    VISUAL = "visual"
+    KNOWLEDGE = "knowledge"
+    OCR = "ocr"
+    EXPORT = "export"
+    SOURCE = "source"
+    PROVENANCE = "provenance"
+
+    _TYPE_TO_KIND: dict[str, str] = {
+        "manifest.json": METADATA,
+        "source.json": SOURCE,
+        "provenance.md": PROVENANCE,
+        "transcript_raw": TRANSCRIPT,
+        "transcript_timestamped.md": TRANSCRIPT,
+        "audio_context.md": AUDIO,
+        "visual_context.md": VISUAL,
+        "extracted_knowledge.md": KNOWLEDGE,
+        "ocr.json": OCR,
+        "metadata.json": METADATA,
+        "export.md": EXPORT,
+        "export.json": EXPORT,
+        "export.html": EXPORT,
+    }
+
+    @classmethod
+    def from_type(cls, artifact_type: str) -> str:
+        """Get the kind for an artifact type."""
+        return cls._TYPE_TO_KIND.get(artifact_type, "unknown")
+
+    @classmethod
+    def is_valid_type(cls, artifact_type: str) -> bool:
+        """Check if an artifact type is valid."""
+        return artifact_type in ARTIFACT_TYPES
 
 
 class StorageManager:
@@ -491,3 +559,296 @@ class StorageManager:
             "total_freed": cache_size + jobs_size,
             "total_freed_human": sizeof_fmt(cache_size + jobs_size),
         }
+
+    # ------------------------------------------------------------------
+    # Legacy API methods (for test compatibility)
+    # ------------------------------------------------------------------
+
+    def _ensure_directories(self, job_id: str) -> Path:
+        """Ensure all necessary directories exist for a job.
+
+        Args:
+            job_id: The job identifier.
+
+        Returns:
+            Path to the job directory.
+        """
+        job_dir = self.get_job_dir(job_id)
+        # Create standard subdirectories
+        for subdir in ["video", "audio", "frames", "transcript_raw", "logs", "exports", "metadata", "ocr"]:
+            (job_dir / subdir).mkdir(parents=True, exist_ok=True)
+        return job_dir
+
+    def store_artifact(
+        self,
+        source_path: Path | str,
+        artifact_type: str,
+        artifact_kind: str,
+        job_id: str,
+        description: str | None = None,
+    ) -> "StoredArtifact":
+        """Store an artifact file and return its metadata.
+
+        Args:
+            source_path: Path to the source file.
+            artifact_type: Type of artifact (e.g., ArtifactType.VIDEO).
+            artifact_kind: Kind of artifact (e.g., ArtifactKind.ORIGINAL).
+            job_id: The job identifier.
+            description: Optional description.
+
+        Returns:
+            StoredArtifact with sha256, filename, artifact_type, etc.
+        """
+        source_path = Path(source_path)
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source file not found: {source_path}")
+
+        # Ensure job directories exist
+        self._ensure_directories(job_id)
+
+        # Compute SHA-256
+        sha256_hash = compute_sha256(source_path)
+
+        # Copy to job directory with sanitized filename
+        filename = source_path.name
+        safe_filename = sanitize_filename(filename)
+        job_dir = self.get_job_dir(job_id)
+
+        # Determine subdirectory based on artifact_type
+        if artifact_type == "video":
+            subdir = job_dir / "video"
+        elif artifact_type == "audio":
+            subdir = job_dir / "audio"
+        elif artifact_type in ("transcript", "transcript_raw"):
+            subdir = job_dir / "transcript_raw"
+        elif artifact_type == "ocr":
+            subdir = job_dir / "ocr"
+        elif artifact_type == "metadata":
+            subdir = job_dir / "metadata"
+        elif artifact_type == "frames":
+            subdir = job_dir / "frames"
+        elif artifact_type in ("export", "export.md", "export.json", "export.html"):
+            subdir = job_dir / "exports"
+        else:
+            subdir = job_dir / artifact_type
+
+        subdir.mkdir(parents=True, exist_ok=True)
+        dest_path = subdir / safe_filename
+
+        # Copy the file
+        shutil.copy2(source_path, dest_path)
+
+        # Create and return artifact metadata
+        return StoredArtifact(
+            sha256=sha256_hash,
+            filename=filename,
+            artifact_type=artifact_type,
+            artifact_kind=artifact_kind,
+            job_id=job_id,
+            path=str(dest_path),
+            size_bytes=dest_path.stat().st_size,
+            description=description or "",
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    def get_artifact_meta(self, job_id: str, filename: str) -> "StoredArtifact | None":
+        """Get metadata for a specific artifact.
+
+        Args:
+            job_id: The job identifier.
+            filename: The artifact filename.
+
+        Returns:
+            StoredArtifact metadata or None if not found.
+        """
+        job_dir = self.get_job_dir(job_id)
+        if not job_dir.exists():
+            return None
+
+        # Search recursively for the file
+        for item in job_dir.rglob(filename):
+            if item.is_file():
+                sha256_hash = compute_sha256(item)
+                return StoredArtifact(
+                    sha256=sha256_hash,
+                    filename=item.name,
+                    artifact_type="unknown",
+                    artifact_kind="unknown",
+                    job_id=job_id,
+                    path=str(item),
+                    size_bytes=item.stat().st_size,
+                    description="",
+                    created_at=datetime.fromtimestamp(
+                        item.stat().st_mtime, tz=timezone.utc
+                    ).isoformat(),
+                )
+        return None
+
+    def list_artifacts(self, job_id: str) -> list["StoredArtifact"]:
+        """List all artifacts for a job.
+
+        Args:
+            job_id: The job identifier.
+
+        Returns:
+            List of StoredArtifact objects.
+        """
+        job_dir = self.get_job_dir(job_id)
+        if not job_dir.exists():
+            return []
+
+        artifacts: list[StoredArtifact] = []
+        for item in sorted(job_dir.rglob("*")):
+            if item.is_file() and item != job_dir:
+                sha256_hash = compute_sha256(item)
+                # Try to determine artifact_type from path
+                rel = item.relative_to(job_dir)
+                parts = rel.parts
+                artifact_type = parts[0] if parts else "unknown"
+
+                artifacts.append(
+                    StoredArtifact(
+                        sha256=sha256_hash,
+                        filename=item.name,
+                        artifact_type=artifact_type,
+                        artifact_kind="unknown",
+                        job_id=job_id,
+                        path=str(item),
+                        size_bytes=item.stat().st_size,
+                        description="",
+                        created_at=datetime.fromtimestamp(
+                            item.stat().st_mtime, tz=timezone.utc
+                        ).isoformat(),
+                    )
+                )
+        return artifacts
+
+    def cleanup_old_artifacts(self, max_age_days: int = 30) -> int:
+        """Clean up artifacts older than max_age_days.
+
+        Args:
+            max_age_days: Maximum age in days for artifacts to keep.
+
+        Returns:
+            Number of artifacts removed.
+        """
+        cutoff_time = time.time() - (max_age_days * 24 * 3600)
+        removed = 0
+
+        if not self._jobs_dir.exists():
+            return 0
+
+        for job_dir in self._jobs_dir.iterdir():
+            if not job_dir.is_dir():
+                continue
+
+            # Check each file in the job directory
+            for file_path in job_dir.rglob("*"):
+                if file_path.is_file():
+                    mtime = file_path.stat().st_mtime
+                    if mtime < cutoff_time:
+                        file_path.unlink()
+                        removed += 1
+
+            # Clean up empty directories
+            for subdir in sorted(job_dir.rglob("*"), reverse=True):
+                if subdir.is_dir() and not any(subdir.iterdir()):
+                    subdir.rmdir()
+
+        logger.info(f"Cleaned up {removed} artifacts older than {max_age_days} days")
+        return removed
+
+    def get_artifacts(self, job_id: str) -> list[StoredArtifact]:
+        """Get all artifacts for a job (contract API).
+
+        Args:
+            job_id: The job identifier.
+
+        Returns:
+            List of StoredArtifact objects.
+        """
+        return self.list_artifacts(job_id)
+
+
+# Module-level contract API functions
+_DEFAULT_STORAGE_ROOT = "storage"
+
+
+def save_artifact(
+    job_id: str,
+    artifact_type: str,
+    content: bytes | str | Path,
+    filename: str | None = None,
+) -> Path:
+    """Save an artifact for a job (contract API).
+
+    Args:
+        job_id: The job ID.
+        artifact_type: Type of artifact.
+        content: Content to save (bytes, string, or existing file path).
+        filename: Optional custom filename.
+
+    Returns:
+        Path to the saved artifact.
+    """
+    manager = StorageManager(_DEFAULT_STORAGE_ROOT)
+    return manager.save_artifact(job_id, artifact_type, content, filename)
+
+
+def get_artifacts(job_id: str) -> list[StoredArtifact]:
+    """Get all artifacts for a job (contract API).
+
+    Args:
+        job_id: The job identifier.
+
+    Returns:
+        List of StoredArtifact objects.
+    """
+    manager = StorageManager(_DEFAULT_STORAGE_ROOT)
+    return manager.get_artifacts(job_id)
+
+
+def cleanup(max_age_days: int = 30, dry_run: bool = False) -> int:
+    """Clean up old artifacts (contract API).
+
+    Args:
+        max_age_days: Maximum age in days for artifacts to keep.
+        dry_run: If True, only report what would be removed.
+
+    Returns:
+        Number of artifacts removed (or would be removed in dry_run).
+    """
+    manager = StorageManager(_DEFAULT_STORAGE_ROOT)
+    result = manager.cleanup(max_age_days=max_age_days, dry_run=dry_run)
+    return result.get("removed_count", 0)
+
+
+def get_storage_usage() -> dict[str, int]:
+    """Get storage usage statistics (contract API).
+
+    Returns:
+        Dict with storage usage info.
+    """
+    manager = StorageManager(_DEFAULT_STORAGE_ROOT)
+    usage = manager.get_storage_usage()
+    return {
+        "total_bytes": usage["total_bytes"],
+        "cache_size_bytes": usage["cache_size_bytes"],
+        "jobs_size_bytes": usage["jobs_size_bytes"],
+        "jobs_count": usage["jobs_count"],
+    }
+
+
+@dataclass
+class StoredArtifact:
+    """Metadata for a stored artifact."""
+
+    sha256: str
+    filename: str
+    artifact_type: str
+    artifact_kind: str
+    job_id: str
+    path: str
+    size_bytes: int
+    description: str
+    created_at: str

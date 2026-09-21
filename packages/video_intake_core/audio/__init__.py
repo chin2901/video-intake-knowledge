@@ -11,23 +11,23 @@ import logging
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Audio extraction
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# Internal implementation functions
+# ----------------------------------------------------------------------
 
-def extract_audio(
+def _extract_audio_impl(
     source: str,
     output_path: Optional[str] = None,
     output_format: str = "wav",
     audio_stream_index: int = 0,
 ) -> dict[str, Any]:
-    """Extract audio from a video file or URL.
+    """Extract audio from a video file or URL (internal implementation).
 
     Downloads/opens the source, extracts the audio track using ffmpeg,
     and saves it in the specified format.
@@ -48,14 +48,14 @@ def extract_audio(
     video_path: Path
 
     if is_url:
-        video_path = download_to_temp(source)
+        video_path = _download_to_temp(source)
     else:
         video_path = Path(source)
         if not video_path.exists():
             raise FileNotFoundError(f"Video file not found: {source}")
 
     if output_path is None:
-        output_path = get_temp_path(f"vitk_audio_{output_format}")
+        output_path = _get_temp_path(f"vitk_audio_{output_format}")
     output_path = Path(output_path)
 
     codec = _codec_for_format(output_format)
@@ -84,7 +84,7 @@ def extract_audio(
     }
 
 
-def download_to_temp(url: str) -> Path:
+def _download_to_temp(url: str) -> Path:
     """Download a video URL to a temporary file using yt-dlp."""
     import yt_dlp
 
@@ -218,14 +218,78 @@ def _compute_hash(file_path: str) -> str:
     return h.hexdigest()
 
 
-def get_temp_path(prefix: str = "vitk_") -> str:
+def _get_temp_path(prefix: str = "vitk_") -> str:
     """Return a temporary file path."""
     return str(Path(tempfile.mktemp(suffix=".wav", prefix=prefix)))
 
 
-# ---------------------------------------------------------------------------
-# Normalization
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# Contract API wrapper functions
+# ----------------------------------------------------------------------
+
+
+def extract_audio(video_path: str | Path, output_dir: str | Path) -> dict[str, Any]:
+    """Extract audio from a video file (contract API).
+
+    Args:
+        video_path: Path to local video file.
+        output_dir: Directory for output audio file.
+
+    Returns:
+        Dict with extraction results.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{Path(video_path).stem}.wav"
+    return _extract_audio_impl(
+        source=str(video_path),
+        output_path=str(output_path),
+        output_format="wav",
+    )
+
+
+def extract_audio_from_url(url: str, output_dir: str | Path) -> dict[str, Any]:
+    """Extract audio from a video URL (contract API).
+
+    Args:
+        url: Video URL to extract audio from.
+        output_dir: Directory for output audio file.
+
+    Returns:
+        Dict with extraction results.
+    """
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    # Use a hash of URL for filename to avoid issues
+    import hashlib
+    url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+    output_path = output_dir / f"audio_{url_hash}.wav"
+    return _extract_audio_impl(
+        source=url,
+        output_path=str(output_path),
+        output_format="wav",
+    )
+
+
+def get_audio_info(audio_path: str | Path) -> dict[str, Any]:
+    """Get audio stream info (contract API).
+
+    Args:
+        audio_path: Path to audio file.
+
+    Returns:
+        Dict with audio info.
+    """
+    path = Path(audio_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Audio file not found: {audio_path}")
+    return _get_audio_info(path)
+
+
+# ----------------------------------------------------------------------
+# Normalization (kept as internal)
+# ----------------------------------------------------------------------
+
 
 def normalize_audio(
     input_path: str,
@@ -248,7 +312,7 @@ def normalize_audio(
     if not path.exists():
         raise FileNotFoundError(f"Audio file not found: {input_path}")
 
-    out = output_path if output_path else get_temp_path(f"vitk_norm_{output_format}")
+    out = output_path if output_path else _get_temp_path(f"vitk_norm_{output_format}")
     out_path = Path(out)
 
     codec = "pcm_s16le" if output_format == "wav" else "libmp3lame"
@@ -274,9 +338,10 @@ def normalize_audio(
     }
 
 
-# ---------------------------------------------------------------------------
-# Splitting
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# Splitting (kept as internal)
+# ----------------------------------------------------------------------
+
 
 def split_audio(
     audio_path: str,
@@ -359,9 +424,10 @@ def split_audio(
     return segments
 
 
-# ---------------------------------------------------------------------------
-# Direct audio download
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------
+# Direct audio download (kept as internal)
+# ----------------------------------------------------------------------
+
 
 def download_audio_only(
     url: str,
@@ -380,7 +446,7 @@ def download_audio_only(
     """
     import yt_dlp
 
-    out = output_path if output_path else get_temp_path("vitk_audio_m4a")
+    out = output_path if output_path else _get_temp_path("vitk_audio_m4a")
     out_path = Path(out)
 
     ydl_opts: dict[str, Any] = {
@@ -408,3 +474,50 @@ def download_audio_only(
         "title": info.get("title", ""),
         "uploader": info.get("uploader", ""),
     }
+
+
+# ----------------------------------------------------------------------
+# Additional Contract API classes (for test compatibility)
+# ----------------------------------------------------------------------
+
+
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass
+class AudioResult:
+    """Audio extraction result (contract API)."""
+    path: str = ""
+    format: str = ""
+    codec: str = ""
+    sample_rate: int = 0
+    channels: int = 0
+    duration: float = 0.0
+    size_bytes: int = 0
+    source: str = ""
+    sha256: str = ""
+    error: str | None = None
+
+
+# ----------------------------------------------------------------------
+# Contract API wrapper functions
+# ----------------------------------------------------------------------
+
+
+def extract_audio_from_file(
+    video_path: str | Path,
+    output_dir: str | Path,
+) -> dict[str, Any]:
+    """Extract audio from a local video file (contract API).
+
+    Alias for extract_audio.
+
+    Args:
+        video_path: Path to local video file.
+        output_dir: Directory for output audio file.
+
+    Returns:
+        Dict with extraction results.
+    """
+    return extract_audio(video_path, output_dir)

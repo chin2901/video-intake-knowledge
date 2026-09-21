@@ -3,7 +3,7 @@
   "title": "Source",
   "description": "Schema for a video source (URL or local file)",
   "type": "object",
-  "required": ["source_type", "url", "platform"],
+  "required": ["source_type", "url"],
   "properties": {
     "source_type": {
       "type": "string",

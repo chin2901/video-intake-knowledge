@@ -3239,3 +3239,103 @@ def export_extracted_knowledge_mdx(
         Path(output_path).with_suffix(".mdx").write_text(result, encoding="utf-8")
 
     return result
+
+
+# ----------------------------------------------------------------------
+# Contract API wrapper functions
+# ----------------------------------------------------------------------
+
+
+def extract_knowledge(
+    video_path: str | Path,
+    strategy: str = "auto",
+    language: Optional[str] = None,
+    output_dir: Optional[str | Path] = None,
+) -> dict[str, Any]:
+    """Extract knowledge from a video file (contract API).
+
+    This is the main entry point for extracting structured knowledge
+    from video files.
+
+    Args:
+        video_path: Path to local video file.
+        strategy: Extraction strategy ('auto', 'audio', 'visual', 'full').
+        language: Language code for transcription.
+        output_dir: Optional directory to save extracted artifacts.
+
+    Returns:
+        Dict with combined audio and visual knowledge.
+    """
+    # Import here to avoid circular imports
+    from video_intake_core.transcription import transcribe_from_file
+    from video_intake_core.context import generate_audio_context, generate_visual_context
+    from video_intake_core.visual import detect_scenes, extract_keyframes
+    from video_intake_core.ocr import run_ocr, batch_ocr
+    from video_intake_core.audio import extract_audio, get_audio_info
+
+    video_path = Path(video_path)
+    if not video_path.exists():
+        raise FileNotFoundError(f"Video file not found: {video_path}")
+
+    # Transcribe audio
+    transcript_result = transcribe_from_file(str(video_path), strategy=strategy, language=language)
+
+    # Extract audio
+    audio_result = extract_audio(str(video_path), output_dir or str(video_path.parent))
+
+    # Visual analysis (if strategy includes visual)
+    visual_context = None
+    if strategy in ("auto", "visual", "full"):
+        try:
+            scenes = detect_scenes(str(video_path))
+            keyframes = extract_keyframes(str(video_path), scenes, str(output_dir or video_path.parent))
+            ocr_results = batch_ocr([kf.get("path", "") for kf in keyframes if kf.get("path")])
+            visual_context = generate_visual_context(
+                video_info={"path": str(video_path)},
+                keyframes_metadata=keyframes,
+                ocr_results=ocr_results,
+                scene_changes=scenes,
+                extracted_frames=keyframes,
+            )
+        except Exception:
+            visual_context = None
+
+    # Generate audio context
+    segments = transcript_result.get("segments", [])
+    full_text = " ".join(s.get("text", "") for s in segments if s.get("text"))
+    audio_context = generate_audio_context(segments, full_text, transcript_result.get("source_info"), transcript_result.get("duration"))
+
+    # Combine knowledge
+    combined_knowledge = {
+        "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "source": {
+            "video_path": str(video_path),
+            "title": video_path.stem,
+        },
+        "transcription": transcript_result,
+        "audio_context": audio_context,
+        "visual_context": visual_context,
+        "audio_info": audio_result,
+        "confidence_combined": (
+            audio_context.get("confidence", 0) * 0.7 +
+            (visual_context.get("confidence", 0) if visual_context else 0) * 0.3
+        ),
+    }
+
+    # Add warnings summary
+    warnings_summary = []
+    if audio_context.get("warnings_flags", {}).get("has_high_severity_risks"):
+        warnings_summary.append({"type": "Risk", "severity": "Alto", "message": "High severity risks detected in audio context"})
+    if visual_context and visual_context.get("uncertainties_and_gaps"):
+        warnings_summary.append({"type": "Visual Uncertainty", "severity": "Medio", "message": "Visual analysis has uncertainties"})
+    combined_knowledge["warnings_summary"] = warnings_summary
+
+    # Save to output directory if provided
+    if output_dir:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        import json
+        with open(output_dir / f"{video_path.stem}_knowledge.json", "w") as f:
+            json.dump(combined_knowledge, f, indent=2, ensure_ascii=False)
+
+    return combined_knowledge

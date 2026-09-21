@@ -8,16 +8,27 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from datetime import datetime, timezone
+from dataclasses import field
+from datetime import UTC, datetime
 from enum import Enum
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 
 class JobStatus(str, Enum):
     """Job status enumeration."""
 
     PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+# Alias for backward compatibility with tests
+class JobState(str, Enum):
+    """Job state enumeration (legacy API)."""
+
+    WAITING = "waiting"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -47,17 +58,17 @@ class Job:
 
     def __init__(
         self,
-        job_id: Optional[str] = None,
-        source: Optional[Source] = None,
-        operations: Optional[list[str]] = None,
+        job_id: str | None = None,
+        source: Source | None = None,
+        operations: list[str] | None = None,
         status: JobStatus = JobStatus.PENDING,
-        progress: Optional[dict[str, Any]] = None,
-        created_at_utc: Optional[str] = None,
-        started_at_utc: Optional[str] = None,
-        completed_at_utc: Optional[str] = None,
-        result_path: Optional[str] = None,
-        error_message: Optional[str] = None,
-        cancelled_by: Optional[str] = None,
+        progress: dict[str, Any] | None = None,
+        created_at_utc: str | None = None,
+        started_at_utc: str | None = None,
+        completed_at_utc: str | None = None,
+        result_path: str | None = None,
+        error_message: str | None = None,
+        cancelled_by: str | None = None,
     ) -> None:
         """Initialize a new Job.
 
@@ -77,22 +88,106 @@ class Job:
         self.job_id = job_id or self._generate_job_id(source)
         self.source = source
         self.operations = operations or []
-        self.status = status
+        self._status = status
         self.progress = progress or {
             "current_operation": None,
             "total_operations": len(self.operations) if self.operations else 0,
             "completed_operations": 0,
             "percent": 0,
         }
-        self.created_at_utc = created_at_utc or datetime.now(timezone.utc).isoformat()
+        self.created_at_utc = created_at_utc or datetime.now(UTC).isoformat()
         self.started_at_utc = started_at_utc
         self.completed_at_utc = completed_at_utc
         self.result_path = result_path
         self.error_message = error_message
         self.cancelled_by = cancelled_by
 
+    # ------------------------------------------------------------------
+    # Backward compatibility properties
+    # ------------------------------------------------------------------
+
+    @property
+    def id(self) -> str:
+        """Legacy API: job.id"""
+        return self.job_id
+
+    @property
+    def state(self) -> str:
+        """Legacy API: job.state (maps status to legacy names)"""
+        status_map = {
+            "pending": "waiting",
+            "running": "running",
+            "completed": "completed",
+            "failed": "failed",
+            "cancelled": "cancelled",
+        }
+        status_val = self._status.value if hasattr(self._status, 'value') else str(self._status)
+        return status_map.get(status_val, "waiting")
+
+    @property
+    def source_url(self) -> str:
+        """Contract API: job.source_url"""
+        if self.source:
+            if isinstance(self.source, dict):
+                return self.source.get("url", "")
+            if hasattr(self.source, 'url'):
+                return self.source.url
+        return ""
+
+    @property
+    def video_path(self) -> str:
+        """Contract API: job.video_path (alias for source_url)"""
+        return self.source_url
+
+    @property
+    def status(self) -> str:
+        """Contract API: job.status"""
+        return self._status.value if hasattr(self._status, 'value') else str(self._status)
+
+    @property
+    def selected_operations(self) -> list[str]:
+        """Legacy API: job.selected_operations"""
+        return self.operations
+
+    @property
+    def progress(self) -> float:
+        """Legacy API: job.progress (float 0-100)"""
+        if isinstance(self._progress, dict):
+            return float(self._progress.get("percent", 0))
+        return float(self._progress) if self._progress else 0.0
+
+    @progress.setter
+    def progress(self, value: dict[str, Any] | float | int) -> None:
+        if isinstance(value, (int, float)):
+            # Convert float progress to dict format
+            self._progress = {
+                "current_operation": None,
+                "total_operations": len(self.operations) if self.operations else 0,
+                "completed_operations": int((value / 100) * len(self.operations)) if self.operations else 0,
+                "percent": min(max(float(value), 0), 100),
+            }
+        else:
+            self._progress = value
+
+    @property
+    def current_phase(self) -> str:
+        """Legacy API: job.current_phase"""
+        if isinstance(self._progress, dict):
+            return self._progress.get("current_operation") or ""
+        return ""
+
+    @current_phase.setter
+    def current_phase(self, value: str) -> None:
+        if isinstance(self._progress, dict):
+            self._progress["current_operation"] = value
+        else:
+            self._progress = {"current_operation": value, "percent": 0}
+
+    # Internal progress storage
+    _progress: dict[str, Any] | float = field(default_factory=dict, init=False, repr=False)
+
     @staticmethod
-    def _generate_job_id(source: Optional[Source] = None) -> str:
+    def _generate_job_id(source: Source | None = None) -> str:
         """Generate a unique job ID based on source URL hash and UUID."""
         if source and source.url:
             source_hash = hashlib.sha256(source.url.encode()).hexdigest()[:12]
@@ -116,7 +211,7 @@ class Job:
                 "metadata": self.source.metadata if self.source else None,
             } if self.source else None,
             "operations": self.operations,
-            "status": self.status.value if isinstance(self.status, JobStatus) else self.status,
+            "status": self._status.value if isinstance(self._status, JobStatus) else self._status,
             "progress": self.progress,
             "created_at_utc": self.created_at_utc,
             "started_at_utc": self.started_at_utc,
@@ -127,7 +222,7 @@ class Job:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Job":
+    def from_dict(cls, data: dict[str, Any]) -> Job:
         """Create a Job from a dictionary."""
         source_data = data.get("source")
         source = None
@@ -163,10 +258,10 @@ class Job:
         )
 
     def __repr__(self) -> str:
-        return f"Job(job_id={self.job_id!r}, status={self.status.value})"
+        return f"Job(job_id={self.job_id!r}, status={self._status.value})"
 
     def __str__(self) -> str:
         return f"Job {self.job_id} ({self.status.value})"
 
 
-__all__ = ["Job", "JobStatus"]
+__all__ = ["Job", "JobStatus", "JobState"]

@@ -7,7 +7,9 @@ Enables storing and retrieving extracted knowledge in the session context.
 
 from __future__ import annotations
 
+import json
 import logging
+import sqlite3
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -18,41 +20,86 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class MemoryEntryMetadata:
+    """Metadata for a memory entry."""
+
+    video_title: str = ""
+    language: str = "es"
+    created_at: str = ""
+    tags: list[str] = field(default_factory=list)
+    related_entries: list[str] = field(default_factory=list)
+
+
+@dataclass
 class MemoryEntry:
     """A single entry in the memory bank."""
 
     id: Optional[str] = None
+    job_id: str = ""
     source_url: str = ""
     source_title: str = ""
     extracted_at: str = ""
     content_type: str = ""
     content: str = ""
     summary: str = ""
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: MemoryEntryMetadata | dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class MemoryQuery:
+    """Query parameters for memory search."""
+
+    text: str = ""
+    content_type: Optional[str] = None
+    tags: list[str] = field(default_factory=list)
+    job_id: str = ""
+    date_from: Optional[str] = None
+    date_to: Optional[str] = None
+    limit: int = 20
+    offset: int = 0
+
+
+@dataclass
+class MemoryBankInfo:
+    """Information about the memory bank."""
+
+    total_entries: int = 0
+    total_size_bytes: int = 0
+    by_content_type: dict[str, int] = field(default_factory=dict)
+    db_path: str = ""
+    provider_type: str = "local_sqlite"
+    database_path: str = ""
+    is_available: bool = True
+
+
+@dataclass
+class MemoryStats:
+    """Memory statistics."""
+
+    total_entries: int = 0
+    content_types: dict[str, int] = field(default_factory=dict)
+    db_path: str = ""
+
+
+@dataclass
+class HealthCheckResult:
+    """Health check result."""
+
+    status: str = "healthy"
+    error: str | None = None
+    db_path: str = ""
+    db_exists: bool = True
 
 
 class MemoryProvider(ABC):
     """Abstract interface for memory storage providers."""
 
     @abstractmethod
-    def store(
-        self,
-        source_url: str,
-        source_title: str,
-        content_type: str,
-        content: str,
-        summary: str = "",
-        metadata: Optional[dict[str, Any]] = None,
-    ) -> str:
+    def store_entry(self, entry: MemoryEntry) -> str:
         """Store a new memory entry.
 
         Args:
-            source_url: URL or path of the source video.
-            source_title: Title of the source video.
-            content_type: Type of content (transcript, context, knowledge, etc.)
-            content: The full content to store.
-            summary: Optional summary of the content.
-            metadata: Optional additional metadata.
+            entry: The memory entry to store.
 
         Returns:
             The ID of the stored entry.
@@ -60,12 +107,12 @@ class MemoryProvider(ABC):
         ...
 
     @abstractmethod
-    def retrieve(self, entry_id: str) -> Optional[MemoryEntry]:
+    def get_entry(self, entry_id: str) -> Optional[MemoryEntry]:
         """Retrieve a memory entry by ID."""
         ...
 
     @abstractmethod
-    def list(
+    def list_entries(
         self,
         content_type: Optional[str] = None,
         limit: int = 50,
@@ -75,28 +122,33 @@ class MemoryProvider(ABC):
         ...
 
     @abstractmethod
-    def search(
-        self,
-        query: str,
-        content_type: Optional[str] = None,
-        limit: int = 20,
-    ) -> list[MemoryEntry]:
-        """Search memory entries by text query."""
+    def search_entries(self, query: MemoryQuery) -> list[MemoryEntry]:
+        """Search memory entries by query."""
         ...
 
     @abstractmethod
-    def delete(self, entry_id: str) -> bool:
+    def delete_entry(self, entry_id: str) -> bool:
         """Delete a memory entry by ID."""
         ...
 
     @abstractmethod
-    def clear(self) -> int:
-        """Clear all memory entries. Returns count of deleted entries."""
+    def get_stats(self) -> MemoryStats:
+        """Get memory statistics."""
         ...
 
     @abstractmethod
-    def get_stats(self) -> dict[str, Any]:
-        """Get memory statistics."""
+    def get_bank_info(self) -> MemoryBankInfo:
+        """Get memory bank information."""
+        ...
+
+    @abstractmethod
+    def health_check(self) -> HealthCheckResult:
+        """Check provider health."""
+        ...
+
+    @abstractmethod
+    def close(self) -> None:
+        """Close the provider and release resources."""
         ...
 
 
@@ -121,6 +173,7 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS memory_entries (
                     id TEXT PRIMARY KEY,
+                    job_id TEXT DEFAULT '',
                     source_url TEXT NOT NULL,
                     source_title TEXT NOT NULL,
                     extracted_at TEXT NOT NULL,
@@ -160,66 +213,79 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
         return f"mem_{uuid.uuid4().hex[:16]}"
 
     @staticmethod
-    def _serialize_metadata(metadata: dict[str, Any]) -> str:
+    def _serialize_metadata(metadata: MemoryEntryMetadata | dict[str, Any]) -> str:
         import json
+        if isinstance(metadata, MemoryEntryMetadata):
+            return json.dumps({
+                "video_title": metadata.video_title,
+                "language": metadata.language,
+                "created_at": metadata.created_at,
+                "tags": metadata.tags,
+                "related_entries": metadata.related_entries,
+            }, ensure_ascii=False)
         return json.dumps(metadata, ensure_ascii=False)
 
     @staticmethod
-    def _deserialize_metadata(raw: str) -> dict[str, Any]:
+    def _deserialize_metadata(raw: str) -> MemoryEntryMetadata:
         import json
         if not raw:
-            return {}
-        return json.loads(raw)
+            return MemoryEntryMetadata()
+        data = json.loads(raw)
+        return MemoryEntryMetadata(
+            video_title=data.get("video_title", ""),
+            language=data.get("language", "es"),
+            created_at=data.get("created_at", ""),
+            tags=data.get("tags", []),
+            related_entries=data.get("related_entries", []),
+        )
 
     # ------------------------------------------------------------------
     # Store
     # ------------------------------------------------------------------
 
-    def store(
-        self,
-        source_url: str,
-        source_title: str,
-        content_type: str,
-        content: str,
-        summary: str = "",
-        metadata: Optional[dict[str, Any]] = None,
-    ) -> str:
-        """Store a memory entry."""
+    def store_entry(self, entry: MemoryEntry) -> str:
+        """Store a new memory entry."""
         import sqlite3
         import uuid
 
-        entry_id = f"mem_{uuid.uuid4().hex[:16]}"
+        entry_id = entry.id or f"mem_{uuid.uuid4().hex[:16]}"
         now = self._now()
-        meta_json = self._serialize_metadata(metadata or {})
+        extracted_at = entry.extracted_at or now
+
+        if isinstance(entry.metadata, MemoryEntryMetadata):
+            meta_json = self._serialize_metadata(entry.metadata)
+        else:
+            meta_json = json.dumps(entry.metadata, ensure_ascii=False) if entry.metadata else "{}"
 
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.execute("""
                 INSERT INTO memory_entries
-                (id, source_url, source_title, extracted_at, content_type,
+                (id, job_id, source_url, source_title, extracted_at, content_type,
                  content, summary, metadata, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 entry_id,
-                source_url,
-                source_title,
-                now,
-                content_type,
-                content,
-                summary,
+                entry.job_id,
+                entry.source_url,
+                entry.source_title,
+                extracted_at,
+                entry.content_type,
+                entry.content,
+                entry.summary,
                 meta_json,
                 now,
                 now,
             ))
             conn.commit()
 
-        logger.info(f"Stored memory entry {entry_id} ({content_type})")
+        logger.info(f"Stored memory entry {entry_id} ({entry.content_type})")
         return entry_id
 
     # ------------------------------------------------------------------
     # Retrieve
     # ------------------------------------------------------------------
 
-    def retrieve(self, entry_id: str) -> Optional[MemoryEntry]:
+    def get_entry(self, entry_id: str) -> Optional[MemoryEntry]:
         """Retrieve a memory entry by ID."""
         import sqlite3
 
@@ -233,22 +299,25 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
         if not row:
             return None
 
+        metadata = self._deserialize_metadata(row["metadata"])
+
         return MemoryEntry(
             id=row["id"],
+            job_id=row["job_id"] or "",
             source_url=row["source_url"],
             source_title=row["source_title"],
             extracted_at=row["extracted_at"],
             content_type=row["content_type"],
             content=row["content"],
             summary=row["summary"] or "",
-            metadata=self._deserialize_metadata(row["metadata"]),
+            metadata=metadata,
         )
 
     # ------------------------------------------------------------------
     # List
     # ------------------------------------------------------------------
 
-    def list(
+    def list_entries(
         self,
         content_type: Optional[str] = None,
         limit: int = 50,
@@ -278,15 +347,17 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
 
         entries = []
         for row in rows:
+            metadata = self._deserialize_metadata(row["metadata"])
             entries.append(MemoryEntry(
                 id=row["id"],
+                job_id=row["job_id"] or "",
                 source_url=row["source_url"],
                 source_title=row["source_title"],
                 extracted_at=row["extracted_at"],
                 content_type=row["content_type"],
                 content=row["content"],
                 summary=row["summary"] or "",
-                metadata=self._deserialize_metadata(row["metadata"]),
+                metadata=metadata,
             ))
 
         return entries
@@ -295,52 +366,50 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
     # Search
     # ------------------------------------------------------------------
 
-    def search(
-        self,
-        query: str,
-        content_type: Optional[str] = None,
-        limit: int = 20,
-    ) -> list[MemoryEntry]:
-        """Search memory entries by text content."""
+    def search_entries(self, query: MemoryQuery) -> list[MemoryEntry]:
+        """Search memory entries by query."""
         import sqlite3
 
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
 
-            if content_type:
-                rows = conn.execute(
-                    """SELECT * FROM memory_entries
-                       WHERE content_type = ?
-                         AND (content LIKE ? OR summary LIKE ?)
-                       ORDER BY extracted_at DESC
-                       LIMIT ?""",
-                    (
-                        content_type,
-                        f"%{query}%",
-                        f"%{query}%",
-                        limit,
-                    ),
-                ).fetchall()
-            else:
-                rows = conn.execute(
-                    """SELECT * FROM memory_entries
-                       WHERE content LIKE ? OR summary LIKE ?
-                       ORDER BY extracted_at DESC
-                       LIMIT ?""",
-                    (f"%{query}%", f"%{query}%", limit),
-                ).fetchall()
+            sql = """SELECT * FROM memory_entries
+               WHERE (content LIKE ? OR summary LIKE ?)"""
+            params = [f"%{query.text}%", f"%{query.text}%"]
+
+            if query.content_type:
+                sql += " AND content_type = ?"
+                params.append(query.content_type)
+
+            if query.job_id:
+                sql += " AND job_id = ?"
+                params.append(query.job_id)
+
+            if query.tags:
+                # Search in metadata tags
+                tag_conditions = " OR ".join(["metadata LIKE ?"] * len(query.tags))
+                sql += f" AND ({tag_conditions})"
+                for tag in query.tags:
+                    params.append(f"%{tag}%")
+
+            sql += " ORDER BY extracted_at DESC LIMIT ? OFFSET ?"
+            params.extend([query.limit, query.offset])
+
+            rows = conn.execute(sql, params).fetchall()
 
         entries = []
         for row in rows:
+            metadata = self._deserialize_metadata(row["metadata"])
             entries.append(MemoryEntry(
                 id=row["id"],
+                job_id=row["job_id"] or "",
                 source_url=row["source_url"],
                 source_title=row["source_title"],
                 extracted_at=row["extracted_at"],
                 content_type=row["content_type"],
                 content=row["content"],
                 summary=row["summary"] or "",
-                metadata=self._deserialize_metadata(row["metadata"]),
+                metadata=metadata,
             ))
 
         return entries
@@ -349,7 +418,7 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
     # Delete
     # ------------------------------------------------------------------
 
-    def delete(self, entry_id: str) -> bool:
+    def delete_entry(self, entry_id: str) -> bool:
         """Delete a memory entry by ID."""
         import sqlite3
 
@@ -367,30 +436,15 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
         return deleted
 
     # ------------------------------------------------------------------
-    # Clear
-    # ------------------------------------------------------------------
-
-    def clear(self) -> int:
-        """Clear all memory entries."""
-        import sqlite3
-
-        with sqlite3.connect(str(self.db_path)) as conn:
-            cursor = conn.execute("DELETE FROM memory_entries")
-            conn.commit()
-            count = cursor.rowcount
-
-        logger.info(f"Cleared {count} memory entries")
-        return count
-
-    # ------------------------------------------------------------------
     # Stats
     # ------------------------------------------------------------------
 
-    def get_stats(self) -> dict[str, Any]:
+    def get_stats(self) -> MemoryStats:
         """Get memory statistics."""
         import sqlite3
 
         with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
             total = conn.execute(
                 "SELECT COUNT(*) FROM memory_entries"
             ).fetchone()[0]
@@ -402,13 +456,51 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
                    ORDER BY count DESC"""
             ).fetchall()
 
-            stats = {
-                "total_entries": total,
-                "by_type": {r["content_type"]: r["count"] for r in by_type},
-                "db_path": str(self.db_path),
-            }
+            content_types = {r["content_type"]: r["count"] for r in by_type}
 
-        return stats
+            return MemoryStats(
+                total_entries=total,
+                content_types=content_types,
+                db_path=str(self.db_path),
+            )
+
+    def get_bank_info(self) -> MemoryBankInfo:
+        """Get memory bank information."""
+        stats = self.get_stats()
+
+        import os
+        db_size = os.path.getsize(self.db_path) if self.db_path.exists() else 0
+
+        return MemoryBankInfo(
+            total_entries=stats.total_entries,
+            total_size_bytes=db_size,
+            by_content_type=stats.content_types,
+            db_path=str(self.db_path),
+            database_path=str(self.db_path),
+            is_available=True,
+        )
+
+    def health_check(self) -> HealthCheckResult:
+        """Check provider health."""
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                conn.execute("SELECT 1")
+            return HealthCheckResult(
+                status="healthy",
+                error=None,
+                db_path=str(self.db_path),
+                db_exists=self.db_path.exists(),
+            )
+        except Exception as e:
+            return HealthCheckResult(
+                status="unhealthy",
+                error=str(e),
+            )
+
+    def close(self) -> None:
+        """Close the provider and release resources."""
+        # SQLite connections are closed automatically after each operation
+        pass
 
 
 # ------------------------------------------------------------------
@@ -434,3 +526,7 @@ def create_memory_provider(
         return LocalSQLiteMemoryProvider(db_path=db_path)
 
     raise ValueError(f"Unknown memory provider: {provider_type}")
+
+
+# Alias for backward compatibility
+LocalMemoryProvider = LocalSQLiteMemoryProvider

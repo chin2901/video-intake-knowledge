@@ -22,13 +22,17 @@ from typing import Any, Optional
 logger = logging.getLogger(__name__)
 
 
-def detect_scenes(
+# ----------------------------------------------------------------------
+# Internal implementation functions
+# ----------------------------------------------------------------------
+
+def _detect_scenes_impl(
     video_path: str | Path,
     method: str = "auto",
     threshold: float = 30.0,
     min_scene_len: float = 2.0,
 ) -> list[dict[str, Any]]:
-    """Detect scene changes in a video.
+    """Detect scene changes in a video (internal implementation).
 
     Args:
         video_path: Path to video file.
@@ -142,7 +146,7 @@ def _detect_with_ffmpeg(
             "ffmpeg",
             "-i", str(video_path),
             "-vf",
-            f"select='gt(scene\\,{threshold})',metadata=print:file={tmp_path},showinfo",
+            f"select='gt(scene\\\\,{threshold})',metadata=print:file={tmp_path},showinfo",
             "-vsync", "vfr",
             "-f", "null",
             "-",
@@ -184,15 +188,15 @@ def _detect_with_ffmpeg(
     return scenes
 
 
-def extract_keyframes(
+def _extract_keyframes_impl(
     video_path: str | Path,
     scene_changes: Optional[list[dict[str, Any]]] = None,
     max_frames: int = 20,
-    output_dir: Optional[str] = None,
+    output_dir: Optional[str | Path] = None,
     image_format: str = "png",
     scene_frame_offset: float = 0.1,
 ) -> list[dict[str, Any]]:
-    """Extract keyframes from a video.
+    """Extract keyframes from a video (internal implementation).
 
     Extracts frames at scene changes, evenly spaced intervals,
     or both.
@@ -388,3 +392,61 @@ def _time_to_seconds(time_str: str) -> float:
         h, m, s = parts
         return int(h) * 3600 + int(m) * 60 + float(s)
     return 0.0
+
+
+# ----------------------------------------------------------------------
+# Contract API wrapper functions
+# ----------------------------------------------------------------------
+
+
+def detect_scenes(video_path: str | Path) -> list[dict[str, Any]]:
+    """Detect scene changes in a video (contract API).
+
+    Args:
+        video_path: Path to video file.
+
+    Returns:
+        List of scene dicts.
+    """
+    return _detect_scenes_impl(video_path, method="auto", threshold=30.0, min_scene_len=2.0)
+
+
+def extract_keyframes(
+    video_path: str | Path,
+    scenes: list[dict[str, Any]],
+    output_dir: str | Path,
+) -> list[dict[str, Any]]:
+    """Extract keyframes from a video (contract API).
+
+    Args:
+        video_path: Path to video file.
+        scenes: List of scene dicts from detect_scenes().
+        output_dir: Directory for output frames.
+
+    Returns:
+        List of frame dicts.
+    """
+    return _extract_keyframes_impl(
+        video_path,
+        scene_changes=scenes,
+        max_frames=20,
+        output_dir=output_dir,
+    )
+
+
+def analyze_keyframe(frame_path: str | Path) -> dict[str, Any]:
+    """Analyze a keyframe for visual elements (contract API).
+
+    Args:
+        frame_path: Path to frame image.
+
+    Returns:
+        Dict with analysis results.
+    """
+    # Placeholder for future implementation
+    return {
+        "frame_path": str(frame_path),
+        "elements": [],
+        "description": "",
+        "confidence": 0.0,
+    }

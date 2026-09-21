@@ -28,8 +28,8 @@ transcription:
   # Motor local de transcripción
   local_engine: whisper
 
-  # Modelo por defecto (tiny, base, small, medium, large)
-  model: tiny
+  # Modelo por defecto (auto, whisper, none)
+  model: whisper
 
   # Permitir fallback a estrategias alternativas
   fallback_enabled: true

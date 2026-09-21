@@ -10,8 +10,6 @@ from __future__ import annotations
 import re
 import urllib.parse
 from ipaddress import IPv4Address, IPv4Network
-from typing import Any
-
 
 # ----------------------------------------------------------------------
 # SSRF protection — blocked IP ranges
@@ -182,17 +180,21 @@ def redact_sensitive_data(text: str, patterns: list[str] | None = None) -> str:
         Text with sensitive patterns replaced by [REDACTED].
     """
     default_patterns = [
-        (
-            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
-            "[EMAIL_REDACTED]",
-        ),
-        (
-            r"\b(?:\+?\d{1,3}[-.\\s]?)?\(?\d{2,4}\)?[-.\\s]?\d{3,4}[-.\\s]?\d{3,4}[-.\\s]?\d{1,9}\b",
-            "[PHONE_REDACTED]",
-        ),
-        (r"\b(?:\d{4}[-\s]?){3}\d{4}\b", "[CARD_REDACTED]"),
-        (r"\b[A-Z]{2,}[0-9]{6,}[A-Z0-9]?\b", "[ID_REDACTED]"),
-    ]
+            (
+                r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+                "[EMAIL_REDACTED]",
+            ),
+            (
+                r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}[-.\s]?\d{1,9}\b",
+                "[PHONE_REDACTED]",
+            ),
+            (r"\b(?:\d{4}[-\s]?){3}\d{4}\b", "[CARD_REDACTED]"),
+            (r"\b[A-Z]{2,}[0-9]{6,}[A-Z0-9]?\b", "[ID_REDACTED]"),
+            # IP addresses (IPv4)
+            (r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "[IP_REDACTED]"),
+            # SSN format (US): XXX-XX-XXXX
+            (r"\b\d{3}-\d{2}-\d{4}\b", "[SSN_REDACTED]"),
+        ]
 
     all_patterns = default_patterns + (patterns or [])
 
@@ -201,3 +203,33 @@ def redact_sensitive_data(text: str, patterns: list[str] | None = None) -> str:
         result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
 
     return result
+
+
+# ----------------------------------------------------------------------
+# Contract API wrapper functions
+# ----------------------------------------------------------------------
+
+
+def validate_video_url(url_str: str) -> bool:
+    """Validate a video URL string and return True if valid (contract API).
+
+    Args:
+        url_str: The URL string to validate.
+
+    Returns:
+        True if the URL is valid, False otherwise.
+    """
+    try:
+        validate_url(url_str)
+        return True
+    except ValueError:
+        return False
+
+
+class ValidationResult:
+    """Result of URL validation."""
+
+    def __init__(self, is_valid: bool, normalized: str = "", error: str = ""):
+        self.is_valid = is_valid
+        self.normalized = normalized
+        self.error = error

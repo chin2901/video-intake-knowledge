@@ -41,6 +41,59 @@ class PolicyResolver:
         self._models_policy = self.config.get("models", {})
         self._security_policy = self.config.get("security", {})
 
+    # Convenience properties for direct attribute access
+    @property
+    def transcription(self) -> Any:
+        """Access transcription policy as object with attributes."""
+        class TranscriptionPolicy:
+            def __init__(self, policy: dict[str, Any]):
+                self.model = policy.get("model", "tiny")
+                self.language = policy.get("language")
+                self.local_engine = policy.get("local_engine", "whisper")
+                self.strategy_order = policy.get("strategy_order", ["platform_captions", "local_captions", "whisper"])
+                self.fallback_enabled = policy.get("fallback_enabled", True)
+                self.device = policy.get("device", "cpu")
+        return TranscriptionPolicy(self._transcription_policy)
+
+    @property
+    def visual(self) -> Any:
+        """Access visual policy as object with attributes."""
+        class VisualPolicy:
+            def __init__(self, policy: dict[str, Any]):
+                self.scene_detection = policy.get("scene_detection", True)
+                self.frame_sampling = policy.get("frame_sampling", "scene_based")
+                self.max_candidate_frames = policy.get("max_candidate_frames", 20)
+                self.ocr_engine = policy.get("ocr_engine", "tesseract")
+                self.vision_fallback_enabled = policy.get("vision_fallback_enabled", False)
+                self.scene_detection_threshold = policy.get("scene_detection_threshold", 30.0)
+                self.min_scene_length = policy.get("min_scene_length", 2.0)
+        return VisualPolicy(self._visual_policy)
+
+    @property
+    def models(self) -> Any:
+        """Access models policy as object with attributes."""
+        class ModelsPolicy:
+            def __init__(self, policy: dict[str, Any]):
+                self.priority = policy.get("priority", {})
+                self.allow_external_providers = policy.get("allow_external_providers", False)
+                self.require_explicit_approval_for_paid = policy.get("require_explicit_approval_for_paid", True)
+                self.configured_providers = policy.get("configured_providers", {})
+        return ModelsPolicy(self._models_policy)
+
+    @property
+    def security(self) -> Any:
+        """Access security policy as object with attributes."""
+        class SecurityPolicy:
+            def __init__(self, policy: dict[str, Any]):
+                self.strict_url_validation = policy.get("strict_url_validation", True)
+                self.ssrf_protection = policy.get("ssrf_protection", True)
+                self.allowed_domains = policy.get("allowed_domains", [])
+                self.scan_downloaded_files = policy.get("scan_downloaded_files", False)
+                self.redact_sensitive_data = policy.get("redact_sensitive_data", False)
+                self.prompt_injection_protection = policy.get("prompt_injection_protection", True)
+                self.sanitize_filenames = policy.get("sanitize_filenames", True)
+        return SecurityPolicy(self._security_policy)
+
     def _load_config(self, path: str | Path) -> None:
         """Load configuration from YAML file."""
         path = Path(path)
@@ -327,3 +380,45 @@ class PolicyResolver:
         return self.config.get("host", {}).get(
             "auto_detect_attachments", True
         )
+
+
+# ----------------------------------------------------------------------
+# Module-level convenience functions
+# ----------------------------------------------------------------------
+
+
+def resolve_policy(config_path: str | Path | None = None, config_dict: dict[str, Any] | None = None, config_yaml: str | Path | None = None) -> PolicyResolver:
+    """
+    Create a PolicyResolver instance from config file or dict.
+
+    Args:
+        config_path: Path to YAML configuration file (deprecated, use config_yaml).
+        config_dict: Configuration dictionary (takes precedence over file).
+        config_yaml: Path to YAML configuration file.
+
+    Returns:
+        Configured PolicyResolver instance.
+    """
+    # Support config_yaml alias for backward compatibility
+    if config_yaml is not None and config_path is None:
+        config_path = config_yaml
+    return PolicyResolver(config_path=config_path, config_dict=config_dict)
+
+
+def resolve_source_policy(source: str | None = None, config_path: str | Path | None = None, config_dict: dict[str, Any] | None = None, config_yaml: str | Path | None = None) -> PolicyResolver:
+    """
+    Create a PolicyResolver with source-specific defaults.
+
+    Args:
+        source: Video source name (e.g., "youtube") - accepted for compatibility.
+        config_path: Path to YAML configuration file (deprecated, use config_yaml).
+        config_dict: Configuration dictionary.
+        config_yaml: Path to YAML configuration file.
+
+    Returns:
+        Configured PolicyResolver instance.
+    """
+    # Support config_yaml alias for backward compatibility
+    if config_yaml is not None and config_path is None:
+        config_path = config_yaml
+    return resolve_policy(config_path=config_path, config_dict=config_dict)

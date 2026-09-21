@@ -7,7 +7,7 @@ Provides slugification, duration parsing, and human-readable size formatting.
 from __future__ import annotations
 
 import re
-from typing import Any
+from datetime import UTC
 
 
 def slugify(text: str) -> str:
@@ -107,6 +107,84 @@ def parse_duration(value: str | int | float) -> float:
         pass
 
     raise ValueError(f"Cannot parse duration: {value!r}")
+
+
+def detect_language_code(text: str) -> str | None:
+    """Detect language code from text using simple heuristics.
+
+    Args:
+        text: Text to analyze.
+
+    Returns:
+        Language code (e.g., 'es', 'en') or None if undetectable.
+    """
+    if not text or not text.strip():
+        return None
+
+    # Simple heuristic: check for common Spanish words
+    spanish_indicators = {"el", "la", "de", "que", "y", "a", "en", "un", "es", "se", "no", "te", "lo", "le", "da", "su", "por", "son", "con", "para", "una", "al", "del"}
+    english_indicators = {"the", "and", "of", "to", "a", "in", "is", "it", "you", "that", "he", "was", "for", "on", "are", "with", "as", "I", "his", "they", "be"}
+
+    words = set(text.lower().split())
+    spanish_count = len(words & spanish_indicators)
+    english_count = len(words & english_indicators)
+
+    if spanish_count > english_count and spanish_count > 2:
+        return "es"
+    elif english_count > spanish_count and english_count > 2:
+        return "en"
+
+    return None
+
+
+def generate_id(prefix: str = "vitk") -> str:
+    """Generate a unique ID with optional prefix.
+
+    Args:
+        prefix: Prefix for the ID (default: 'vitk').
+
+    Returns:
+        Unique ID string.
+    """
+    import uuid
+    return f"{prefix}_{uuid.uuid4().hex[:12]}"
+
+
+def sanitize_string(text: str, max_length: int | None = None) -> str:
+    """Sanitize a string for safe use.
+
+    Removes control characters, normalizes whitespace, and optionally truncates.
+
+    Args:
+        text: Text to sanitize.
+        max_length: Optional maximum length.
+
+    Returns:
+        Sanitized string.
+    """
+    if not text:
+        return ""
+
+    # Remove control characters except newlines and tabs
+    text = "".join(c for c in text if c == "\n" or c == "\t" or c == "\r" or ord(c) >= 32)
+
+    # Normalize whitespace
+    text = " ".join(text.split())
+
+    if max_length and len(text) > max_length:
+        text = text[:max_length].rstrip() + "..."
+
+    return text
+
+
+def now_utc() -> str:
+    """Get current UTC timestamp in ISO format.
+
+    Returns:
+        ISO format UTC timestamp string.
+    """
+    from datetime import datetime
+    return datetime.now(UTC).isoformat()
 
 
 def sizeof_fmt(num_bytes: int | float, precision: int = 2) -> str:

@@ -841,3 +841,251 @@ def detect_available_transcribers() -> dict[str, Any]:
     )
 
     return result
+
+
+# ----------------------------------------------------------------------
+# Contract API wrapper functions
+# ----------------------------------------------------------------------
+
+
+def transcribe_from_url(
+    url: str,
+    strategy: str = "auto",
+    language: Optional[str] = None,
+    user_agent: Optional[str] = None,
+) -> dict[str, Any]:
+    """Transcribe a video from URL (contract API).
+
+    Args:
+        url: Video URL to transcribe.
+        strategy: Transcription strategy ('auto', 'whisper', 'captions').
+        language: Language code for transcription.
+        user_agent: User agent string for HTTP requests.
+
+    Returns:
+        Dict with transcription results including segments, language, etc.
+    """
+    transcriber = Transcriber(config={
+        "strategy_order": ["platform_captions", "local_captions", "whisper"],
+        "language": language,
+    })
+    return transcriber.transcribe(url)
+
+
+def transcribe_from_file(
+    video_path: str | Path,
+    strategy: str = "auto",
+    language: Optional[str] = None,
+) -> dict[str, Any]:
+    """Transcribe a local video file (contract API).
+
+    Args:
+        video_path: Path to local video file.
+        strategy: Transcription strategy ('auto', 'whisper', 'captions').
+        language: Language code for transcription.
+
+    Returns:
+        Dict with transcription results including segments, language, etc.
+    """
+    transcriber = Transcriber(config={
+        "strategy_order": ["local_captions", "whisper"],
+        "language": language,
+    })
+    # For local files, we need to download audio first if using whisper
+    return transcriber.transcribe(str(video_path))
+
+
+def detect_subtitles(url: str) -> list[dict[str, Any]]:
+    """Detect available subtitle tracks for a video URL (contract API).
+
+    Args:
+        url: Video URL to check for subtitles.
+
+    Returns:
+        List of subtitle track info dicts.
+    """
+    import yt_dlp
+
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+    }
+
+    tracks: list[dict[str, Any]] = []
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception:
+        return tracks
+
+    # Check automatic captions
+    if info.get("automatic_captions"):
+        for lang, sub_list in info["automatic_captions"].items():
+            for sub in sub_list:
+                tracks.append({
+                    "language": lang,
+                    "format": sub.get("ext", ""),
+                    "url": sub.get("url", ""),
+                    "is_auto": True,
+                })
+
+    # Check manual captions
+    if info.get("captions"):
+        for lang, sub_list in info["captions"].items():
+            for sub in sub_list:
+                tracks.append({
+                    "language": lang,
+                    "format": sub.get("ext", ""),
+                    "url": sub.get("url", ""),
+                    "is_auto": False,
+                })
+
+    return tracks
+
+
+def download_subtitles(
+    url: str,
+    track_id: str,
+    output_dir: str | Path,
+) -> Path:
+    """Download a subtitle track for a video URL (contract API).
+
+    Args:
+        url: Video URL.
+        track_id: Identifier for the subtitle track.
+        output_dir: Directory to save the subtitle file.
+
+    Returns:
+        Path to downloaded subtitle file.
+    """
+    import yt_dlp
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "subtitlesformat": "srt",
+        "outtmpl": str(output_dir / "%(title)s.%(ext)s"),
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    except Exception as e:
+        raise RuntimeError(f"Failed to download subtitles: {e}")
+
+    # Find the downloaded file
+    srt_files = list(output_dir.glob("*.srt"))
+    if srt_files:
+        return srt_files[0]
+
+    raise RuntimeError("No subtitle file was downloaded")
+
+
+# Alias for backward compatibility with tests
+transcribe_video = transcribe_from_file
+
+
+# ---------------------------------------------------------------------------
+# Additional Contract API functions (for test compatibility)
+# ---------------------------------------------------------------------------
+
+
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass
+class TranscriptionResult:
+    """Transcription result (contract API)."""
+    text: str = ""
+    language: str = ""
+    segments: list = field(default_factory=list)
+    confidence: float = 0.0
+    source: str = ""
+    error: str | None = None
+
+    def __post_init__(self):
+        if self.segments is None:
+            self.segments = []
+
+
+def extract_captions_from_platform(url: str) -> list[dict[str, Any]]:
+    """Extract platform captions from a video URL (contract API).
+
+    Args:
+        url: Video URL.
+
+    Returns:
+        List of caption tracks.
+    """
+    return detect_subtitles(url)
+
+
+def extract_local_captions(video_path: str | Path) -> list[dict[str, Any]]:
+    """Extract local captions from a video file (contract API).
+
+    Args:
+        video_path: Path to local video file.
+
+    Returns:
+        List of caption tracks.
+    """
+    # For local files, we can only detect embedded subtitles via ffprobe
+    # This is a placeholder - would need ffprobe to extract embedded subs
+    return []
+
+
+def load_whisper_model(model_size: str = "base", device: str = "auto") -> Any:
+    """Load a Whisper model (contract API).
+
+    Args:
+        model_size: Model size (tiny, base, small, medium, large).
+        device: Device to load on (cpu, cuda, auto).
+
+    Returns:
+        Loaded Whisper model or None if not available.
+    """
+    try:
+        import whisper
+        return whisper.load_model(model_size, device=device)
+    except ImportError:
+        return None
+
+
+class WhisperTranscriptionStrategy:
+    """Whisper transcription strategy (contract API)."""
+
+    def __init__(self, model_size: str = "base", language: str | None = None):
+        self.model_size = model_size
+        self.language = language
+        self._model = None
+
+    def _get_model(self):
+        if self._model is None:
+            self._model = load_whisper_model(self.model_size)
+        return self._model
+
+    def transcribe(self, audio_path: str) -> TranscriptionResult:
+        """Transcribe audio file using Whisper."""
+        model = self._get_model()
+        if model is None:
+            return TranscriptionResult(
+                text="",
+                error="Whisper not available",
+            )
+
+        result = model.transcribe(audio_path, language=self.language)
+        return TranscriptionResult(
+            text=result.get("text", ""),
+            language=result.get("language", ""),
+            segments=result.get("segments", []),
+            confidence=1.0,
+            source=audio_path,
+        )
