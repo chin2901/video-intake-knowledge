@@ -11,18 +11,16 @@ Tests focused on:
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
 
 from video_intake_core.security import (
-    is_safe_url,
-    validate_url,
-    sanitize_filename,
-    redact_sensitive_data,
+    PromptInjectionProtection,
     detect_mime,
     is_safe_mime,
-    SSrfProtection,
-    PromptInjectionProtection,
+    is_safe_url,
+    redact_sensitive_data,
+    sanitize_filename,
+    validate_url,
 )
 
 
@@ -120,7 +118,7 @@ class TestFilenameSanitization:
             ("..\\..\\windows\\system32", "windows_system32"),
             ("../../../../tmp/evil.sh", "tmp_evil.sh"),
         ]
-        for original, expected_contains in cases:
+        for original, _expected_contains in cases:
             result = sanitize_filename(original, max_length=255)
             assert ".." not in result, f"Path traversal not removed from {original}"
             assert "/" not in result or result.startswith("/"), (

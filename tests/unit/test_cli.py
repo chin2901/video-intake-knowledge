@@ -6,12 +6,7 @@ Focused on CLI parsing, command handling, and edge cases.
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from pathlib import Path
-
-import pytest
-
 
 # =============================================================================
 # CLI structure tests
@@ -33,7 +28,6 @@ class TestCLIStructure:
     def test_cli_doctor_exists(self):
         """The doctor command exists in CLI."""
         from video_intake_core.cli.doctor import (
-            doctor_checks,
             run_doctor,
         )
         assert callable(run_doctor)
@@ -42,7 +36,6 @@ class TestCLIStructure:
         """The cleanup command exists in CLI."""
         from video_intake_core.cli.cleanup import (
             cleanup_command,
-            run_storage_cleanup,
         )
         assert callable(cleanup_command)
 
@@ -50,7 +43,6 @@ class TestCLIStructure:
         """The extract command exists in CLI."""
         from video_intake_core.cli.extract import (
             extract_command,
-            run_extraction,
         )
         assert callable(extract_command)
 
@@ -58,7 +50,6 @@ class TestCLIStructure:
         """The status command exists in CLI."""
         from video_intake_core.cli.status import (
             status_command,
-            run_status,
         )
         assert callable(status_command)
 
@@ -66,7 +57,6 @@ class TestCLIStructure:
         """The artifacts command exists in CLI."""
         from video_intake_core.cli.artifacts import (
             artifacts_command,
-            show_artifacts,
         )
         assert callable(artifacts_command)
 
@@ -74,7 +64,6 @@ class TestCLIStructure:
         """The export command exists in CLI."""
         from video_intake_core.cli.export import (
             export_command,
-            run_export,
         )
         assert callable(export_command)
 
@@ -82,7 +71,6 @@ class TestCLIStructure:
         """The proposals command exists in CLI."""
         from video_intake_core.cli.proposals import (
             proposals_command,
-            show_proposals,
         )
         assert callable(proposals_command)
 
@@ -90,7 +78,6 @@ class TestCLIStructure:
         """The memory command exists in CLI."""
         from video_intake_core.cli.memory import (
             memory_command,
-            show_memory,
         )
         assert callable(memory_command)
 
@@ -104,8 +91,8 @@ class TestCLIStructure:
     def test_cli_models_exists(self):
         """The models command exists in CLI."""
         from video_intake_core.cli.models import (
-            models_list_command,
             models_install_command,
+            models_list_command,
             models_verify_command,
         )
         assert callable(models_list_command)
@@ -220,8 +207,9 @@ class TestCLIConfig:
 
     def test_policy_resolve_default(self):
         """Policy can be resolved from default.yaml."""
-        from video_intake_core.policies import resolve_policy
         from pathlib import Path
+
+        from video_intake_core.policies import resolve_policy
 
         config_path = Path(__file__).parent.parent.parent / "config" / "default.yaml"
         policy = resolve_policy(config_yaml=str(config_path))
@@ -230,8 +218,9 @@ class TestCLIConfig:
 
     def test_source_policy_resolve(self):
         """Source policy can be resolved from config."""
-        from video_intake_core.policies import resolve_source_policy
         from pathlib import Path
+
+        from video_intake_core.policies import resolve_source_policy
 
         config_path = Path(__file__).parent.parent.parent / "config" / "default.yaml"
         policy = resolve_source_policy("youtube", config_yaml=str(config_path))
@@ -248,7 +237,7 @@ class TestCLIStorage:
 
     def test_artifact_types_exist(self):
         """Artifact types are defined."""
-        from video_intake_core.storage import ArtifactType, ArtifactKind
+        from video_intake_core.storage import ArtifactKind, ArtifactType
         assert ArtifactType.VIDEO is not None
         assert ArtifactType.AUDIO is not None
         assert ArtifactType.TRANSCRIPT is not None
@@ -271,13 +260,9 @@ class TestCLIArtifacts:
 
     def test_artifact_creation(self, tmp_path: Path):
         """Can create an artifact manager and register an artifact."""
-        from video_intake_core.artifacts import ArtifactManager
-        from video_intake_core.storage import ArtifactType, ArtifactKind
-        from video_intake_core.jobs import JobManager, JobState
-        from video_intake_core.acquisition import detect_video_sources
 
-        import tempfile
-        import os
+        from video_intake_core.artifacts import ArtifactManager
+        from video_intake_core.jobs import JobManager
 
         # Setup temp storage
         storage_dir = tmp_path / "storage"
@@ -291,6 +276,7 @@ class TestCLIArtifacts:
             source_type="local",
             selected_operations=["download"],
         )
+        assert job is not None
 
         # Create artifact manager
         artifact_manager = ArtifactManager(str(storage_dir), str(job_db))

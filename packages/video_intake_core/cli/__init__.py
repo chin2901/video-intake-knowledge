@@ -167,41 +167,62 @@ def _make_artifact_manager(args: argparse.Namespace) -> ArtifactManager:
 
 
 def _make_memory(args: argparse.Namespace) -> MemoryProvider:
+    import os
     config = _resolve_config(args)
     default_provider = config.get("memory", {}).get("default_provider", "local")
     MemoryProvider, LocalSQLiteMemoryProvider, _ = _get_memory()
-    if default_provider == "local":
-        db_path = config.get("memory", {}).get("db_path", "./memory.db")
-        return LocalSQLiteMemoryProvider(db_path=str(db_path))
-    # otros providers se añadirían aquí
-    return LocalSQLiteMemoryProvider(db_path="./memory.db")
+    default_db = Path.home() / ".video-intake" / "memory.db"
+    raw_path = getattr(args, "db_path", None) or os.environ.get("VITK_MEMORY_DB") or config.get("memory", {}).get("db_path") or str(default_db)
+    db_path = Path(os.path.expanduser(str(raw_path)))
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    return LocalSQLiteMemoryProvider(db_path=str(db_path))
 
 
 def _detect_sources(urls: list[str], files: list[str]) -> list[dict[str, Any]]:
     """Combina detección de URLs y archivos locales."""
     detect_video_sources, SourceType = _get_acquisition()
     sources: list[dict[str, Any]] = []
+
+    def _to_dict(item: Any, original: str) -> dict[str, Any]:
+        if isinstance(item, dict):
+            return item
+        source_type = getattr(item, "source_type", "url")
+        url_val = getattr(item, "url", original)
+        resolved = getattr(item, "resolved_path", None) or url_val
+        title_val = getattr(item, "title", None) or Path(url_val).stem
+        return {
+            "type": source_type,
+            "original_input": original,
+            "resolved_url": resolved,
+            "platform": str(source_type),
+            "title": title_val,
+            "is_local": source_type == "local",
+        }
+
     for url in urls:
         detected = detect_video_sources(url)
         if detected:
-            sources.extend(detected)
+            for s in detected:
+                sources.append(_to_dict(s, url))
+        else:
+            sources.append({
+                "type": "url",
+                "original_input": url,
+                "resolved_url": url,
+                "platform": "generic",
+                "title": "video",
+                "is_local": False,
+            })
     for f in files:
         p = Path(f)
-        if p.exists():
-            detected = detect_video_sources(str(p))
-            if detected:
-                sources.extend(detected)
-            else:
-                sources.append(
-                    {
-                        "type": SourceType.LOCAL_FILE,
-                        "original_input": str(p),
-                        "resolved_url": str(p),
-                        "platform": "local",
-                        "title": p.name,
-                        "is_local": True,
-                    }
-                )
+        sources.append({
+            "type": "local",
+            "original_input": str(p),
+            "resolved_url": str(p.resolve()) if p.exists() else str(p),
+            "platform": "local",
+            "title": p.stem,
+            "is_local": True,
+        })
     return sources
 
 
@@ -284,8 +305,9 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     # Espacio de disco
     try:
-        stat = Path("/").stat()
-        free_gb = stat.st_frsize * stat.st_f_bavail / (1024**3)
+        import shutil
+        total, used, free = shutil.disk_usage("/")
+        free_gb = free / (1024**3)
         results.append(
             {
                 "check": "disk_space",
@@ -391,9 +413,9 @@ def cmd_inspect(args: argparse.Namespace) -> int:
 
 def cmd_extract(args: argparse.Namespace) -> int:
     """Extrae contenido de una o varias fuentes."""
-    sources_raw = [args.source]
-    files = args.file or []
-    sources = _detect_sources([], files)
+    sources_raw = [args.source] if getattr(args, "source", None) else []
+    files = getattr(args, "file", None) or []
+    sources = _detect_sources(sources_raw, files)
 
     if not sources:
         print("No se detectaron fuentes procesables.", file=sys.stderr)

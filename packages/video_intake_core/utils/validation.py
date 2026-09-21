@@ -16,20 +16,15 @@ from ipaddress import IPv4Address, IPv4Network
 # ----------------------------------------------------------------------
 
 # Hosts considered SSRF-dangerous: private ranges, localhost, metadata endpoints
-_SSRF_BLOCKED_IPS = {
-    IPv4Address("0.0.0.0"),
-    IPv4Address("127.0.0.1"),
-    IPv4Address("255.255.255.255"),
-}
-for net in (
+_SSRF_BLOCKED_NETWORKS = (
     IPv4Network("10.0.0.0/8"),
     IPv4Network("172.16.0.0/12"),
     IPv4Network("192.168.0.0/16"),
     IPv4Network("169.254.0.0/16"),  # link-local
     IPv4Network("0.0.0.0/8"),
     IPv4Network("100.64.0.0/10"),  # CGNAT
-):
-    _SSRF_BLOCKED_IPS.update(net.hosts())  # type: ignore[arg-type]
+    IPv4Network("127.0.0.0/8"),  # loopback
+)
 
 
 def _is_blocked_ip(host: str) -> bool:
@@ -37,7 +32,9 @@ def _is_blocked_ip(host: str) -> bool:
     host = host.lower().rstrip(".")
     try:
         addr = IPv4Address(host)
-        return addr in _SSRF_BLOCKED_IPS
+        if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_unspecified:
+            return True
+        return any(addr in net for net in _SSRF_BLOCKED_NETWORKS)
     except ValueError:
         pass
     return False

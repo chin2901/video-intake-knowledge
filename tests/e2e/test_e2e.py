@@ -12,9 +12,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -75,10 +72,9 @@ class TestDoctorCommand:
     def test_doctor_module_exists(self):
         """El módulo doctor existe en el CLI."""
         from video_intake_core.cli.doctor import (
-            doctor_checks,
-            run_doctor,
-            detect_vulnerable_ffmpeg_or_tesseract,
             create_sample_video_ffmpeg,
+            detect_vulnerable_ffmpeg_or_tesseract,
+            run_doctor,
         )
         assert callable(run_doctor)
         assert callable(detect_vulnerable_ffmpeg_or_tesseract)
@@ -104,7 +100,7 @@ class TestExtractionWorkflow:
             )
             assert video_path.exists()
             assert video_path.stat().st_size > 0
-        except Exception as e:
+        except Exception:
             # Si ffmpeg no está disponible, es acceptable
             # (el doctor lo verifica)
             pass
@@ -126,17 +122,16 @@ class TestJobWorkflow:
 
     def test_complete_workflow(self, tmp_path: Path):
         """Flujo completo: crear, ejecutar (simulado), ver resultados."""
-        from video_intake_core.jobs import JobManager, JobState
-        from video_intake_core.storage import StorageManager, ArtifactType, ArtifactKind
         from video_intake_core.acquisition import detect_video_sources
+        from video_intake_core.jobs import JobManager, JobState
         from video_intake_core.policies import resolve_policy
 
         # Configurar paths
         db_path = tmp_path / "workflow_test.db"
-        storage_path = tmp_path / "workflow_storage"
 
         # 1. Configurar política
         policy = resolve_policy(config_yaml=str(Path(__file__).parent.parent.parent / "config" / "default.yaml"))
+        assert policy is not None
 
         # 2. Detectar fuentes
         video_path = tmp_path / "test_video.mp4"
@@ -175,12 +170,12 @@ class TestExportWorkflow:
     def test_context_generation_functions(self):
         """Las funciones de generación de contexto existen."""
         from video_intake_core.context import (
+            export_audio_context_mdx,
+            export_extracted_knowledge_mdx,
+            export_visual_context_mdx,
+            extract_knowledge,
             generate_audio_context,
             generate_visual_context,
-            extract_knowledge,
-            export_audio_context_mdx,
-            export_visual_context_mdx,
-            export_extracted_knowledge_mdx,
         )
 
         assert callable(generate_audio_context)
@@ -201,11 +196,10 @@ class TestOCRValidation:
     def test_ocr_module_exists(self):
         """El módulo OCR existe."""
         from video_intake_core.ocr import (
+            OCRResult,
             batch_ocr,
             ocr_frame,
             preprocess_frame,
-            OCRResult,
-            OCRFrameResult,
         )
         assert callable(batch_ocr)
         assert callable(ocr_frame)
@@ -223,12 +217,11 @@ class TestTranscriptionValidation:
     def test_transcription_module_exists(self):
         """El módulo de transcripción existe."""
         from video_intake_core.transcription import (
-            transcribe_video,
+            TranscriptionResult,
             extract_captions_from_platform,
             extract_local_captions,
             load_whisper_model,
-            WhisperTranscriptionStrategy,
-            TranscriptionResult,
+            transcribe_video,
         )
         assert callable(transcribe_video)
         assert callable(extract_captions_from_platform)
@@ -247,10 +240,10 @@ class TestInspectionValidation:
     def test_inspection_module_exists(self):
         """El módulo de inspección existe."""
         from video_intake_core.inspection import (
-            inspect_video,
+            VideoInfo,
             inspect_local_video,
             inspect_remote_video,
-            VideoInfo,
+            inspect_video,
         )
         assert callable(inspect_video)
         assert callable(inspect_local_video)
@@ -268,10 +261,10 @@ class TestAudioValidation:
     def test_audio_module_exists(self):
         """El módulo de audio existe."""
         from video_intake_core.audio import (
+            AudioResult,
             extract_audio,
             extract_audio_from_file,
             extract_audio_from_url,
-            AudioResult,
         )
         assert callable(extract_audio)
         assert callable(extract_audio_from_file)
@@ -288,7 +281,6 @@ class TestJSONOutput:
 
     def test_json_output_format(self):
         """Verificar que el output JSON es válido cuando se solicita."""
-        import video_intake_core
 
         # Simular una salida JSON estructurada
         result = {
@@ -311,9 +303,9 @@ class TestCleanupCommand:
     def test_cleanup_module_exists(self):
         """El módulo de cleanup existe."""
         from video_intake_core.cli.cleanup import (
+            StorageCleanupResult,
             cleanup_command,
             run_storage_cleanup,
-            StorageCleanupResult,
         )
         assert callable(cleanup_command)
         assert callable(run_storage_cleanup)

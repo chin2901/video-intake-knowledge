@@ -182,9 +182,9 @@ memory:
   require_confirmation: true
 
   # Ruta a la base de datos del banco de memoria
-  # Por defecto: /srv/video-intake-knowledge/memory/memory.db
-  # La memoria es independiente del resto del proyecto.
-  db_path: "/srv/video-intake-knowledge/memory/memory.db"
+  # Por defecto: ~/.video-intake/memory.db (fuera del repositorio git)
+  # La memoria es independiente del repositorio y pertenece al usuario/entorno.
+  db_path: "~/.video-intake/memory.db"
 
   # Tokens máximos para contexto de sesión
   max_context_tokens: 4000

@@ -186,10 +186,7 @@ class TestContractAPIs:
 
     @pytest.mark.parametrize(
         "module_path,expected_funcs",
-        [
-            (mod, funcs)
-            for mod, funcs in MODULES_WITH_EXPECTED_APIS.items()
-        ],
+        list(MODULES_WITH_EXPECTED_APIS.items()),
     )
     def test_module_exposes_expected_functions(
         self, module_path: str, expected_funcs: dict
@@ -202,17 +199,14 @@ class TestContractAPIs:
         except ImportError:
             pytest.skip(f"Module {module_path} not importable")
 
-        for func_name, spec in expected_funcs.items():
+        for func_name, _spec in expected_funcs.items():
             assert hasattr(
                 module, func_name
             ), f"{module_path} missing function: {func_name}"
 
     @pytest.mark.parametrize(
         "module_path,expected_funcs",
-        [
-            (mod, funcs)
-            for mod, funcs in MODULES_WITH_EXPECTED_APIS.items()
-        ],
+        list(MODULES_WITH_EXPECTED_APIS.items()),
     )
     def test_functions_have_correct_param_count(
         self, module_path: str, expected_funcs: dict
@@ -261,9 +255,8 @@ class TestModuleInitializable:
     def test_security_module_has_validator(self):
         """security module should expose SSRF validation."""
         from video_intake_core.security import (
-            validate_url,
             is_safe_url,
-            sanitize_filename,
+            validate_url,
         )
 
         # validate_url should accept a URL string
@@ -275,8 +268,9 @@ class TestModuleInitializable:
 
     def test_utils_module_has_hash_function(self):
         """utils module should expose SHA-256 computation."""
-        from video_intake_core.utils import compute_sha256
         import tempfile
+
+        from video_intake_core.utils import compute_sha256
 
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(b"hello world")

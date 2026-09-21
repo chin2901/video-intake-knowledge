@@ -57,6 +57,8 @@ dependencies = [
     "python-multipart>=0.0.9",
     "moviepy>=1.0.3",
     "Pillow>=10.0.0",
+    "yt-dlp>=2024.0.0",
+    "opencv-python-headless>=4.8.0",
 ]
 
 [project.optional-dependencies]
@@ -124,10 +126,10 @@ dev-dependencies = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
 
 [tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+ignore = ["E501", "UP042"]
 exclude = ["__init__.py"]
 
 [tool.mypy]

@@ -48,9 +48,8 @@ def parse_menu_selection(selection: str) -> list[int] | bool:
     for part in parts:
         try:
             num = int(part)
-            if 1 <= num <= 6:
-                if num not in result:
-                    result.append(num)
+            if 1 <= num <= 6 and num not in result:
+                result.append(num)
         except ValueError:
             continue
 

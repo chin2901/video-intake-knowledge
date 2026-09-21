@@ -7,18 +7,14 @@ con los datos extraídos reales del proyecto.
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
-import pytest
-
 from video_intake_core.memory import (
-    MemoryProvider,
     LocalMemoryProvider,
     MemoryEntry,
     MemoryEntryMetadata,
+    MemoryProvider,
     MemoryQuery,
-    MemoryBankInfo,
 )
 
 

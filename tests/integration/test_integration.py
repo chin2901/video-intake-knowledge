@@ -7,20 +7,17 @@ Necesita archivos de fixtures en tests/fixtures/.
 
 from __future__ import annotations
 
+import datetime
 import os
 import time
-import datetime
 from pathlib import Path
 
 import pytest
-
 from video_intake_core.acquisition import detect_video_sources
-from video_intake_core.utils import compute_sha256, safe_filename
 from video_intake_core.jobs import JobManager, JobState
-from video_intake_core.storage import StorageManager, ArtifactType, ArtifactKind
-from video_intake_core.schemas import validate_against_schema, get_schema
-from video_intake_core.policies import resolve_policy, resolve_source_policy
-
+from video_intake_core.schemas import get_schema, validate_against_schema
+from video_intake_core.storage import ArtifactKind, ArtifactType, StorageManager
+from video_intake_core.utils import compute_sha256, safe_filename
 
 # =============================================================================
 # Fixtures

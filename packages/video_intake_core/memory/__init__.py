@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -17,6 +18,16 @@ from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+
+def _default_memory_path() -> Path:
+    """Return the default memory DB path outside the repository."""
+    env_path = os.environ.get("VITK_MEMORY_DB")
+    if env_path:
+        return Path(os.path.expanduser(env_path))
+    default_dir = Path.home() / ".video-intake"
+    default_dir.mkdir(parents=True, exist_ok=True)
+    return default_dir / "memory.db"
 
 
 @dataclass
@@ -159,8 +170,11 @@ class LocalSQLiteMemoryProvider(MemoryProvider):
     Provides full CRUD operations and text search.
     """
 
-    def __init__(self, db_path: str | Path = "./video_intake_memory.db"):
-        self.db_path = Path(db_path)
+    def __init__(self, db_path: str | Path | None = None):
+        if db_path is None:
+            self.db_path = _default_memory_path()
+        else:
+            self.db_path = Path(os.path.expanduser(str(db_path)))
         self._init_db()
 
     def _init_db(self) -> None:

@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
+from .source import Source, SourceType
+
 
 class JobStatus(str, Enum):
     """Job status enumeration."""
@@ -33,10 +35,6 @@ class JobState(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
-
-
-# Import Source from the source module
-from .source import Source, SourceType
 
 
 class Job:
