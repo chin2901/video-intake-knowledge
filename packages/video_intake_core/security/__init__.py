@@ -37,6 +37,10 @@ __all__ = [
     "redact_sensitive_data",
     "is_safe_url",
     "validate_url",
+    "detect_mime",
+    "is_safe_mime",
+    "SSrfProtection",
+    "PromptInjectionProtection",
     "SSRF_BLOCKED_HOSTS",
 ]
 
@@ -344,3 +348,175 @@ def redact_sensitive_data(text: str, custom_patterns: list[tuple[str, str]] | No
         result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
 
     return result
+
+
+# ----------------------------------------------------------------------
+# MIME type detection (re-exported from utils)
+# ----------------------------------------------------------------------
+
+
+def detect_mime(path: str | Path) -> str:
+    """Detect the MIME type of a file using magic bytes.
+
+    Args:
+        path: Path to the file.
+
+    Returns:
+        Detected MIME type as a string.
+    """
+    return detect_video_mime(path)
+
+
+def is_safe_mime(mime_type: str) -> bool:
+    """Check if a MIME type is safe (video or image).
+
+    Args:
+        mime_type: The MIME type to check.
+
+    Returns:
+        True if the MIME type is safe, False otherwise.
+    """
+    safe_videos = {"video/mp4", "video/quicktime", "video/x-msvideo", "video/webm", "video/x-mkv"}
+    safe_images = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+    mime_lower = mime_type.lower()
+    return mime_lower in safe_videos or mime_lower in safe_images or "video/" in mime_lower or "image/" in mime_lower
+
+
+# ----------------------------------------------------------------------
+# Classes para tests de seguridad
+# ----------------------------------------------------------------------
+
+
+class SSrfProtection:
+    """Protection against Server-Side Request Forgery (SSRF).
+
+    Validates URLs to ensure they don't target internal/private resources.
+    """
+
+    def __init__(self, blocked_hosts: frozenset[str] | None = None) -> None:
+        """Initialize SSRF protection.
+
+        Args:
+            blocked_hosts: Additional hosts to block beyond defaults.
+        """
+        self.blocked_hosts = frozenset({
+            "localhost",
+            "127.0.0.1",
+            "::1",
+            "0.0.0.0",
+            "metadata.google.internal",
+            "metadata.google",
+            "169.254.169.254",
+            "metadata.google.com",
+            "metadata.google.internal.",
+            "vpc-internal.meta.internal",
+        })
+        if blocked_hosts:
+            self.blocked_hosts = self.blocked_hosts | blocked_hosts
+
+    def is_safe(self, url: str) -> bool:
+        """Check if a URL is safe from SSRF.
+
+        Args:
+            url: The URL to check.
+
+        Returns:
+            True if safe, False otherwise.
+        """
+        from video_intake_core.utils.validation import is_safe_url
+        return is_safe_url(url)
+
+    def validate(self, url: str) -> str:
+        """Validate a URL and return normalized form.
+
+        Args:
+            url: The URL to validate.
+
+        Returns:
+            Normalized URL string.
+
+        Raises:
+            ValueError: If the URL is unsafe.
+        """
+        from video_intake_core.utils.validation import validate_url
+        return validate_url(url)
+
+
+class PromptInjectionProtection:
+    """Protection against prompt injection attacks.
+
+    Analyzes text for suspicious patterns that might indicate
+    attempts to manipulate the AI's behavior.
+    """
+
+    # Patterns that indicate potential injection attempts
+    INJECTION_PATTERNS = [
+        (r"ignore\s+(previous|all|above|below)\s+instructions?", "instruction_ignore"),
+        (r"disregard\s+(previous|all|above|below)\s+(rules|instructions)?", "instruction_ignore"),
+        (r"you\s+are\s+now\s+(a|an)\s+\w+", "role_override"),
+        (r"system\s*:\s*.*", "system_override"),
+        (r"forget\s+(everything|all|previous)\s+instructions?", "instruction_reset"),
+        (r"new\s+instructions?\s*:", "new_instructions"),
+        (r"act\s+as\s+a\s+\w+", "role_override"),
+    ]
+
+    def __init__(self, enabled: bool = True) -> None:
+        """Initialize prompt injection protection.
+
+        Args:
+            enabled: Whether protection is enabled.
+        """
+        self.enabled = enabled
+
+    def analyze(self, text: str) -> dict[str, Any]:
+        """Analyze text for prompt injection attempts.
+
+        Args:
+            text: The text to analyze.
+
+        Returns:
+            Dictionary with analysis results including:
+            - is_suspicious: Whether injection was detected
+            - risk_level: 'none', 'low', 'medium', 'high'
+            - patterns_found: List of matched patterns
+        """
+        if not self.enabled or not text:
+            return {"is_suspicious": False, "risk_level": "none", "patterns_found": []}
+
+        patterns_found = []
+        risk_score = 0
+
+        for pattern, pattern_type in self.INJECTION_PATTERNS:
+            if re.search(pattern, text, flags=re.IGNORECASE):
+                patterns_found.append(pattern_type)
+                risk_score += 1
+
+        if risk_score == 0:
+            return {"is_suspicious": False, "risk_level": "none", "patterns_found": []}
+        elif risk_score <= 2:
+            return {"is_suspicious": True, "risk_level": "low", "patterns_found": patterns_found}
+        elif risk_score <= 4:
+            return {"is_suspicious": True, "risk_level": "medium", "patterns_found": patterns_found}
+        else:
+            return {"is_suspicious": True, "risk_level": "high", "patterns_found": patterns_found}
+
+    def wrap_for_llm(self, text: str) -> str:
+        """Wrap text for safe inclusion in LLM prompts.
+
+        Args:
+            text: The text to wrap.
+
+        Returns:
+            Wrapped text with injection protection markers.
+        """
+        if not text:
+            return ""
+
+        # Sanitize the text first
+        sanitized = sanitize_for_prompt(text)
+
+        # Add wrapper markers
+        wrapped = f"DATA_START\n{sanitized}\nDATA_END"
+
+        return wrapped
