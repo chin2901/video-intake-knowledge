@@ -9,11 +9,14 @@ from __future__ import annotations
 
 import re
 import urllib.parse
+import urllib.request
+import urllib.error
 from ipaddress import IPv4Address, IPv4Network
 from pathlib import Path
 from typing import Any
 
-from . import (
+# Import utilities from video_intake_core.utils directly to avoid circular imports
+from video_intake_core.utils import (
     sanitize_filename,
     sanitize_path,
     is_video_file_ext,
@@ -233,8 +236,6 @@ def check_download_size(url: str, max_mb: int) -> bool:
         ValueError: If Content-Length exceeds the limit.
         urllib.error.URLError: If the request fails.
     """
-    import urllib.request
-
     try:
         req = urllib.request.Request(url, method="HEAD")
         req.add_header("User-Agent", "video-intake-knowledge/0.1")
@@ -320,9 +321,9 @@ def redact_sensitive_data(text: str, custom_patterns: list[tuple[str, str]] | No
         # Email addresses
         (r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "[EMAIL_REDACTED]"),
         # Phone numbers (international and local formats)
-        (r"\b(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}(?:\s?(?:ext|x|ext\.)\s?\d{1,5})?\b", "[PHONE_REDACTED]"),
+        (r"\b(?:\+?\d{1,3}[-.\\s]?)?\(?\d{2,4}\)?[-.\\s]?\d{3,4}[-.\\s]?\d{3,4}(?:\s?(?:ext|x|ext\.)\s?\d{1,5})?\b", "[PHONE_REDACTED]"),
         # Credit card numbers (Visa, MC, Amex, Discover patterns)
-        (r"\b(?:\d{4}[-\s]?){3}\d{1,4}\b", "[CARD_REDACTED]"),
+        (r"\b(?:\\d{4}[-\\s]?){3}\d{1,4}\b", "[CARD_REDACTED]"),
         # API keys / tokens (heuristic: base64-like strings > 20 chars)
         (r"\b[A-Za-z0-9+/=]{32,}\b", "[TOKEN_REDACTED]"),
         # AWS access keys

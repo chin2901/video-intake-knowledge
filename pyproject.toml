@@ -4,9 +4,26 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 package-dir = {"" = "packages"}
-
-[tool.setuptools.packages.find]
-where = ["packages"]
+packages = [
+    "video_intake_core",
+    "video_intake_core.acquisition",
+    "video_intake_core.audio",
+    "video_intake_core.cli",
+    "video_intake_core.context",
+    "video_intake_core.inspection",
+    "video_intake_core.jobs",
+    "video_intake_core.memory",
+    "video_intake_core.ocr",
+    "video_intake_core.policies",
+    "video_intake_core.schemas",
+    "video_intake_core.security",
+    "video_intake_core.storage",
+    "video_intake_core.transcription",
+    "video_intake_core.utils",
+    "video_intake_core.visual",
+    "video_intake_schemas",
+    "video_intake_testkit",
+]
 
 [project]
 name = "video-intake-knowledge"

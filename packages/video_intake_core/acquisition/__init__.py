@@ -20,7 +20,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from ..schemas.source import Source, SourceType, ResolvedURL
+from ..schemas import Source, SourceType, ResolvedURL
 from ..utils.validation import is_safe_url, sanitize_filename
 
 logger = logging.getLogger(__name__)

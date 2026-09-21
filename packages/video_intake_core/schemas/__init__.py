@@ -55,7 +55,10 @@ def validate(data: Any, schema_name: str) -> list[str]:
     return [err.message for err in errors]
 
 
-__all__ = ["get_schema", "get_all_schemas", "validate", "validate_against_schema"]
+from .source import Source, SourceType, ResolvedURL
+
+__all__ = ["get_schema", "get_all_schemas", "validate", "validate_against_schema",
+           "Source", "SourceType", "ResolvedURL"]
 
 
 def validate_against_schema(data: Any, schema_name: str) -> list[str]:
