@@ -138,6 +138,37 @@ class Job:
         return self.source_url
 
     @property
+    def created_at(self) -> str:
+        """Legacy / CLI API: job.created_at"""
+        return self.created_at_utc or ""
+
+    @property
+    def source_title(self) -> str:
+        """Legacy / CLI API: job.source_title"""
+        if self.source:
+            if isinstance(self.source, dict):
+                return self.source.get("title") or self.source.get("url", "")
+            if hasattr(self.source, "title"):
+                return getattr(self.source, "title", None) or getattr(self.source, "url", "")
+        return ""
+
+    @property
+    def source_type(self) -> str:
+        """Legacy / CLI API: job.source_type"""
+        if self.source:
+            if isinstance(self.source, dict):
+                return self.source.get("type") or self.source.get("source_type", "local")
+            if hasattr(self.source, "source_type"):
+                st = self.source.source_type
+                return st.value if hasattr(st, "value") else str(st)
+        return "local"
+
+    @property
+    def result_metadata(self) -> str | None:
+        """Legacy / CLI API: job.result_metadata"""
+        return self.result_path
+
+    @property
     def status(self) -> str:
         """Contract API: job.status"""
         return self._status.value if hasattr(self._status, 'value') else str(self._status)
@@ -195,21 +226,31 @@ class Job:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert job to dictionary (for serialization/storage)."""
+        source_dict = None
+        if self.source:
+            if isinstance(self.source, dict):
+                source_dict = dict(self.source)
+            else:
+                st = getattr(self.source, "source_type", "local")
+                st_val = st.value if hasattr(st, "value") else str(st)
+                source_dict = {
+                    "source_type": st_val,
+                    "url": getattr(self.source, "url", None),
+                    "raw_url": getattr(self.source, "raw_url", None),
+                    "platform": getattr(self.source, "platform", None),
+                    "title": getattr(self.source, "title", None),
+                    "author": getattr(self.source, "author", None),
+                    "duration_seconds": getattr(self.source, "duration_seconds", None),
+                    "thumbnail_url": getattr(self.source, "thumbnail_url", None),
+                    "metadata": getattr(self.source, "metadata", None),
+                }
+
+        status_val = self._status.value if isinstance(self._status, JobStatus) else str(self._status)
         return {
             "job_id": self.job_id,
-            "source": {
-                "source_type": self.source.source_type.value if self.source else None,
-                "url": self.source.url if self.source else None,
-                "raw_url": self.source.raw_url if self.source else None,
-                "platform": self.source.platform if self.source else None,
-                "title": self.source.title if self.source else None,
-                "author": self.source.author if self.source else None,
-                "duration_seconds": self.source.duration_seconds if self.source else None,
-                "thumbnail_url": self.source.thumbnail_url if self.source else None,
-                "metadata": self.source.metadata if self.source else None,
-            } if self.source else None,
+            "source": source_dict,
             "operations": self.operations,
-            "status": self._status.value if isinstance(self._status, JobStatus) else self._status,
+            "status": status_val,
             "progress": self.progress,
             "created_at_utc": self.created_at_utc,
             "started_at_utc": self.started_at_utc,
@@ -256,10 +297,10 @@ class Job:
         )
 
     def __repr__(self) -> str:
-        return f"Job(job_id={self.job_id!r}, status={self._status.value})"
+        return f"Job(job_id={self.job_id!r}, status={self.status})"
 
     def __str__(self) -> str:
-        return f"Job {self.job_id} ({self.status.value})"
+        return f"Job {self.job_id} ({self.status})"
 
 
 __all__ = ["Job", "JobStatus", "JobState"]

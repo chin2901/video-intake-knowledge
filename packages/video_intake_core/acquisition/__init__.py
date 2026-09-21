@@ -384,25 +384,41 @@ def detect_video_sources(text: str) -> list[VideoSource]:
             )
 
     # Also check for local file paths in text
-    # Look for patterns like /path/to/video.mp4
-    import re
-
-    path_pattern = re.compile(
-        r"(?:^|\s)(/[^\s]+\.(?:mp4|mov|mkv|webm|avi|m4v|mpeg|mpg|flv|wmv))",
-        re.IGNORECASE,
-    )
-    for match in path_pattern.finditer(text):
-        file_path = match.group(1)
-        path = Path(file_path)
-        if path.exists() and path.is_file():
-            sources.append(
-                VideoSource(
-                    source_type="local",
-                    url=f"file://{path.resolve()}",
-                    resolved_path=str(path.resolve()),
-                    video_id=None,
-                    title=path.stem,
-                )
+    video_exts = {".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v", ".mpeg", ".mpg", ".flv", ".wmv"}
+    stripped = text.strip().strip("'\"")
+    direct_path = Path(stripped)
+    if direct_path.exists() and direct_path.is_file() and direct_path.suffix.lower() in video_exts:
+        sources.append(
+            VideoSource(
+                source_type="local",
+                url=f"file://{direct_path.resolve()}",
+                resolved_path=str(direct_path.resolve()),
+                video_id=None,
+                title=direct_path.stem,
             )
+        )
+    else:
+        # Look for path patterns (both absolute and relative)
+        import re
+
+        path_pattern = re.compile(
+            r"(?:^|\s)((?:/[^\s]+|[.\w\-_/]+)\.(?:mp4|mov|mkv|webm|avi|m4v|mpeg|mpg|flv|wmv))",
+            re.IGNORECASE,
+        )
+        for match in path_pattern.finditer(text):
+            file_path = match.group(1).strip()
+            path = Path(file_path)
+            if path.exists() and path.is_file() and path.suffix.lower() in video_exts:
+                resolved_str = str(path.resolve())
+                if not any(s.resolved_path == resolved_str for s in sources):
+                    sources.append(
+                        VideoSource(
+                            source_type="local",
+                            url=f"file://{resolved_str}",
+                            resolved_path=resolved_str,
+                            video_id=None,
+                            title=path.stem,
+                        )
+                    )
 
     return sources

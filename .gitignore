@@ -32,6 +32,8 @@ config/local.env
 # Archivos de prueba y datos de runtime
 artifacts/
 downloads/
+exports/
+generated/
 *.db
 .memory/
 memory/

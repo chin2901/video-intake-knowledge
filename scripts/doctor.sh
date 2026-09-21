@@ -86,9 +86,21 @@ echo ""
 # ------------------------------------------------------------------
 echo "--- Python Environment ---"
 
-if command -v python3 &>/dev/null; then
-    PY_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
-    check_pass "python3" "$PY_VERSION"
+if [[ -n "${VIRTUAL_ENV:-}" && -x "$VIRTUAL_ENV/bin/python3" ]]; then
+    PYTHON_EXEC="$VIRTUAL_ENV/bin/python3"
+elif [[ -x "$ROOT_DIR/venv/bin/python3" ]]; then
+    PYTHON_EXEC="$ROOT_DIR/venv/bin/python3"
+elif [[ -x "$ROOT_DIR/.venv/bin/python3" ]]; then
+    PYTHON_EXEC="$ROOT_DIR/.venv/bin/python3"
+elif command -v python3 &>/dev/null; then
+    PYTHON_EXEC="$(command -v python3)"
+else
+    PYTHON_EXEC="python3"
+fi
+
+if [[ -x "$PYTHON_EXEC" ]] || command -v "$PYTHON_EXEC" &>/dev/null; then
+    PY_VERSION=$("$PYTHON_EXEC" --version 2>&1 | awk '{print $2}')
+    check_pass "python3" "$PY_VERSION ($PYTHON_EXEC)"
 else
     check_fail "python3" "No encontrado"
 fi
@@ -101,10 +113,10 @@ else
 fi
 
 # Comprobar si el paquete está instalado
-if python3 -c "import video_intake_core" 2>/dev/null; then
+if "$PYTHON_EXEC" -c "import video_intake_core" 2>/dev/null; then
     check_pass "video_intake_core" "Instalado"
 else
-    check_warn "video_intake_core" "No instalado (ejecuta bootstrap.sh)"
+    check_warn "video_intake_core" "No instalado (ejecuta bootstrap.sh o install.sh)"
 fi
 
 echo ""
@@ -149,7 +161,7 @@ echo ""
 # ------------------------------------------------------------------
 echo "--- Python Packages ---"
 
-python3 << 'PYEOF' 2>/dev/null || true
+"$PYTHON_EXEC" << 'PYEOF' 2>/dev/null || true
 import importlib
 import sys
 
@@ -159,9 +171,9 @@ packages = [
     ("cv2", "opencv-python"),
     ("PIL", "Pillow"),
     ("pytesseract", "pytesseract"),
-    ("py_scene_detect", "py_scene_detect"),
+    ("scenedetect", "scenedetect"),
     ("numpy", "numpy"),
-    ("PyYAML", "PyYAML"),
+    ("yaml", "PyYAML"),
     ("jsonschema", "jsonschema"),
     ("rich", "rich"),
     ("questionary", "questionary"),

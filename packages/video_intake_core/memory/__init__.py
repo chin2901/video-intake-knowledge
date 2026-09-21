@@ -536,7 +536,7 @@ def create_memory_provider(
         A MemoryProvider instance.
     """
     if provider_type == "local":
-        db_path = kwargs.get("db_path", "./video_intake_memory.db")
+        db_path = kwargs.get("db_path")
         return LocalSQLiteMemoryProvider(db_path=db_path)
 
     raise ValueError(f"Unknown memory provider: {provider_type}")

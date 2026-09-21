@@ -26,5 +26,22 @@ Architecture:
 
 from __future__ import annotations
 
+from .orchestrator import (
+    check_and_extract,
+    generate_asset_scaffold,
+    list_memory_banks,
+    parse_extraction_choices,
+    route_extracted_knowledge,
+)
+
 __version__ = "0.1.0"
 __author__ = "Video Intake Knowledge Project"
+
+__all__ = [
+    "__version__",
+    "check_and_extract",
+    "parse_extraction_choices",
+    "route_extracted_knowledge",
+    "list_memory_banks",
+    "generate_asset_scaffold",
+]

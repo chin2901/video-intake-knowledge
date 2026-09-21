@@ -15,8 +15,7 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "packages"))
 
 from video_intake_core.acquisition import detect_video_sources  # noqa: E402
-
-from scripts.interactive import check_and_extract, parse_extraction_choices  # noqa: E402
+from video_intake_core.orchestrator import check_and_extract, parse_extraction_choices  # noqa: E402
 
 
 def main() -> None:

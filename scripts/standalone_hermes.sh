@@ -31,7 +31,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-VENV="$ROOT_DIR/.venv"
+
+if [[ -n "${VIRTUAL_ENV:-}" && -d "$VIRTUAL_ENV" ]]; then
+    VENV="$VIRTUAL_ENV"
+elif [[ -d "$ROOT_DIR/venv" ]]; then
+    VENV="$ROOT_DIR/venv"
+elif [[ -d "$ROOT_DIR/.venv" ]]; then
+    VENV="$ROOT_DIR/.venv"
+else
+    VENV="$ROOT_DIR/venv"
+fi
 
 usage() {
     cat << 'USAGE'
@@ -106,10 +115,13 @@ sources = detect_video_sources('$target')
 if sources:
     print('PROCESABLE')
     for s in sources:
-        print(f\"  tipo: {s['type']}\")
-        print(f\"  url: {s['resolved_url']}\")
-        print(f\"  title: {s.get('title', 'N/A')}\")
-        print(f\"  platform: {s.get('platform', 'local')}\")
+        st = getattr(s, 'source_type', 'local')
+        url = getattr(s, 'resolved_path', None) or getattr(s, 'url', '$target')
+        title = getattr(s, 'title', None) or 'N/A'
+        print(f\"  tipo: {st}\")
+        print(f\"  url: {url}\")
+        print(f\"  title: {title}\")
+        print(f\"  platform: {st}\")
 else:
     print('NO_PROCESABLE')
     print('Este contenido no parece ser un video compatible.')
@@ -133,23 +145,16 @@ from video_intake_core.inspection import inspect_video
 
 info = inspect_video('$target')
 if info:
-    print(f\"Título: {info.get('title', 'N/A')}\")
-    print(f\"Plataforma: {info.get('platform', 'local')}\")
-    print(f\"Duración: {info.get('duration_secs', 0):.1f}s\")
-    print(f\"Duración (formato): {info.get('duration', 'N/A')}\")
-    if info.get('width') and info.get('height'):
-        print(f\"Resolución: {info['width']}x{info['height']}\")
-    if info.get('fps'):
-        print(f\"FPS: {info['fps']}\")
-    if info.get('video_codec'):
-        print(f\"Codec video: {info['video_codec']}\")
-    if info.get('audio_codec'):
-        print(f\"Codec audio: {info['audio_codec']}\")
-    if info.get('audio_channels'):
-        print(f\"Canales audio: {info['audio_channels']}\")
-    if info.get('streams'):
-        print(f\"Streams: {len(info['streams'])}\")
-    print(f\"URL: {info.get('url', 'N/A')}\")
+    title = getattr(info, 'title', '') or 'N/A'
+    platform = getattr(info, 'extractor', '') or 'local'
+    dur = getattr(info, 'duration', 0.0)
+    dur_str = getattr(info, 'duration_string', '') or 'N/A'
+    url = getattr(info, 'url', '$target')
+    print(f\"Título: {title}\")
+    print(f\"Plataforma: {platform}\")
+    print(f\"Duración: {float(dur):.1f}s\")
+    print(f\"Duración (formato): {dur_str}\")
+    print(f\"URL: {url}\")
 else:
     print('No se pudieron obtener metadatos.')
 " 2>&1
@@ -187,12 +192,11 @@ cmd_extraer() {
     source "$VENV/bin/activate"
     python3 -c "
 import sys
+from pathlib import Path
 sys.path.insert(0, '$ROOT_DIR/packages')
 
 from video_intake_core.acquisition import detect_video_sources
-from video_intake_core.jobs import create_job
-from video_intake_core.artifacts import ArtifactManager
-from video_intake_core.memory import create_memory_provider
+from video_intake_core.orchestrator import check_and_extract, parse_extraction_choices
 
 source = detect_video_sources('$target')
 if not source:
@@ -200,25 +204,19 @@ if not source:
     sys.exit(1)
 
 src = source[0]
-print(f'Procesando: {src.get(\"title\", \"N/A\")}')
-print(f'Plataforma: {src.get(\"platform\", \"local\")}')
-
-job = create_job(
-    source_url=src['resolved_url'],
-    source_title=src.get('title', ''),
-    source_type=src['type'],
-)
-
-print(f'Job ID: {job.id}')
-
-# Aquí se integraría la lógica completa de extracción
-# Por ahora, confirmamos que el pipeline está disponible
-print('Pipeline de extracción disponible.')
-print(f'Selección: {select}')
-print(f'Idioma: {lang}')
-print(f'Modelo: {model}')
-
-sys.exit(0)
+st = getattr(src, 'source_type', 'local')
+src_dict = [{
+    'type': st,
+    'original_input': '$target',
+    'resolved_url': getattr(src, 'resolved_path', None) or getattr(src, 'url', '$target'),
+    'platform': str(st),
+    'title': getattr(src, 'title', None) or Path('$target').stem,
+    'is_local': st == 'local',
+}]
+ops = parse_extraction_choices('$select')
+out = Path('$out_dir' if '$out_dir' else './artifacts')
+artifacts = check_and_extract(src_dict, ops, out)
+print(f\"Job completado: {artifacts.get('job_id')}\")
 " 2>&1
     deactivate
 }
@@ -310,7 +308,8 @@ from video_intake_core.jobs import list_jobs, JobStatus
 jobs = list_jobs(status=JobStatus.PENDING.value)
 print(f'Jobs pendientes: {len(jobs)}')
 for j in jobs[:20]:
-    print(f'  {j.id}  {j.source_title[:60]}  {j.status.value}')
+    st = getattr(j.status, 'value', str(j.status))
+    print(f'  {j.id}  {j.source_title[:60]}  {st}')
 if len(jobs) > 20:
     print(f'  ... y {len(jobs) - 20} más')
 " 2>&1
@@ -333,8 +332,9 @@ from video_intake_core.jobs import get_job
 
 job = get_job('$job_id')
 if job:
+    st = getattr(job.status, 'value', str(job.status))
     print(f'Job: {job.id}')
-    print(f'Estado: {job.status.value}')
+    print(f'Estado: {st}')
     print(f'Título: {job.source_title}')
     print(f'URL: {job.source_url}')
     print(f'Tipo: {job.source_type}')
@@ -342,7 +342,7 @@ if job:
     if job.result_metadata:
         print(f'Resultado: {job.result_metadata}')
 else:
-    print(f'Job no encontrado: $job_id')
+    print('Job no encontrado: $job_id')
 " 2>&1
     deactivate
 }

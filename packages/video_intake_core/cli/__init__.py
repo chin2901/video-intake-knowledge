@@ -140,13 +140,18 @@ def _get_models():
     return models_command, models_list_command, models_install_command, models_verify_command
 
 
+def _get_inspect_video():
+    from video_intake_core.inspection import inspect_video
+    return inspect_video
+
+
 # ============================================================================
 # Helpers
 # ============================================================================
 
 def _resolve_config(args: argparse.Namespace) -> dict[str, Any]:
     """Carga la configuración de la ruta indicada o del default."""
-    config_path = args.config or "config/default.yaml"
+    config_path = getattr(args, "config", None) or "config/default.yaml"
     PolicyResolver = _get_policies()
     resolver = PolicyResolver(config_path=str(config_path))
     return resolver.config
@@ -157,13 +162,13 @@ def _make_storage(args: argparse.Namespace) -> StorageManager:
     root = config.get("storage", {}).get("root_dir", "./artifacts")
     retention = config.get("storage", {}).get("artifact_retention_days", 90)
     max_gb = config.get("storage", {}).get("max_storage_gb", 100)
-    StorageManager = _get_storage()
-    return StorageManager(root_dir=root, retention_days=retention, max_storage_gb=max_gb)
+    StorageManagerClass = _get_storage()
+    return StorageManagerClass(storage_root=root, retention_days=retention, max_storage_gb=max_gb)
 
 
 def _make_artifact_manager(args: argparse.Namespace) -> ArtifactManager:
-    ArtifactManager = _get_artifacts()
-    return ArtifactManager(storage=_make_storage(args))
+    ArtifactManagerClass, _ = _get_artifacts()
+    return ArtifactManagerClass(storage=_make_storage(args))
 
 
 def _make_memory(args: argparse.Namespace) -> MemoryProvider:
@@ -339,7 +344,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         {
             "check": "config",
             "status": "pass",
-            "detail": f"Cargado: {args.config or 'config/default.yaml'}",
+            "detail": f"Cargado: {getattr(args, 'config', None) or 'config/default.yaml'}",
         }
     )
 
@@ -375,22 +380,29 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 def cmd_inspect(args: argparse.Namespace) -> int:
     """Muestra metadatos de una fuente de vídeo."""
+    from dataclasses import asdict, is_dataclass
     inspect_video = _get_inspect_video()
     source = args.source
     try:
-        info = inspect_video(source)
+        raw_info = inspect_video(source)
     except Exception as e:
         print(f"Error inspeccionando {source}: {e}", file=sys.stderr)
         return 1
 
+    info = (
+        asdict(raw_info)
+        if is_dataclass(raw_info)
+        else (raw_info.to_dict() if hasattr(raw_info, "to_dict") else raw_info if isinstance(raw_info, dict) else vars(raw_info))
+    )
+
     if args.json:
         print(json.dumps(info, indent=2, ensure_ascii=False))
     else:
-        print(f"Título: {info.get('title', 'N/A')}")
-        print(f"Plataforma: {info.get('platform', 'N/A')}")
-        dur = info.get("duration_secs")
+        print(f"Título: {info.get('title') or 'N/A'}")
+        print(f"Plataforma: {info.get('extractor') or info.get('platform') or 'local'}")
+        dur = info.get("duration") or info.get("duration_secs")
         if dur is not None:
-            print(f"Duración: {dur:.1f}s ({info.get('duration', 'N/A')})")
+            print(f"Duración: {float(dur):.1f}s ({info.get('duration_string') or 'N/A'})")
         if info.get("width") and info.get("height"):
             print(f"Resolución: {info['width']}x{info['height']}")
         if info.get("fps"):
@@ -401,13 +413,17 @@ def cmd_inspect(args: argparse.Namespace) -> int:
             print(f"Codec audio: {info['audio_codec']}")
         if info.get("audio_channels"):
             print(f"Canales audio: {info['audio_channels']}")
-        print(f"Streams: {len(info.get('streams', []))}")
-        print(f"URL: {info.get('url', 'N/A')}")
-        captions = info.get("captions", [])
+        streams = info.get("streams") or info.get("formats") or []
+        print(f"Streams: {len(streams)}")
+        print(f"URL: {info.get('url') or source}")
+        captions = info.get("captions") or info.get("subtitles") or []
         if captions:
-            print(f"Subtítulos: {len(captions)}")
-            for c in captions:
-                print(f"  - {c.get('lang', '?')} ({c.get('name', '?')})")
+            if isinstance(captions, dict):
+                print(f"Subtítulos: {len(captions)} idioma(s): {', '.join(captions.keys())}")
+            elif isinstance(captions, list):
+                print(f"Subtítulos: {len(captions)}")
+                for c in captions:
+                    print(f"  - {c.get('lang', '?')} ({c.get('name', '?')})")
     return 0
 
 
@@ -421,55 +437,25 @@ def cmd_extract(args: argparse.Namespace) -> int:
         print("No se detectaron fuentes procesables.", file=sys.stderr)
         return 1
 
-    selections = _parse_selections(args.select)
+    from video_intake_core.orchestrator import check_and_extract, parse_extraction_choices
+
+    select_raw = getattr(args, "select", "6") or "6"
+    operations = parse_extraction_choices(select_raw)
     config = _resolve_config(args)
+    root_out = getattr(args, "output", None) or config.get("storage", {}).get("root_dir", "./artifacts")
 
-    if not selections:
-        selections = {"6"}  # por defecto: todo
-
-    # Obtener funciones lazy
-    create_job, start_job, _cancel_job, _get_job, _list_jobs, _JobStatus, _JobManager = _get_jobs()
-
-    # Crear job de ejemplo usando la API correcta
-    source_dict = {
-        "url": sources[0]["resolved_url"],
-        "title": sources[0].get("title", "unknown"),
-        "type": sources[0]["type"],
-        "user_id": args.user_id,
-    }
-    operations = ["transcript", "audio", "visual", "ocr", "context", "knowledge"]
-
-    job = create_job(
-        source=source_dict,
-        operations=operations,
-    )
+    artifacts = check_and_extract(sources, operations, Path(root_out))
 
     if args.json:
-        print(json.dumps(
-            {
-                "job_id": job.id,
-                "status": job.status.value,
-                "selections": list(selections),
-                "source": sources[0]["resolved_url"],
-            },
-            indent=2,
-            ensure_ascii=False,
-        ))
+        print(json.dumps(artifacts, indent=2, ensure_ascii=False))
         return 0
 
-    print(f"Job creado: {job.id}")
-    print(f"Fuente: {sources[0]['resolved_url']}")
-    print(f"Selecciones: {', '.join(sorted(selections))}")
-    print()
-
-    # Simular ejecución
-    try:
-        start_job(job.id, list(selections), args)
-    except Exception as e:
-        print(f"Error ejecutando job: {e}", file=sys.stderr)
-        return 1
-
-    print(f"Job completado: {job.id}")
+    print(f"\nExtracción completada. Job ID: {artifacts.get('job_id')}")
+    print(f"Directorio de artefactos: {artifacts.get('job_dir')}")
+    if artifacts.get("files"):
+        print("Archivos generados:")
+        for k, v in artifacts["files"].items():
+            print(f"  - {k}: {v}")
     return 0
 
 
@@ -526,14 +512,29 @@ def cmd_status(args: argparse.Namespace) -> int:
     _, _, _, get_job, _, _, _ = _get_jobs()
     job = get_job(args.job_id)
     if not job:
+        manifest_file = Path("artifacts") / args.job_id / "artifacts_manifest.json"
+        if manifest_file.exists():
+            data = json.loads(manifest_file.read_text(encoding="utf-8"))
+            if args.json:
+                print(json.dumps(data, indent=2, ensure_ascii=False))
+            else:
+                print(f"Job: {data.get('job_id', args.job_id)}")
+                print("Estado: completed (desde artefactos locales)")
+                srcs = data.get("sources", [])
+                if srcs:
+                    print(f"Fuente: {srcs[0].get('resolved_url')}")
+                    print(f"Título: {srcs[0].get('title', 'N/A')}")
+                print(f"Creado: {data.get('created_at', 'N/A')}")
+            return 0
         print(f"Job no encontrado: {args.job_id}", file=sys.stderr)
         return 1
 
     if args.json:
         print(json.dumps(job.to_dict(), indent=2, ensure_ascii=False))
     else:
+        status_val = job.status.value if hasattr(job.status, "value") else str(job.status)
         print(f"Job: {job.id}")
-        print(f"Estado: {job.status.value}")
+        print(f"Estado: {status_val}")
         print(f"Título: {job.source_title}")
         print(f"URL: {job.source_url}")
         print(f"Tipo: {job.source_type}")
@@ -545,7 +546,12 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 def cmd_cancel(args: argparse.Namespace) -> int:
     """Cancela un job en ejecución."""
-    if not cancel_job(args.job_id):
+    _, _, cancel_job, _, _, _, _ = _get_jobs()
+    try:
+        success = cancel_job(args.job_id)
+    except Exception:
+        success = False
+    if not success:
         print(f"No se pudo cancelar el job: {args.job_id}", file=sys.stderr)
         return 1
     print(f"Job cancelado: {args.job_id}")
@@ -554,7 +560,22 @@ def cmd_cancel(args: argparse.Namespace) -> int:
 
 def cmd_artifacts(args: argparse.Namespace) -> int:
     """Lista los artefactos de un job."""
-    artifacts = list_artifacts(args.job_id)
+    _, list_artifacts = _get_artifacts()
+    try:
+        artifacts = list_artifacts(args.job_id)
+    except Exception:
+        artifacts = []
+
+    job_dir = Path("artifacts") / args.job_id
+    if not artifacts and job_dir.exists() and job_dir.is_dir():
+        for p in sorted(job_dir.rglob("*")):
+            if p.is_file():
+                artifacts.append({
+                    "path": str(p),
+                    "size_mb": p.stat().st_size / (1024 * 1024),
+                    "name": p.name,
+                })
+
     if not artifacts:
         print(f"No hay artefactos para el job: {args.job_id}")
         return 0
@@ -564,37 +585,50 @@ def cmd_artifacts(args: argparse.Namespace) -> int:
     else:
         print(f"Artefactos para {args.job_id}:")
         for a in artifacts:
-            print(f"  - {a['path']} ({a.get('size_mb', 0):.1f} MB)")
+            path_str = a.get("path") if isinstance(a, dict) else getattr(a, "path", str(a))
+            size = a.get("size_mb", 0) if isinstance(a, dict) else (getattr(a, "size_bytes", 0) / (1024 * 1024))
+            print(f"  - {path_str} ({size:.1f} MB)")
     return 0
 
 
 def cmd_export(args: argparse.Namespace) -> int:
     """Exporta los resultados de un job."""
+    _, _, _, get_job, _, _, _ = _get_jobs()
     job = get_job(args.job_id)
+    manifest_data = None
     if not job:
+        manifest_file = Path("artifacts") / args.job_id / "artifacts_manifest.json"
+        if manifest_file.exists():
+            manifest_data = json.loads(manifest_file.read_text(encoding="utf-8"))
+
+    if not job and not manifest_data:
         print(f"Job no encontrado: {args.job_id}", file=sys.stderr)
         return 1
 
     fmt = args.format or "markdown"
     export_dir = args.output or f"exports/{args.job_id}"
-
     Path(export_dir).mkdir(parents=True, exist_ok=True)
 
+    title = job.source_title if job else manifest_data.get("sources", [{}])[0].get("title", "Video")
+    status_val = (
+        (job.status.value if hasattr(job.status, "value") else str(job.status))
+        if job
+        else "completed"
+    )
+
     if fmt == "json":
-        data = job.to_dict()
+        data = job.to_dict() if job else manifest_data
         out = Path(export_dir) / "export.json"
         out.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"Exportado a {out}")
     elif fmt == "html":
-        md_path = Path(export_dir) / "export.md"
-        md_path.write_text(f"# Export job {args.job_id}\n\nJob completado.\n")
-        html = f"<html><body><h1>Export job {args.job_id}</h1><p>Completado.</p></body></html>"
+        html = f"<html><body><h1>Export job {args.job_id}</h1><p>Título: {title}</p><p>Estado: {status_val}</p></body></html>"
         html_path = Path(export_dir) / "export.html"
         html_path.write_text(html, encoding="utf-8")
         print(f"Exportado a {html_path}")
     else:
         md_path = Path(export_dir) / "export.md"
-        md_path.write_text(f"# Export job {args.job_id}\n\n## Resumen\n\nJob: {args.job_id}\nEstado: {job.status.value}\nTítulo: {job.source_title}\n\n")
+        md_path.write_text(f"# Export job {args.job_id}\n\n## Resumen\n\nJob: {args.job_id}\nEstado: {status_val}\nTítulo: {title}\n\n")
         print(f"Exportado a {md_path}")
 
     return 0
@@ -604,7 +638,14 @@ def cmd_cleanup(args: argparse.Namespace) -> int:
     """Limpia artefactos antiguos."""
     storage = _make_storage(args)
     removed = storage.cleanup(max_age_days=args.max_age_days, dry_run=args.dry_run)
-    count = removed if isinstance(removed, int) else len(removed) if isinstance(removed, list) else 0
+    if isinstance(removed, dict):
+        jobs_val = removed.get("removed_jobs", 0)
+        count = len(jobs_val) if isinstance(jobs_val, list) else jobs_val
+    elif isinstance(removed, list):
+        count = len(removed)
+    else:
+        count = int(removed) if isinstance(removed, (int, float)) else 0
+
     if args.dry_run:
         print(f"[dry-run] Se eliminarían {count} artefactos.")
     else:
@@ -614,7 +655,7 @@ def cmd_cleanup(args: argparse.Namespace) -> int:
 
 def cmd_config_validate(args: argparse.Namespace) -> int:
     """Valida la configuración actual."""
-    config_path = args.config or "config/default.yaml"
+    config_path = getattr(args, "config", None) or "config/default.yaml"
     path = Path(config_path)
     if not path.exists():
         print(f"Configuración no encontrada: {config_path}", file=sys.stderr)
@@ -704,15 +745,27 @@ def cmd_self_test(args: argparse.Namespace) -> int:
         )
 
     # Test 2: detección de archivo local
-    test_file = Path(__file__).resolve().parent / ".." / ".." / "tests" / "fixtures" / "sample.mp4"
-    if test_file.exists():
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    candidate_fixtures = [
+        repo_root / "tests" / "fixtures" / "video" / "sample.mp4",
+        repo_root / "tests" / "fixtures" / "sample.mp4",
+        Path("tests/fixtures/video/sample.mp4").resolve(),
+    ]
+    test_file = next((f for f in candidate_fixtures if f.exists()), None)
+    if test_file:
         try:
             sources = detect_video_sources(str(test_file))
+            stype = (
+                getattr(sources[0], "source_type", None)
+                or (sources[0].get("type") if isinstance(sources[0], dict) else "local")
+                if sources
+                else "N/A"
+            )
             tests.append(
                 {
                     "name": "detect_local_file",
                     "status": "pass",
-                    "detail": f"detectado: {sources[0]['type'] if sources else 'N/A'}",
+                    "detail": f"detectado: {stype}",
                 }
             )
         except Exception as e:
@@ -1087,6 +1140,14 @@ Ejemplos:
         help="No preguntar confirmación.",
     )
     remove_p.set_defaults(func=cmd_models_remove)
+
+    # proposals
+    from video_intake_core.cli.proposals import proposals_command
+    proposals_command(sub)
+
+    # memory
+    from video_intake_core.cli.memory import memory_command
+    memory_command(sub)
 
     return parser
 

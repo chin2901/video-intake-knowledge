@@ -148,6 +148,7 @@ class StorageManager:
         """
         self._root = Path(storage_root).resolve()
         self._retention_days = retention_days
+        self._max_storage_gb = max_storage_gb
         self._max_storage_bytes = int(max_storage_gb * 1024**3)
         self._cache_dir = self._root / "cache"
         self._jobs_dir = self._root / "jobs"
