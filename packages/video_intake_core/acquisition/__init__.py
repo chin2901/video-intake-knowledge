@@ -323,3 +323,7 @@ __all__ = [
     "INSTAGRAM_PATTERNS",
     "TIKTOK_PATTERNS",
 ]
+
+# Alias for backwards compatibility and CLI usage
+detect_video_sources = detect_source
+detect_video_source_type = detect_source_type

@@ -37,7 +37,6 @@ from video_intake_core.jobs import (
     cancel_job,
     get_job,
     list_jobs,
-    list_artifacts,
     JobStatus,
 )
 from video_intake_core.policies import PolicyResolver

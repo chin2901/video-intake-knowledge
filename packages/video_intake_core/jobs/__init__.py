@@ -13,9 +13,9 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
-from ..schemas.job import Job
+from ..schemas.job import Job, JobStatus
 
 
 class JobDoesNotExistError(ValueError):
@@ -536,3 +536,109 @@ def get_default_manager(db_path: str | Path = "jobs.db") -> JobManager:
             if _default_manager is None:
                 _default_manager = JobManager(db_path=db_path)
     return _default_manager
+
+
+# ----------------------------------------------------------------------
+# Convenience functions using default manager
+# ----------------------------------------------------------------------
+
+
+def create_job(
+    source: Any,
+    operations: list[str],
+    db_path: str | Path = "jobs.db",
+    **kwargs: Any,
+) -> Job:
+    """Create a new job with the default manager.
+
+    Args:
+        source: The video source.
+        operations: List of operations to perform.
+        db_path: Path to the SQLite database.
+        **kwargs: Additional arguments passed to JobManager.create_job.
+
+    Returns:
+        The created Job instance.
+    """
+    manager = get_default_manager(db_path)
+    return manager.create_job(source, operations=operations, **kwargs)
+
+
+def start_job(job_id: str, db_path: str | Path = "jobs.db") -> Job:
+    """Start a job by ID using the default manager.
+
+    Args:
+        job_id: The job ID to start.
+        db_path: Path to the SQLite database.
+
+    Returns:
+        The started Job instance.
+    """
+    manager = get_default_manager(db_path)
+    return manager.start_job(job_id)
+
+
+def cancel_job(job_id: str, db_path: str | Path = "jobs.db", cancelled_by: str = "system") -> Job:
+    """Cancel a job by ID using the default manager.
+
+    Args:
+        job_id: The job ID to cancel.
+        db_path: Path to the SQLite database.
+        cancelled_by: Who cancelled the job.
+
+    Returns:
+        The cancelled Job instance.
+    """
+    manager = get_default_manager(db_path)
+    return manager.cancel_job(job_id, cancelled_by=cancelled_by)
+
+
+def get_job(job_id: str, db_path: str | Path = "jobs.db") -> Job:
+    """Get a job by ID using the default manager.
+
+    Args:
+        job_id: The job ID to get.
+        db_path: Path to the SQLite database.
+
+    Returns:
+        The Job instance.
+    """
+    manager = get_default_manager(db_path)
+    return manager.get_job(job_id)
+
+
+def list_jobs(
+    status: Optional[str] = None,
+    db_path: str | Path = "jobs.db",
+    limit: Optional[int] = None,
+) -> list[Job]:
+    """List jobs using the default manager.
+
+    Args:
+        status: Filter by status (optional).
+        db_path: Path to the SQLite database.
+        limit: Maximum number of jobs to return (optional).
+
+    Returns:
+        List of Job instances.
+    """
+    from typing import Optional as _Opt
+    manager = get_default_manager(db_path)
+    if limit is not None:
+        return manager.list_jobs(status=status, limit=limit)
+    return manager.list_jobs(status=status)
+
+
+__all__ = [
+    "Job",
+    "JobStatus",
+    "JobDoesNotExistError",
+    "JobAlreadyExistsError",
+    "JobManager",
+    "get_default_manager",
+    "create_job",
+    "start_job",
+    "cancel_job",
+    "get_job",
+    "list_jobs",
+]
