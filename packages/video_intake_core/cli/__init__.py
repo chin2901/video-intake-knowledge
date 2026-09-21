@@ -29,26 +29,115 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from video_intake_core.acquisition import detect_video_sources, SourceType
-from video_intake_core.artifacts import ArtifactManager
-from video_intake_core.jobs import (
-    create_job,
-    start_job,
-    cancel_job,
-    get_job,
-    list_jobs,
-    JobStatus,
-)
-from video_intake_core.policies import PolicyResolver
-from video_intake_core.memory import (
-    MemoryProvider,
-    LocalSQLiteMemoryProvider,
-    MemoryEntry,
-)
-from video_intake_core.storage import StorageManager
-
 logger = logging.getLogger("video_intake")
 DEFAULT_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+
+
+# ============================================================================
+# Lazy imports - only import when needed
+# ============================================================================
+
+
+def _get_acquisition():
+    from video_intake_core.acquisition import detect_video_sources, SourceType
+    return detect_video_sources, SourceType
+
+
+def _get_inspection():
+    from video_intake_core.inspection import inspect_video
+    return inspect_video
+
+
+def _get_jobs():
+    from video_intake_core.jobs import (
+        create_job,
+        start_job,
+        cancel_job,
+        get_job,
+        list_jobs,
+        JobStatus,
+        JobManager,
+    )
+    return create_job, start_job, cancel_job, get_job, list_jobs, JobStatus, JobManager
+
+
+def _get_artifacts():
+    from video_intake_core.artifacts import ArtifactManager, list_artifacts
+    return ArtifactManager, list_artifacts
+
+
+def _get_policies():
+    from video_intake_core.policies import PolicyResolver
+    return PolicyResolver
+
+
+def _get_memory():
+    from video_intake_core.memory import (
+        MemoryProvider,
+        LocalSQLiteMemoryProvider,
+        MemoryEntry,
+    )
+    return MemoryProvider, LocalSQLiteMemoryProvider, MemoryEntry
+
+
+def _get_storage():
+    from video_intake_core.storage import StorageManager
+    return StorageManager
+
+
+def _get_menu():
+    from video_intake_core.cli.menu import parse_menu_selection, format_menu_options
+    return parse_menu_selection, format_menu_options
+
+
+def _get_doctor():
+    from video_intake_core.cli.doctor import doctor_checks, run_doctor
+    return doctor_checks, run_doctor
+
+
+def _get_cleanup():
+    from video_intake_core.cli.cleanup import cleanup_command, run_storage_cleanup
+    return cleanup_command, run_storage_cleanup
+
+
+def _get_extract():
+    from video_intake_core.cli.extract import extract_command, run_extraction
+    return extract_command, run_extraction
+
+
+def _get_status():
+    from video_intake_core.cli.status import status_command, run_status
+    return status_command, run_status
+
+
+def _get_artifacts_cli():
+    from video_intake_core.cli.artifacts import artifacts_command, show_artifacts
+    return artifacts_command, show_artifacts
+
+
+def _get_export():
+    from video_intake_core.cli.export import export_command, run_export
+    return export_command, run_export
+
+
+def _get_proposals():
+    from video_intake_core.cli.proposals import proposals_command, show_proposals
+    return proposals_command, show_proposals
+
+
+def _get_memory_cli():
+    from video_intake_core.cli.memory import memory_command, show_memory
+    return memory_command, show_memory
+
+
+def _get_config_cmd():
+    from video_intake_core.cli.config_cmd import config_validate_command
+    return config_validate_command
+
+
+def _get_models():
+    from video_intake_core.cli.models import models_command, models_list_command, models_install_command, models_verify_command
+    return models_command, models_list_command, models_install_command, models_verify_command
 
 
 # ============================================================================
@@ -58,6 +147,7 @@ DEFAULT_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 def _resolve_config(args: argparse.Namespace) -> dict[str, Any]:
     """Carga la configuración de la ruta indicada o del default."""
     config_path = args.config or "config/default.yaml"
+    PolicyResolver = _get_policies()
     resolver = PolicyResolver(config_path=str(config_path))
     return resolver.config
 
@@ -67,16 +157,19 @@ def _make_storage(args: argparse.Namespace) -> StorageManager:
     root = config.get("storage", {}).get("root_dir", "./artifacts")
     retention = config.get("storage", {}).get("artifact_retention_days", 90)
     max_gb = config.get("storage", {}).get("max_storage_gb", 100)
+    StorageManager = _get_storage()
     return StorageManager(root_dir=root, retention_days=retention, max_storage_gb=max_gb)
 
 
 def _make_artifact_manager(args: argparse.Namespace) -> ArtifactManager:
+    ArtifactManager = _get_artifacts()
     return ArtifactManager(storage=_make_storage(args))
 
 
 def _make_memory(args: argparse.Namespace) -> MemoryProvider:
     config = _resolve_config(args)
     default_provider = config.get("memory", {}).get("default_provider", "local")
+    MemoryProvider, LocalSQLiteMemoryProvider, _ = _get_memory()
     if default_provider == "local":
         db_path = config.get("memory", {}).get("db_path", "./memory.db")
         return LocalSQLiteMemoryProvider(db_path=str(db_path))
@@ -86,6 +179,7 @@ def _make_memory(args: argparse.Namespace) -> MemoryProvider:
 
 def _detect_sources(urls: list[str], files: list[str]) -> list[dict[str, Any]]:
     """Combina detección de URLs y archivos locales."""
+    detect_video_sources, SourceType = _get_acquisition()
     sources: list[dict[str, Any]] = []
     for url in urls:
         detected = detect_video_sources(url)
@@ -133,8 +227,8 @@ def _parse_selections(raw: str | None) -> set[str]:
 def cmd_doctor(args: argparse.Namespace) -> int:
     """Comprueba la salud del entorno."""
     from video_intake_core.audio import extract_audio
-    from video_intake_core.transcription import transcribe
-    from video_intake_core.visual import analyze_scenes
+    from video_intake_core.transcription import transcribe_from_file as transcribe
+    from video_intake_core.visual import detect_scenes as analyze_scenes
     from video_intake_core.ocr import batch_ocr
     from video_intake_core.inspection import inspect_video
 
@@ -259,6 +353,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 def cmd_inspect(args: argparse.Namespace) -> int:
     """Muestra metadatos de una fuente de vídeo."""
+    inspect_video = _get_inspect_video()
     source = args.source
     try:
         info = inspect_video(source)
@@ -310,12 +405,21 @@ def cmd_extract(args: argparse.Namespace) -> int:
     if not selections:
         selections = {"6"}  # por defecto: todo
 
-    # Crear job de ejemplo
+    # Obtener funciones lazy
+    create_job, start_job, _cancel_job, _get_job, _list_jobs, _JobStatus, _JobManager = _get_jobs()
+
+    # Crear job de ejemplo usando la API correcta
+    source_dict = {
+        "url": sources[0]["resolved_url"],
+        "title": sources[0].get("title", "unknown"),
+        "type": sources[0]["type"],
+        "user_id": args.user_id,
+    }
+    operations = ["transcript", "audio", "visual", "ocr", "context", "knowledge"]
+
     job = create_job(
-        source_url=sources[0]["resolved_url"],
-        source_title=sources[0].get("title", "unknown"),
-        source_type=sources[0]["type"],
-        user_id=args.user_id,
+        source=source_dict,
+        operations=operations,
     )
 
     if args.json:
@@ -397,6 +501,7 @@ def cmd_batch(args: argparse.Namespace) -> int:
 
 def cmd_status(args: argparse.Namespace) -> int:
     """Muestra el estado de un job."""
+    _, _, _, get_job, _, _, _ = _get_jobs()
     job = get_job(args.job_id)
     if not job:
         print(f"Job no encontrado: {args.job_id}", file=sys.stderr)
@@ -545,10 +650,11 @@ def cmd_config_validate(args: argparse.Namespace) -> int:
 def cmd_self_test(args: argparse.Namespace) -> int:
     """Ejecuta pruebas de auto-diagnóstico."""
     import shutil
-    from video_intake_core.utils import detect_video_sources, compute_sha256
+    from video_intake_core.acquisition import detect_video_sources
+    from video_intake_core.utils import compute_sha256
     from video_intake_core.audio import extract_audio
-    from video_intake_core.transcription import transcribe
-    from video_intake_core.visual import analyze_scenes
+    from video_intake_core.transcription import transcribe_from_file as transcribe
+    from video_intake_core.visual import detect_scenes as analyze_scenes
     from video_intake_core.ocr import batch_ocr
 
     print("=== video-intake self-test ===\n")
