@@ -1,1 +1,26 @@
-{}
+{
+  "lessons_learned": [
+    "Los tiempos de importación de Python son lentos",
+    "Los tests de pytest tardan mucho en recolectar",
+    "Es preferible verificar recolección de tests antes de ejecución completa",
+    "CLI --help es una verificación rápida útil"
+  ],
+  "future_steps": {
+    "priority_1": [
+      "Ejecutar 33 tests de seguridad completamente",
+      "Verificar CLI commands"
+    ],
+    "priority_2": [
+      "Completar ADR",
+      "Verificar ejemplos de uso"
+    ],
+    "priority_3": [
+      "Hacer push a GitHub",
+      "Crear release si es necesario"
+    ],
+    "priority_4": [
+      "Revisar documentación existente",
+      "Mejorar tests si es necesario"
+    ]
+  }
+}
