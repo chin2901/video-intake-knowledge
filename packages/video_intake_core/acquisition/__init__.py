@@ -21,7 +21,8 @@ from pathlib import Path
 from typing import Optional
 
 from ..schemas import Source, SourceType, ResolvedURL
-from ..utils.validation import is_safe_url, sanitize_filename
+from ..utils.validation import is_safe_url
+from ..utils.fs import sanitize_filename
 
 logger = logging.getLogger(__name__)
 
