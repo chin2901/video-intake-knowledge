@@ -60,3 +60,5 @@ uv.lock
 *.secret
 secrets.yaml
 .env.local
+dummy.mp4
+test_all_sources.sh
