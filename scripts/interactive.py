@@ -24,6 +24,7 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(REPO_ROOT / "packages"))
 
 from video_intake_core.acquisition import detect_video_sources  # noqa: E402
+from video_intake_core.cli.menu import parse_selection_to_set  # noqa: E402
 from video_intake_core.orchestrator import (  # noqa: E402
     check_and_extract,
     generate_asset_scaffold,
@@ -38,6 +39,7 @@ __all__ = [
     "route_extracted_knowledge",
     "list_memory_banks",
     "generate_asset_scaffold",
+    "run_interactive_flow",
 ]
 
 
@@ -63,47 +65,33 @@ def prompt_selection(prompt_text: str, valid_options: set[str], default: str = "
         print(f"Opción no válida ('{choice}'). Opciones disponibles: {', '.join(sorted(valid_options))}")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Video Intake Knowledge — Orquestador interactivo en 2 fases"
-    )
-    parser.add_argument(
-        "inputs",
-        nargs="*",
-        help="URLs de vídeo (YouTube, FB, IG, TikTok) o rutas a archivos locales",
-    )
-    parser.add_argument(
-        "-o", "--output-dir",
-        default="./artifacts",
-        help="Directorio para guardar artefactos locales (por defecto: ./artifacts)",
-    )
-    parser.add_argument(
-        "--select",
-        help="Preselección de operaciones (ej: '1,3,5' o '6' / 'todo')",
-    )
-
-    args = parser.parse_args()
+def run_interactive_flow(
+    inputs: list[str] | None = None,
+    output_dir: str = "./artifacts",
+    select: str | None = None,
+) -> int:
+    """Ejecuta el flujo interactivo canónico en 2 fases."""
     print_banner()
 
-    inputs = list(args.inputs)
-    if not inputs:
+    user_inputs = list(inputs) if inputs else []
+    if not user_inputs:
         print("Pega uno o varios enlaces de vídeo (YouTube, Facebook, Instagram, TikTok)")
         print("o rutas a archivos locales (.mp4, .mov, .mkv, .webm):")
         try:
             line = input("> ").strip()
             if line:
-                inputs = re.split(r"[,;\s]+", line)
+                user_inputs = [x for x in re.split(r"[,;\s]+", line) if x]
         except (EOFError, KeyboardInterrupt):
             print("\nSalida.")
-            sys.exit(0)
+            return 0
 
-    if not inputs:
+    if not user_inputs:
         print("No se proporcionó ningún vídeo o enlace. Saliendo.", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     # Detección de fuentes
     sources: list[dict[str, Any]] = []
-    for item in inputs:
+    for item in user_inputs:
         item = item.strip()
         if not item:
             continue
@@ -145,8 +133,8 @@ def main() -> None:
         print(f"  {idx}. [{s['platform']}] {s['title']} ({s['resolved_url']})")
 
     # Fase 1: Preguntar qué extraer
-    if args.select:
-        operations = parse_extraction_choices(args.select)
+    if select:
+        operations = parse_selection_to_set(select)
     else:
         print("\n" + "=" * 70)
         print("  FASE 1: ¿QUÉ NECESITAS EXTRAER DEL VÍDEO?")
@@ -154,27 +142,55 @@ def main() -> None:
         print("  [1] Descarga del vídeo de manera local")
         print("  [2] Descarga del audio del vídeo de manera local")
         print("  [3] Transcripción de audio (con timestamps)")
-        print("  [4] Contexto basado en audio")
+        print("  [4] Contexto basado en audio (resumen, puntos clave y tópicos)")
         print("  [5] Contexto extraído de manera visual (para diagramas, flujos, esquemas)")
         print("  [6] Todo lo anterior (1, 2, 3, 4 y 5)")
         print("-" * 70)
         print("Puedes seleccionar uno (ej: 1), varios (ej: 1, 3, 5) o todo (6):")
         choice = prompt_selection(
             "Selecciona opción [1-6]: ",
-            {"1", "2", "3", "4", "5", "6", "todo", "todos", ""},
+            {"1", "2", "3", "4", "5", "6", "todo", "todos", "all", ""},
             default="6",
         )
-        operations = parse_extraction_choices(choice)
+        operations = parse_selection_to_set(choice)
 
     print(f"\nOperaciones seleccionadas: {sorted(operations)}")
 
     # Ejecución
-    out_dir = Path(args.output_dir)
+    out_dir = Path(output_dir)
     artifacts = check_and_extract(sources, operations, out_dir)
 
     # Fase 2: Preguntar qué hacer con lo extraído
     route_extracted_knowledge(artifacts)
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Video Intake Knowledge — Orquestador interactivo en 2 fases"
+    )
+    parser.add_argument(
+        "inputs",
+        nargs="*",
+        help="URLs de vídeo (YouTube, FB, IG, TikTok) o rutas a archivos locales",
+    )
+    parser.add_argument(
+        "-o", "--output-dir",
+        default="./artifacts",
+        help="Directorio para guardar artefactos locales (por defecto: ./artifacts)",
+    )
+    parser.add_argument(
+        "--select",
+        help="Preselección de operaciones (ej: '1,3,5' o '6' / 'todo')",
+    )
+
+    args = parser.parse_args(argv)
+    return run_interactive_flow(
+        inputs=args.inputs,
+        output_dir=args.output_dir,
+        select=args.select,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

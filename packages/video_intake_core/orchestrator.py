@@ -21,31 +21,29 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from video_intake_core.acquisition import SourceType, detect_source
+from video_intake_core.audio import download_audio_only, extract_audio
 from video_intake_core.jobs import JobManager, JobState
 from video_intake_core.memory import (
     LocalSQLiteMemoryProvider,
     MemoryEntry,
     MemoryEntryMetadata,
 )
+from video_intake_core.ocr import ocr_frame_directory
+from video_intake_core.transcription import (
+    extract_captions_from_platform,
+    extract_local_captions,
+    transcribe_with_whisper,
+)
+from video_intake_core.visual import detect_scenes, extract_keyframes
 
 logger = logging.getLogger(__name__)
 
 
 def parse_extraction_choices(raw: str) -> set[int]:
-    """Parsea elecciones como '1, 3', '1 2 4', '6', 'todo', 'all'."""
-    raw = str(raw).strip().lower()
-    if raw in {"6", "todo", "todos", "all", ""}:
-        return {1, 2, 3, 4, 5}
-    selections: set[int] = set()
-    for token in re.split(r"[,;\s]+", raw):
-        token = token.strip()
-        if token.isdigit():
-            val = int(token)
-            if val == 6:
-                return {1, 2, 3, 4, 5}
-            if 1 <= val <= 5:
-                selections.add(val)
-    return selections or {1, 2, 3, 4, 5}
+    """Parsea elecciones como '1, 3', '1 2 4', '6', 'todo', 'all'. Delega al SSoT."""
+    from video_intake_core.cli.menu import parse_selection_to_set
+    return parse_selection_to_set(raw)
 
 
 def check_and_extract(
@@ -53,6 +51,7 @@ def check_and_extract(
     operations: set[int],
     output_dir: Path | str,
     db_path: Path | str | None = None,
+    job_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Ejecuta la extracción de manera directa, robusta y con dependencias locales.
@@ -67,7 +66,7 @@ def check_and_extract(
     out_path = Path(output_dir).resolve()
     out_path.mkdir(parents=True, exist_ok=True)
 
-    job_id = f"job_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    job_id = job_id or f"job_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
     job_dir = out_path / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
@@ -94,6 +93,23 @@ def check_and_extract(
     for idx, src in enumerate(sources, 1):
         target = str(src.get("resolved_url") or src.get("url") or "")
         is_local = bool(src.get("is_local", False))
+
+        from video_intake_core.security import validate_local_file, validate_video_url
+        if is_local or target.startswith("file://") or Path(target).exists():
+            try:
+                validate_local_file(target.replace("file://", ""))
+            except Exception as e:
+                logger.error(f"Security blocked local file {target}: {e}")
+                artifacts.setdefault("errors", []).append(str(e))
+                continue
+        elif target.startswith(("http://", "https://")):
+            try:
+                validate_video_url(target)
+            except Exception as e:
+                logger.error(f"Security blocked URL {target}: {e}")
+                artifacts.setdefault("errors", []).append(str(e))
+                continue
+
         title = src.get("title") or f"video_{idx}"
         title = re.sub(r"[^\w\-_.]", "_", title)
 
@@ -102,8 +118,14 @@ def check_and_extract(
         video_file: Path | None = None
         audio_file: Path | None = None
 
-        # 0. Resolución inicial de archivo si es local
-        if is_local or (target.startswith("file://") or Path(target).exists()):
+        # 0. Resolución inicial de archivo si es local mediante acquisition
+        source_obj = detect_source(target)
+        if source_obj and source_obj.source_type == SourceType.LOCAL_FILE:
+            local_candidate = Path(source_obj.url).resolve()
+            if local_candidate.exists() and local_candidate.is_file():
+                video_file = local_candidate
+                is_local = True
+        elif is_local or (target.startswith("file://") or Path(target).exists()):
             local_candidate = Path(target.replace("file://", "")).resolve()
             if local_candidate.exists() and local_candidate.is_file():
                 video_file = local_candidate
@@ -148,74 +170,111 @@ def check_and_extract(
                 else:
                     print(f"  [AVISO] Descarga directa de vídeo no completada: {res.stderr[:200]}", file=sys.stderr)
 
-        # 2. Descarga o extracción de audio local (.mp3)
+        # 2. Descarga o extracción de audio local (.mp3) mediante audio module
         if 2 in operations or 3 in operations or 4 in operations:
             print("[2/5] Adquiriendo pista de audio...")
             audio_target = job_dir / f"{title}.mp3"
 
             if video_file and video_file.exists():
-                cmd = [
-                    "ffmpeg", "-y", "-i", str(video_file),
-                    "-vn", "-acodec", "libmp3lame", "-q:a", "2",
-                    str(audio_target),
-                ]
-                res = subprocess.run(cmd, capture_output=True, text=True)
-                if res.returncode == 0 and audio_target.exists():
-                    audio_file = audio_target
-                    print(f"  [OK] Audio extraído con ffmpeg: {audio_file.name}")
+                try:
+                    audio_res = extract_audio(video_file, job_dir)
+                    audio_extracted = Path(audio_res["path"])
+                    if audio_extracted.exists():
+                        if audio_extracted != audio_target and not audio_target.exists():
+                            shutil.copy2(audio_extracted, audio_target)
+                            audio_file = audio_target
+                        else:
+                            audio_file = audio_extracted
+                        print(f"  [OK] Audio extraído con módulo audio: {audio_file.name}")
+                except Exception as e:
+                    logger.debug("Modular audio extraction fallback to ffmpeg: %s", e)
+                    cmd = [
+                        "ffmpeg", "-y", "-i", str(video_file),
+                        "-vn", "-acodec", "libmp3lame", "-q:a", "2",
+                        str(audio_target),
+                    ]
+                    res = subprocess.run(cmd, capture_output=True, text=True)
+                    if res.returncode == 0 and audio_target.exists():
+                        audio_file = audio_target
+                        print(f"  [OK] Audio extraído con ffmpeg: {audio_file.name}")
             elif not is_local and target.startswith("http"):
-                out_tmpl = str(job_dir / f"{title}_%(id)s.%(ext)s")
-                cmd = ["yt-dlp", "--no-playlist", "-x", "--audio-format", "mp3", "-o", out_tmpl, target]
-                res = subprocess.run(cmd, capture_output=True, text=True)
-                if res.returncode == 0:
-                    found_mp3 = list(job_dir.glob("*.mp3"))
-                    if found_mp3:
-                        audio_file = found_mp3[0]
-                        print(f"  [OK] Audio descargado con yt-dlp: {audio_file.name}")
+                try:
+                    audio_res = download_audio_only(target, output_path=str(audio_target))
+                    audio_file = Path(audio_res["path"])
+                    print(f"  [OK] Audio descargado con módulo audio: {audio_file.name}")
+                except Exception as e:
+                    logger.debug("download_audio_only fallback to yt-dlp: %s", e)
+                    out_tmpl = str(job_dir / f"{title}_%(id)s.%(ext)s")
+                    cmd = ["yt-dlp", "--no-playlist", "-x", "--audio-format", "mp3", "-o", out_tmpl, target]
+                    res = subprocess.run(cmd, capture_output=True, text=True)
+                    if res.returncode == 0:
+                        found_mp3 = list(job_dir.glob("*.mp3"))
+                        if found_mp3:
+                            audio_file = found_mp3[0]
+                            print(f"  [OK] Audio descargado con yt-dlp: {audio_file.name}")
 
             if audio_file and 2 in operations:
                 artifacts["files"]["audio"] = str(audio_file)
 
-        # 3. Transcripción de audio (subtítulos nativos o whisper)
+        # 3. Transcripción de audio (subtítulos nativos o whisper) mediante transcription module
         transcript_text = ""
         if 3 in operations or 4 in operations:
             print("[3/5] Obteniendo transcripción de audio...")
-            # Prioridad 1: Si es archivo local, comprobar si existe subtítulo en la misma carpeta o adyacente
+            # Prioridad 1: Subtítulos locales mediante transcripción modular
             if is_local and video_file:
-                for ext in [".srt", ".vtt", ".sub"]:
-                    sub_candidate = video_file.with_suffix(ext)
-                    if sub_candidate.exists():
-                        transcript_text = sub_candidate.read_text(encoding="utf-8", errors="ignore")
-                        print(f"  [OK] Subtítulo adyacente detectado: {sub_candidate.name}")
-                        break
+                try:
+                    local_subs = extract_local_captions(video_file)
+                    if local_subs:
+                        transcript_text = "\n".join(s.get("text", "") for s in local_subs if s.get("text"))
+                        print(f"  [OK] Subtítulo detectado con módulo transcription: {len(local_subs)} segmentos")
+                except Exception as e:
+                    logger.debug("extract_local_captions fallback: %s", e)
+
+                if not transcript_text:
+                    for ext in [".srt", ".vtt", ".sub"]:
+                        sub_candidate = video_file.with_suffix(ext)
+                        if sub_candidate.exists():
+                            transcript_text = sub_candidate.read_text(encoding="utf-8", errors="ignore")
+                            print(f"  [OK] Subtítulo adyacente detectado: {sub_candidate.name}")
+                            break
 
             # Prioridad 1b: Subtítulos oficiales de plataforma si es remoto
             if not transcript_text and not is_local and target.startswith("http"):
-                sub_tmpl = str(job_dir / "subtitles_%(id)s")
-                cmd = [
-                    "yt-dlp", "--skip-download", "--write-subs", "--write-auto-subs",
-                    "--sub-lang", "es,en", "--sub-format", "srt/vtt",
-                    "--no-playlist",
-                    "-o", sub_tmpl, target,
-                ]
-                subprocess.run(cmd, capture_output=True, text=True)
-                subs = list(job_dir.glob("*.srt")) + list(job_dir.glob("*.vtt"))
-                if subs:
-                    sub_file = subs[0]
-                    transcript_text = sub_file.read_text(encoding="utf-8", errors="ignore")
-                    print(f"  [OK] Transcripción extraída desde subtítulos oficiales: {sub_file.name}")
+                try:
+                    platform_subs = extract_captions_from_platform(target)
+                    if platform_subs:
+                        transcript_text = "\n".join(s.get("text", "") for s in platform_subs if s.get("text"))
+                        print("  [OK] Subtítulos oficiales obtenidos vía módulo transcription.")
+                except Exception as e:
+                    logger.debug("extract_captions_from_platform fallback: %s", e)
 
-            # Prioridad 2: Whisper local si está disponible y no hubo subtítulos
+                if not transcript_text:
+                    sub_tmpl = str(job_dir / "subtitles_%(id)s")
+                    cmd = [
+                        "yt-dlp", "--skip-download", "--write-subs", "--write-auto-subs",
+                        "--sub-lang", "es,en", "--sub-format", "srt/vtt",
+                        "--no-playlist",
+                        "-o", sub_tmpl, target,
+                    ]
+                    subprocess.run(cmd, capture_output=True, text=True)
+                    subs = list(job_dir.glob("*.srt")) + list(job_dir.glob("*.vtt"))
+                    if subs:
+                        sub_file = subs[0]
+                        transcript_text = sub_file.read_text(encoding="utf-8", errors="ignore")
+                        print(f"  [OK] Transcripción extraída desde subtítulos oficiales: {sub_file.name}")
+
+            # Prioridad 2: Whisper local mediante transcripción modular
             if not transcript_text and audio_file and audio_file.exists():
                 try:
-                    import whisper  # type: ignore
-                    print("  Transcribiendo con modelo local Whisper...")
-                    model = whisper.load_model("tiny")
-                    res = model.transcribe(str(audio_file))
-                    transcript_text = res.get("text", "")
-                    print("  [OK] Transcripción completada con Whisper local.")
-                except (ImportError, Exception) as e:
-                    logger.debug("Whisper fallback no disponible: %s", e)
+                    whisper_res = transcribe_with_whisper(audio_file)
+                    if whisper_res and hasattr(whisper_res, "text") and whisper_res.text:
+                        transcript_text = whisper_res.text
+                        print("  [OK] Transcripción completada con módulo Whisper.")
+                    elif isinstance(whisper_res, dict) and whisper_res.get("text"):
+                        transcript_text = whisper_res["text"]
+                        print("  [OK] Transcripción completada con módulo Whisper.")
+                except Exception as e:
+                    logger.debug("transcribe_with_whisper fallback: %s", e)
 
             if transcript_text:
                 transcript_path = job_dir / "transcript.md"
@@ -257,35 +316,56 @@ def check_and_extract(
                 artifacts["summary"] = clean_text[:300]
                 print("  [OK] Contexto de audio generado.")
 
-        # 5. Contexto visual (diagramas, flujos, esquemas con OCR)
+        # 5. Contexto visual (diagramas, flujos, esquemas con OCR) mediante visual y ocr modules
         if 5 in operations and video_file and video_file.exists():
             print("[5/5] Extrayendo contexto visual (keyframes y diagramas)...")
             frames_dir = job_dir / "frames"
             frames_dir.mkdir(parents=True, exist_ok=True)
-            cmd = [
-                "ffmpeg", "-y", "-i", str(video_file),
-                "-vf", "fps=1/5,scale=1280:-1",
-                "-q:v", "2",
-                str(frames_dir / "frame_%04d.jpg"),
-            ]
-            subprocess.run(cmd, capture_output=True, text=True)
-            frames = sorted(frames_dir.glob("*.jpg"))
+
+            try:
+                scenes = detect_scenes(video_file)
+                extract_keyframes(video_file, scenes, frames_dir)
+            except Exception as e:
+                logger.debug("Modular keyframe extraction fallback: %s", e)
+
+            frames = sorted(frames_dir.glob("*.png")) + sorted(frames_dir.glob("*.jpg"))
+            if not frames:
+                cmd = [
+                    "ffmpeg", "-y", "-i", str(video_file),
+                    "-vf", "fps=1/5,scale=1280:-1",
+                    "-q:v", "2",
+                    str(frames_dir / "frame_%04d.jpg"),
+                ]
+                subprocess.run(cmd, capture_output=True, text=True)
+                frames = sorted(frames_dir.glob("*.jpg"))
+
             print(f"  [OK] {len(frames)} fotogramas clave extraídos.")
 
             ocr_text = []
-            if shutil.which("tesseract") and frames:
-                print("  Ejecutando OCR sobre fotogramas para diagramas y esquemas...")
-                for frame in frames[:12]:
-                    txt_file = frames_dir / f"{frame.stem}_ocr"
-                    subprocess.run(
-                        ["tesseract", str(frame), str(txt_file), "-l", "spa+eng"],
-                        capture_output=True,
-                    )
-                    txt_path = frames_dir / f"{frame.stem}_ocr.txt"
-                    if txt_path.exists():
-                        content = txt_path.read_text(encoding="utf-8", errors="ignore").strip()
-                        if content:
-                            ocr_text.append(f"### Fotograma {frame.name}\n{content}")
+            if frames:
+                try:
+                    ocr_results = ocr_frame_directory(frames_dir, pattern="*.*")
+                    for ocr_item in ocr_results:
+                        txt = ocr_item.get("text", "").strip()
+                        f_name = Path(ocr_item.get("frame_path", "")).name
+                        if txt:
+                            ocr_text.append(f"### Fotograma {f_name}\n{txt}")
+                except Exception as e:
+                    logger.debug("Modular OCR failed: %s", e)
+
+                if not ocr_text and shutil.which("tesseract"):
+                    print("  Ejecutando OCR sobre fotogramas para diagramas y esquemas...")
+                    for frame in frames[:12]:
+                        txt_file = frames_dir / f"{frame.stem}_ocr"
+                        subprocess.run(
+                            ["tesseract", str(frame), str(txt_file), "-l", "spa+eng"],
+                            capture_output=True,
+                        )
+                        txt_path = frames_dir / f"{frame.stem}_ocr.txt"
+                        if txt_path.exists():
+                            content = txt_path.read_text(encoding="utf-8", errors="ignore").strip()
+                            if content:
+                                ocr_text.append(f"### Fotograma {frame.name}\n{content}")
 
             vis_content = f"""# Contexto Visual: {title}
 - Fotogramas analizados: {len(frames)}
@@ -302,9 +382,10 @@ def check_and_extract(
     manifest_path = job_dir / "artifacts_manifest.json"
     manifest_path.write_text(json.dumps(artifacts, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    # Registrar el trabajo en JobManager si es posible
+    # Registrar el trabajo en JobManager si es posible (en ~/.video-intake/jobs.db para evitar polución git)
     try:
-        resolved_db = db_path or "jobs.db"
+        resolved_db = Path(db_path) if db_path else (Path.home() / ".video-intake" / "jobs.db")
+        resolved_db.parent.mkdir(parents=True, exist_ok=True)
         job_mgr = JobManager(db_path=resolved_db)
         first_src = sources[0] if sources else {}
         job = job_mgr.create_job(
@@ -312,8 +393,8 @@ def check_and_extract(
             operations=[str(op) for op in operations],
             job_id=job_id,
         )
-        job_mgr.update_progress(job.id, 100.0, current_phase="completed")
-        job_mgr.update_status(job.id, JobState.COMPLETED)
+        job_mgr.update_progress(job.job_id, 100.0, current_phase="completed")
+        job_mgr.update_status(job.job_id, JobState.COMPLETED)
     except Exception as e:
         logger.debug("No se pudo registrar en JobManager: %s", e)
 

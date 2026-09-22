@@ -1,79 +1,51 @@
-"""
-Extract command for video-intake-knowledge.
-
-Handles video extraction and processing operations.
-"""
-
+"""Extract command for video-intake-knowledge."""
 from __future__ import annotations
 
 import argparse
-import logging
+import json
+import sys
+from pathlib import Path
 
-from video_intake_core.acquisition import detect_video_sources
-from video_intake_core.jobs import create_job, start_job
-
-logger = logging.getLogger(__name__)
+from video_intake_core.cli import _detect_sources, _resolve_config
 
 
 def run_extraction(args: argparse.Namespace) -> int:
-    """Execute the extract command."""
-    url = args.url
-    operations = args.operations or ["transcript", "audio-context", "visual-context"]
+    """Extrae contenido de una o varias fuentes."""
+    sources_raw = [args.source] if getattr(args, "source", None) else []
+    files = getattr(args, "file", None) or []
+    sources = _detect_sources(sources_raw, files)
 
-    if not url:
-        print("Error: URL is required")
-        return 1
-
-    print(f"Processing: {url}")
-    print(f"Operations: {', '.join(operations)}")
-    print()
-
-    # Detect source type
-    sources = detect_video_sources(url)
     if not sources:
-        print(f"Error: Could not detect source type for URL: {url}")
+        print("No se detectaron fuentes procesables.", file=sys.stderr)
         return 1
 
-    source_type = sources[0]
-    print(f"Detected source: {source_type.value}")
+    from video_intake_core.orchestrator import check_and_extract, parse_extraction_choices
 
-    # Create and start job
-    source = {
-        "url": url,
-        "type": source_type.value,
-    }
-    job = create_job(source=source, operations=operations, output_dir=args.output)
+    select_raw = getattr(args, "select", "6") or "6"
+    operations = parse_extraction_choices(select_raw)
+    config = _resolve_config(args)
+    root_out = getattr(args, "output", None) or config.get("storage", {}).get("root_dir", "./artifacts")
 
-    print(f"Created job: {job.job_id}")
+    artifacts = check_and_extract(sources, operations, Path(root_out))
 
-    if not args.no_wait:
-        print("Starting extraction...")
-        start_job(job.job_id)
-        print("Extraction started. Use 'video-intake status <job_id>' to check progress.")
+    if args.json:
+        print(json.dumps(artifacts, indent=2, ensure_ascii=False))
+        return 0
 
+    print(f"\nExtracción completada. Job ID: {artifacts.get('job_id')}")
+    print(f"Directorio de artefactos: {artifacts.get('job_dir')}")
+    if artifacts.get("files"):
+        print("Archivos generados:")
+        for k, v in artifacts["files"].items():
+            print(f"  - {k}: {v}")
     return 0
 
 
+
 def extract_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
-    """Add the extract subcommand to the parser."""
-    parser = subparsers.add_parser("extract", help="Extract content from a video URL")
-    parser.add_argument("url", help="Video URL to process")
-    parser.add_argument(
-        "-o", "--output",
-        default="./artifacts",
-        help="Output directory (default: ./artifacts)",
-    )
-    parser.add_argument(
-        "--operations",
-        nargs="+",
-        choices=["transcript", "audio-context", "visual-context", "knowledge", "ocr"],
-        default=["transcript", "audio-context", "visual-context"],
-        help="Operations to perform (default: transcript audio-context visual-context)",
-    )
-    parser.add_argument(
-        "--no-wait",
-        action="store_true",
-        help="Don't wait for extraction to complete",
-    )
-    parser.set_defaults(func=run_extraction)
-    return parser
+    extract_p = subparsers.add_parser("extract", help="Extrae contenido de una fuente.")
+    extract_p.add_argument("source", help="URL o ruta del vídeo.")
+    extract_p.add_argument("--select", "-s", type=str, default="6", help="Selecciones: 1,2,3,4,5,6 o 'todo' (default: 6 = todo).")
+    extract_p.add_argument("--file", "-f", nargs="*", default=[], help="Archivo(s) local(es) adicionales.")
+    extract_p.set_defaults(func=run_extraction)
+    return extract_p

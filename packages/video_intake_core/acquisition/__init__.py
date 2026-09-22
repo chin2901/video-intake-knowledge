@@ -16,6 +16,9 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
+import urllib.parse
+import urllib.request
+from urllib.parse import parse_qs, urlparse
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -34,17 +37,19 @@ YOUTUBE_PATTERNS = [
     re.compile(r"^https?://(www\.)?youtube\.com/embed/([a-zA-Z0-9_-]+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?youtube\.com/live/([a-zA-Z0-9_-]+)", re.IGNORECASE),
     re.compile(r"^https?://m\.youtube\.com/watch\?v=([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?youtube\.com/watch\?.*[?&]v=([a-zA-Z0-9_-]+)", re.IGNORECASE),
 ]
 
 FACEBOOK_PATTERNS = [
-    re.compile(r"^https?://(www\.)?facebook\.com/watch\?v=(\d+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?facebook\.com/video\.php\?v=(\d+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?facebook\.com/reel/(\d+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?facebook\.com/share/r/([a-zA-Z0-9_-]+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?facebook\.com/share/v/([a-zA-Z0-9_-]+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?facebook\.com/([a-zA-Z0-9_.]+)/videos/(\d+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?facebook\.com/([a-zA-Z0-9_.]+)/watch/(\d+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?facebook\.com/?video/v/(\d+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?facebook\.com/watch/?\?.*v=(\d+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?facebook\.com/video\.php\?.*v=(\d+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?facebook\.com/reel/(\d+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?facebook\.com/share/r/([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?facebook\.com/share/v/([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?facebook\.com/([a-zA-Z0-9_.]+)/videos/(\d+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?facebook\.com/([a-zA-Z0-9_.]+)/watch/(\d+)", re.IGNORECASE),
+    re.compile(r"^https?://(www\.|m\.)?facebook\.com/?video/v/(\d+)", re.IGNORECASE),
+    re.compile(r"^https?://fb\.watch/([a-zA-Z0-9_-]+)", re.IGNORECASE),
 ]
 
 INSTAGRAM_PATTERNS = [
@@ -72,6 +77,48 @@ def detect_source_type(url: str) -> Optional[SourceType]:
     Returns:
         SourceType if detected, None otherwise.
     """
+    if not url:
+        return None
+
+    if url.startswith("file://"):
+        return SourceType.LOCAL_FILE
+
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        parsed = None
+
+    if parsed and parsed.scheme in ("http", "https"):
+        host = parsed.netloc.lower().split(":")[0]
+        if host.startswith("www."):
+            host = host[4:]
+        if host.startswith("m."):
+            host = host[2:]
+
+        # YouTube check
+        if host in ("youtube.com", "youtu.be"):
+            if host == "youtu.be":
+                return SourceType.YOUTUBE
+            qs = parse_qs(parsed.query)
+            if "v" in qs and qs["v"]:
+                return SourceType.YOUTUBE
+            if any(parsed.path.startswith(prefix) for prefix in ("/shorts/", "/embed/", "/live/", "/v/")):
+                return SourceType.YOUTUBE
+            if parsed.path.rstrip("/") in ("/watch", "/watch_videos"):
+                return SourceType.YOUTUBE
+
+        # Facebook check
+        if host in ("facebook.com", "fb.watch", "fb.com"):
+            return SourceType.FACEBOOK
+
+        # Instagram check
+        if host in ("instagram.com", "instagr.am"):
+            return SourceType.INSTAGRAM
+
+        # TikTok check
+        if host in ("tiktok.com", "vm.tiktok.com", "va.tiktok.com", "vt.tiktok.com"):
+            return SourceType.TIKTOK
+
     for pattern in YOUTUBE_PATTERNS:
         if pattern.match(url):
             return SourceType.YOUTUBE
@@ -96,7 +143,14 @@ def detect_source(url_or_path: str) -> Optional[Source]:
     Returns:
         Source object if detected, None otherwise.
     """
-    path = Path(url_or_path)
+    if not url_or_path:
+        return None
+
+    raw_path = url_or_path
+    if raw_path.startswith("file://"):
+        raw_path = raw_path[7:]
+
+    path = Path(raw_path)
     if path.exists() and path.is_file():
         ext = path.suffix.lower().lstrip(".")
         if ext in ("mp4", "mov", "mkv", "webm", "avi", "m4v", "mpeg", "mpg", "flv", "wmv"):
@@ -112,6 +166,15 @@ def detect_source(url_or_path: str) -> Optional[Source]:
     source_type = detect_source_type(url_or_path)
     if source_type is None:
         return None
+
+    if source_type == SourceType.LOCAL_FILE:
+        return Source(
+            source_type=SourceType.LOCAL_FILE,
+            url=raw_path,
+            title=Path(raw_path).stem,
+            platform="local",
+            raw_url=url_or_path,
+        )
 
     return Source(
         source_type=source_type,
@@ -138,76 +201,148 @@ def resolve_url(url: str, follow_redirects: bool = True) -> ResolvedURL:
     if source_type is None:
         raise ValueError(f"Unsupported source type for URL: {url}")
 
-    resolved_url = url
+    redirect_chain = [url]
+    curr_url = url
+
+    if follow_redirects and curr_url.startswith(("http://", "https://")):
+        try:
+            parsed_host = urlparse(curr_url).netloc.lower()
+            is_shortened = any(sh in parsed_host for sh in (
+                "vm.tiktok.com", "va.tiktok.com", "vt.tiktok.com",
+                "fb.watch", "youtu.be", "bit.ly", "tinyurl.com", "t.co"
+            ))
+            if is_shortened:
+                from ..security import validate_video_url
+                try:
+                    validate_video_url(curr_url)
+                except ValueError as ve:
+                    logger.warning("SSRF blocked during redirect resolution: %s", ve)
+                    return ResolvedURL(url=curr_url, canonical_id=None, source_type=source_type, normalized_url=curr_url, redirect_chain=redirect_chain)
+                
+                req = urllib.request.Request(
+                    curr_url,
+                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+                    method="HEAD",
+                )
+                with urllib.request.urlopen(req, timeout=4.0) as resp:
+                    final_url = resp.geturl()
+                    if final_url and final_url != curr_url:
+                        redirect_chain.append(final_url)
+                        curr_url = final_url
+                        resolved_type = detect_source_type(curr_url)
+                        if resolved_type:
+                            source_type = resolved_type
+        except Exception as e:
+            logger.debug("Failed redirect resolution for %s: %s", curr_url, e)
+
+    resolved_url = curr_url
     canonical_id = None
+    parsed_target = urlparse(curr_url)
+    qs = parse_qs(parsed_target.query)
 
     if source_type == SourceType.YOUTUBE:
-        for pattern in YOUTUBE_PATTERNS:
-            match = pattern.match(url)
-            if match:
-                groups = match.groups()
-                for g in groups:
-                    if g.replace("_", "").replace("-", "").isalnum():
-                        canonical_id = g
+        if "v" in qs and qs["v"] and qs["v"][0]:
+            canonical_id = qs["v"][0]
+        elif parsed_target.netloc.lower().endswith("youtu.be"):
+            path_parts = [p for p in parsed_target.path.split("/") if p]
+            if path_parts:
+                canonical_id = path_parts[0]
+        elif any(parsed_target.path.startswith(p) for p in ("/shorts/", "/embed/", "/live/", "/v/")):
+            path_parts = [p for p in parsed_target.path.split("/") if p]
+            if len(path_parts) >= 2:
+                canonical_id = path_parts[1]
+
+        if not canonical_id:
+            for pattern in YOUTUBE_PATTERNS:
+                match = pattern.match(curr_url)
+                if match:
+                    for g in match.groups():
+                        if g and g.replace("_", "").replace("-", "").isalnum():
+                            canonical_id = g
+                            break
+                    if canonical_id:
                         break
-                if canonical_id:
-                    resolved_url = f"https://www.youtube.com/watch?v={canonical_id}"
-                    break
+
+        if canonical_id:
+            resolved_url = f"https://www.youtube.com/watch?v={canonical_id}"
 
     elif source_type == SourceType.FACEBOOK:
-        for pattern in FACEBOOK_PATTERNS:
-            match = pattern.match(url)
-            if match:
-                groups = match.groups()
-                for g in groups:
-                    if g.isdigit() and len(g) >= 6:
-                        canonical_id = g
-                        resolved_url = f"https://www.facebook.com/video.php?v={canonical_id}"
+        if "v" in qs and qs["v"] and qs["v"][0]:
+            canonical_id = qs["v"][0]
+            resolved_url = f"https://www.facebook.com/video.php?v={canonical_id}"
+        elif "fb.watch" in parsed_target.netloc.lower():
+            path_parts = [p for p in parsed_target.path.split("/") if p]
+            if path_parts:
+                canonical_id = path_parts[0]
+                resolved_url = f"https://www.facebook.com/watch/?v={canonical_id}"
+
+        if not canonical_id:
+            for pattern in FACEBOOK_PATTERNS:
+                match = pattern.match(curr_url)
+                if match:
+                    for g in match.groups():
+                        if g and g.isdigit() and len(g) >= 6:
+                            canonical_id = g
+                            resolved_url = f"https://www.facebook.com/video.php?v={canonical_id}"
+                            break
+                        if g and len(g) >= 6 and re.match(r"^[a-zA-Z0-9_-]+$", g):
+                            canonical_id = g
+                            resolved_url = f"https://www.facebook.com/share/v/{canonical_id}/"
+                            break
+                    if canonical_id:
                         break
-                    # Handle share/v/ pattern with alphanumeric ID
-                    if len(g) >= 6 and re.match(r"^[a-zA-Z0-9_-]+$", g):
-                        canonical_id = g
-                        resolved_url = f"https://www.facebook.com/share/v/{canonical_id}/"
-                        break
-                if canonical_id:
-                    break
 
     elif source_type == SourceType.INSTAGRAM:
-        for pattern in INSTAGRAM_PATTERNS:
-            match = pattern.match(url)
-            if match:
-                groups = match.groups()
-                for g in groups:
-                    if len(g) >= 8 and re.match(r"^[a-zA-Z0-9_-]+$", g):
-                        canonical_id = g
-                        resolved_url = f"https://www.instagram.com/p/{canonical_id}/"
-                        break
-                if canonical_id:
+        path_parts = [p for p in parsed_target.path.split("/") if p]
+        for idx_p, part in enumerate(path_parts):
+            if part in ("p", "reel", "tv", "reels") and idx_p + 1 < len(path_parts):
+                candidate = path_parts[idx_p + 1]
+                if len(candidate) >= 5 and re.match(r"^[a-zA-Z0-9_-]+$", candidate):
+                    canonical_id = candidate
+                    resolved_url = f"https://www.instagram.com/p/{canonical_id}/"
                     break
+
+        if not canonical_id:
+            for pattern in INSTAGRAM_PATTERNS:
+                match = pattern.match(curr_url)
+                if match:
+                    for g in match.groups():
+                        if g and len(g) >= 8 and re.match(r"^[a-zA-Z0-9_-]+$", g):
+                            canonical_id = g
+                            resolved_url = f"https://www.instagram.com/p/{canonical_id}/"
+                            break
+                    if canonical_id:
+                        break
 
     elif source_type == SourceType.TIKTOK:
-        for pattern in TIKTOK_PATTERNS:
-            match = pattern.match(url)
-            if match:
-                groups = match.groups()
-                for g in groups:
-                    if g.isdigit():
-                        canonical_id = g
-                        resolved_url = f"https://www.tiktok.com/@username/video/{canonical_id}"
+        video_match = re.search(r"/video/(\d+)", parsed_target.path)
+        if video_match:
+            canonical_id = video_match.group(1)
+            resolved_url = f"https://www.tiktok.com/@video/video/{canonical_id}"
+
+        if not canonical_id:
+            for pattern in TIKTOK_PATTERNS:
+                match = pattern.match(curr_url)
+                if match:
+                    for g in match.groups():
+                        if g and g.isdigit():
+                            canonical_id = g
+                            resolved_url = f"https://www.tiktok.com/@username/video/{canonical_id}"
+                            break
+                    if canonical_id:
                         break
-                if canonical_id:
-                    break
 
     if canonical_id is None:
-        canonical_id = hashlib.sha256(url.encode()).hexdigest()[:16]
+        canonical_id = hashlib.sha256(curr_url.encode()).hexdigest()[:16]
 
     return ResolvedURL(
         original_url=url,
         resolved_url=resolved_url,
         canonical_id=canonical_id,
         source_type=source_type,
-        redirect_chain=[url] if follow_redirects else [],
+        redirect_chain=redirect_chain if follow_redirects else [],
     )
+
 
 
 def extract_video_id(url: str) -> Optional[str]:
@@ -237,16 +372,17 @@ def is_video_url(text: str) -> bool:
     """
     url_pattern = re.compile(
         r"https?://"
-        r"(?:www\.)?"
+        r"(?:www\.|m\.)?"
         r"(?:"
-        r"youtube\.com/(?:watch\?v=|shorts/|embed/|live/)|"
+        r"youtube\.com/(?:watch\?|shorts/|embed/|live/)|"
         r"youtu\.be/|"
-        r"facebook\.com/(?:watch\.php\?v=|video\.php\?v=|reel/|share/r/|/videos/|/watch/)|"
+        r"facebook\.com/(?:watch/?\?|video\.php\?|reel/|share/r/|share/v/|/videos/|/watch/)|"
+        r"fb\.watch/|"
         r"instagram\.com/(?:reel/|p/|tv/|reels/)|"
         r"tiktok\.com/(?:@[^/]+/video/|t/)|"
         r"(?:vm|va|vt)\.tiktok\.com/"
         r")"
-        r"[a-zA-Z0-9_\-\/?=&#]+",
+        r"[a-zA-Z0-9_\-\/?=&#.%+]+",
         re.IGNORECASE,
     )
     return bool(url_pattern.search(text))
@@ -263,16 +399,17 @@ def extract_all_video_urls(text: str) -> list[str]:
     """
     url_pattern = re.compile(
         r"https?://"
-        r"(?:www\.)?"
+        r"(?:www\.|m\.)?"
         r"(?:"
-        r"youtube\.com/(?:watch\?v=|shorts/|embed/|live/)|"
+        r"youtube\.com/(?:watch\?|shorts/|embed/|live/)|"
         r"youtu\.be/|"
-        r"facebook\.com/(?:watch\.php\?v=|video\.php\?v=|reel/|share/r/|share/v/|/videos/|/watch/)|"
+        r"facebook\.com/(?:watch/?\?|video\.php\?|reel/|share/r/|share/v/|/videos/|/watch/)|"
+        r"fb\.watch/|"
         r"instagram\.com/(?:reel/|p/|tv/|reels/)|"
         r"tiktok\.com/(?:@[^/]+/video/|t/)|"
         r"(?:vm|va|vt)\.tiktok\.com/"
         r")"
-        r"[a-zA-Z0-9_\-\/?=&#]+",
+        r"[a-zA-Z0-9_\-\/?=&#.%+]+",
         re.IGNORECASE,
     )
     matches = url_pattern.findall(text)

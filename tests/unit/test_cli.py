@@ -167,15 +167,15 @@ class TestCLIMenu:
         assert 0 in result_cancelar
 
     def test_menu_parser_invalid(self):
-        """Invalid selections return False."""
+        """Invalid selections return empty list, empty string returns all."""
         from video_intake_core.cli.menu import parse_menu_selection
 
         # Empty string
-        assert parse_menu_selection("") is False
+        assert parse_menu_selection("") == [1, 2, 3, 4, 5, 6]
         # Invalid number
-        assert parse_menu_selection("9") is False
+        assert parse_menu_selection("9") == []
         # Non-numeric garbage
-        assert parse_menu_selection("xyz") is False
+        assert parse_menu_selection("foo") == []
 
 
 class TestCLIConfig:

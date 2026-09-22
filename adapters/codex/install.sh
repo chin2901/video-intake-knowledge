@@ -1,191 +1,50 @@
+#!/usr/bin/env bash
 # =============================================================================
-# install.sh — Instalador del plugin Hermes para video-intake-knowledge
-# =============================================================================
-#
-# Uso: bash install.sh [--prefix ~/.hermes] [--dry-run]
-#
-# Instala el plugin en la configuración de Hermes Agent para que las
-# herramientas de video-intake-knowledge estén disponibles desde el asistente.
-#
+# install.sh — Instalador del adaptador Codex para video-intake-knowledge
 # =============================================================================
 
-set -e
+set -euo pipefail
 
-PREFIX="${PREFIX:-$HOME/.hermes}"
-DRY_RUN="${DRY_RUN:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# =============================================================================
-# Resolver la ubicación de la instalación del plugin
-# =============================================================================
+PREFIX="${PREFIX:-$HOME/.codex}"
+TARGET_DIR="$PREFIX/skills/video-intake"
 
-RESOLVED_PREFIX="$PREFIX"
+echo "====================================================================="
+echo " Instalador de video-intake-knowledge para Codex"
+echo "====================================================================="
+echo "Destino: $TARGET_DIR"
+echo ""
 
-if [[ -f "$PREFIX/plugin-data/video-intake-knowledge/adapters/hermes/install.sh" ]]; then
-    # Desde un clon existente de video-intake-knowledge
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-    PLUGIN_DIR="$PROJECT_DIR/adapters/hermes"
-elif [[ -f "$PREFIX/plugins/video-intake-knowledge/adapters/hermes/install.sh" ]]; then
-    # Desde un clon dentro de plugins de Hermes
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-    PLUGIN_DIR="$PROJECT_DIR/adapters/hermes"
+# 1. Verificar dependencias
+echo "[1/3] Verificando dependencias del sistema..."
+for cmd in ffmpeg tesseract; do
+    if command -v "$cmd" &>/dev/null; then
+        echo "  [OK] $cmd detectado"
+    else
+        echo "  [AVISO] $cmd no encontrado. Se recomienda instalarlo para funcionalidad completa."
+    fi
+done
+
+# 2. Verificar comando video-intake
+echo "[2/3] Verificando CLI video-intake..."
+if command -v video-intake &>/dev/null; then
+    echo "  [OK] Comando video-intake disponible en PATH"
 else
-    # Instalación directa: usar el directorio de scripts
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    PLUGIN_DIR="$SCRIPT_DIR"
+    echo "  [AVISO] video-intake no encontrado en PATH. Ejecuta './install.sh' en la raíz del repositorio."
 fi
 
-echo "Prefix: $RESOLVED_PREFIX"
-echo "Plugin dir: $PLUGIN_DIR"
-echo "Dry run: ${DRY_RUN:+yes}"
+# 3. Instalar skill en ~/.codex/skills/video-intake
+echo "[3/3] Instalando skill para Codex..."
+mkdir -p "$TARGET_DIR"
 
-# =============================================================================
-# Verificar dependencias
-# =============================================================================
-
-check_dependency() {
-    local cmd="$1"
-    local pkg="${2:-$cmd}"
-    if ! command -v "$cmd" &>/dev/null; then
-        echo "⚠ Dependencia no encontrada: $cmd (instalar: $pkg)"
-        return 1
-    fi
-    echo "✓ $cmd encontrado"
-    return 0
-}
-
-missing=0
-
-# Verificar herramientas del sistema
-if ! command -v python3 &>/dev/null; then
-    echo "✗ python3 no encontrado — no se puede continuar"
-    missing=1
+if [[ -f "$SCRIPT_DIR/SKILL.md" ]]; then
+    ln -sf "$SCRIPT_DIR/SKILL.md" "$TARGET_DIR/SKILL.md"
+else
+    ln -sf "$ROOT_DIR/SKILL.md" "$TARGET_DIR/SKILL.md"
 fi
 
-if ! command -v uv &>/dev/null; then
-    echo "⚠ uv no encontrado — se recomienda instalar uv para gestión de dependencias"
-fi
-
-if [[ $missing -eq 1 ]]; then
-    echo "✗ Dependencias faltantes — instalarlas e intentar de nuevo."
-    exit 1
-fi
-
-# =============================================================================
-# Instalar dependencias de Python si es necesario
-# =============================================================================
-
-install_python_deps() {
-    echo ""
-    echo "=== Instalando dependencias de Python ==="
-
-    if [[ -f "$PLUGIN_DIR/requirements.txt" ]]; then
-        # Usar requirements.txt si existe
-        python3 -m pip install -r "$PLUGIN_DIR/requirements.txt" --quiet
-    elif [[ -f "$PLUGIN_DIR/pyproject.toml" ]]; then
-        # Usar pyproject.toml con uv si está disponible
-        if command -v uv &>/dev/null; then
-            uv pip install -e "$PLUGIN_DIR" --quiet
-        else
-            python3 -m pip install -e "$PLUGIN_DIR" --quiet
-        fi
-    else
-        echo "⚠ No se encontró pyproject.toml ni requirements.txt — instalar manualmente"
-        echo "  pip install video-intake-knowledge"
-    fi
-
-    echo "✓ Dependencias instaladas"
-}
-
-# =============================================================================
-# Configurar plugin en Hermes
-# =============================================================================
-
-configure_plugin() {
-    echo ""
-    echo "=== Configurando plugin en Hermes ==="
-
-    # Crear directorio de plugins si no existe
-    mkdir -p "$PREFIX/plugin-data"
-
-    # Copiar archivos del plugin
-    if [[ -d "$PLUGIN_DIR" ]]; then
-        cp -r "$PLUGIN_DIR" "$PREFIX/plugin-data/video-intake-knowledge-adapters" 2>/dev/null || true
-        echo "✓ Archivos del plugin copiados"
-    fi
-
-    # Registrar plugin si Hermes lo soporta (hermos de config)
-    if [[ -f "$PREFIX/plugin-data/registry.yaml" ]]; then
-        # Agregar entrada al registry si no existe
-        if ! grep -q "video-intake-knowledge" "$PREFIX/plugin-data/registry.yaml" 2>/dev/null; then
-            echo "" >> "$PREFIX/plugin-data/registry.yaml"
-            echo "# video-intake-knowledge plugin" >> "$PREFIX/plugin-data/registry.yaml"
-            echo "- name: video-intake-knowledge" >> "$PREFIX/plugin-data/registry.yaml"
-            echo "  version: 1.0.0" >> "$PREFIX/plugin-data/registry.yaml"
-            echo "  enabled: true" >> "$PREFIX/plugin-data/registry.yaml"
-            echo "✓ Plugin registrado en registry.yaml"
-        else
-            echo "✓ Plugin ya registrado"
-        fi
-    else
-        echo "⚠ No se encontró registry.yaml — plugin disponible manualmente"
-    fi
-}
-
-# =============================================================================
-# Verificar instalación
-# =============================================================================
-
-verify_installation() {
-    echo ""
-    echo "=== Verificando instalación ==="
-
-    if command -v vitk &>/dev/null; then
-        echo "✓ Comando 'vitk' disponible"
-        vitk --version 2>/dev/null || vitk --help 2>/dev/null | head -5
-    else
-        echo "⚠ Comando 'vitk' no disponible — agregar a PATH o usar 'python3 -m video_intake_core.cli'"
-    fi
-
-    if python3 -c "import video_intake_core" 2>/dev/null; then
-        echo "✓ Paquete Python importable"
-    else
-        echo "⚠ Paquete Python no importable — verificiar instalación"
-    fi
-}
-
-# =============================================================================
-# Main
-# =============================================================================
-
-main() {
-    echo "╔═══════════════════════════════════════════════════════════╗"
-    echo "║  Instalación de plugin Hermes — video-intake-knowledge   ║"
-    echo "╚═══════════════════════════════════════════════════════════╝"
-    echo ""
-
-    install_python_deps
-    configure_plugin
-    verify_installation
-
-    echo ""
-    echo "╔═══════════════════════════════════════════════════════════╗"
-    echo "║  Instalación completada                                    ║"
-    echo "╚═══════════════════════════════════════════════════════════╝"
-    echo ""
-    echo "Para usar el plugin:"
-    echo "  1. Reinicia Hermes Agent si está ejecutándose"
-    echo "  2. Las herramientas de video-intake-knowledge deberían"
-    echo "     estar disponibles como tools del asistente"
-    echo ""
-    echo "Comandos disponibles:"
-    echo "  vitk doctor              — Diagnóstico del entorno"
-    echo "  vitk extract <url>       — Extracción interactiva de vídeo"
-    echo "  vitk batch <archivo>     — Procesamiento por lotes"
-    echo "  vitk status              — Estado de trabajos"
-    echo "  vitk artifacts           — Listado de artefactos"
-    echo "  vitk config validate     — Validar configuración"
-}
-
-main "$@"
+echo "  [OK] Skill instalada y enlazada en $TARGET_DIR/SKILL.md"
+echo ""
+echo "Instalación completada con éxito."

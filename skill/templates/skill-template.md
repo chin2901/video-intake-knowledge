@@ -13,15 +13,16 @@
 
 # Un skill para video-intake-knowledge debe incluir:
 
-# 1. SKILL.md — Instrucciones para el asistente (ver skill/SKILL.md)
+# 1. SKILL.md — Instrucciones para el asistente (ver SKILL.md)
 # 2. Comandos disponibles:
-#    - vitk doctor       — Diagnóstico del entorno
-#    - vitk extract      — Extracción interactiva de vídeo
-#    - vitk batch        — Procesamiento por lotes
-#    - vitk status       — Estado de trabajos en ejecución
-#    - vitk artifacts    — Listing de artefactos generados
-#    - vitk export       — Exportar resultados
-#    - vitk knowledge    — Gestión de conocimiento extraído
+#    - video-intake doctor       — Diagnóstico del entorno
+#    - video-intake extract      — Extracción interactiva de vídeo
+#    - video-intake batch        — Procesamiento por lotes
+#    - video-intake status       — Estado de trabajos en ejecución
+#    - video-intake artifacts    — Listing de artefactos generados
+#    - video-intake export       — Exportar resultados
+#    - video-intake proposals    — Generación de activos y scaffolding
+#    - video-intake memory       — Gestión de conocimiento extraído
 # 3. Configuración: ver config/default.yaml
 
 # =============================================================================
@@ -103,10 +104,10 @@
 
 # 2. Asegurar que los comandos están en PATH:
 #    export PATH="$HOME/.local/bin:$PATH"
-#    (o la ruta donde se instaló vitk)
+#    (o la ruta donde se instaló video-intake)
 
 # 3. Usar los comandos desde el agente:
-#    vitk extract <url> --operations 6
+#    video-intake extract <url> --select 6
 
 # 4. (Opcional) Registrar las tools en el entorno del agente
 #    siguiendo los ejemplos de los adaptadores.

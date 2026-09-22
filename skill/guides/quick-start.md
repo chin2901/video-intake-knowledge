@@ -44,7 +44,7 @@ Esto instalará ffmpeg, tesseract-ocr y otras herramientas necesarias.
 Ejecuta el comando doctor para verificar que todo está configurado:
 
 ```bash
-vitk doctor
+video-intake doctor
 ```
 
 Deberías ver una salida similar a:
@@ -67,7 +67,7 @@ Estado del entorno: HEALTHY
 El caso de uso más simple:extraer todo el conocimiento de un vídeo.
 
 ```bash
-vitk extract https://www.youtube.com/watch?v=dQw4w9WgXcQ
+video-intake extract https://www.youtube.com/watch?v=dQw4w9WgXcQ
 ```
 
 El sistema iniciará un menú interactivo:
@@ -131,15 +131,15 @@ data/jobs/<job_id>/
 Para ver los artefactos generados:
 
 ```bash
-vitk artifacts
+video-intake artifacts
 ```
 
 Para exportar los resultados en un formato específico:
 
 ```bash
-vitk export <job_id> --format mdx
-vitk export <job_id> --format markdown
-vitk export <job_id> --format json
+video-intake export <job_id> --format mdx
+video-intake export <job_id> --format markdown
+video-intake export <job_id> --format json
 ```
 
 ---
@@ -159,7 +159,7 @@ https://www.tiktok.com/@user/video/123456789
 Luego ejecuta:
 
 ```bash
-vitk batch urls.txt
+video-intake batch urls.txt
 ```
 
 El sistema preguntará si quieres aplicar la misma selección a todos
@@ -172,7 +172,7 @@ los vídeos o configurar cada uno individualmente.
 Puedes procesar archivos de vídeo locales directamente:
 
 ```bash
-vitk extract /ruta/a/mi-video.mp4
+video-intake extract /ruta/a/mi-video.mp4
 ```
 
 Se soportan los formatos: MP4, MOV, MKV, WebM, AVI, M4V.
@@ -198,7 +198,7 @@ Ver `config/default.yaml` para la configuración completa y
 Para usar una configuración específica:
 
 ```bash
-vitk extract <url> --config config/low-cost.yaml
+video-intake extract <url> --config config/low-cost.yaml
 ```
 
 ---

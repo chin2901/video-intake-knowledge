@@ -1,82 +1,54 @@
-"""
-Status command for video-intake-knowledge.
-
-Shows job status and progress.
-"""
-
+"""Status command for video-intake-knowledge."""
 from __future__ import annotations
 
 import argparse
-import logging
+import json
+import sys
+from pathlib import Path
 
-from video_intake_core.jobs import JobStatus, get_job, list_jobs
-
-logger = logging.getLogger(__name__)
+from video_intake_core.jobs import get_job
 
 
 def run_status(args: argparse.Namespace) -> int:
-    """Execute the status command."""
-    if args.job_id:
-        job = get_job(args.job_id)
-        if job is None:
-            print(f"Job not found: {args.job_id}")
-            return 1
+    """Muestra el estado de un job."""
 
-        print(f"Job: {job.job_id}")
-        print(f"  Status: {job.status.value}")
-        print(f"  Created: {job.created_at_utc}")
-        if job.started_at_utc:
-            print(f"  Started: {job.started_at_utc}")
-        if job.completed_at_utc:
-            print(f"  Completed: {job.completed_at_utc}")
-        print(f"  Operations: {', '.join(job.operations)}")
+    job = get_job(args.job_id)
+    if not job:
+        manifest_file = Path("artifacts") / args.job_id / "artifacts_manifest.json"
+        if manifest_file.exists():
+            data = json.loads(manifest_file.read_text(encoding="utf-8"))
+            if args.json:
+                print(json.dumps(data, indent=2, ensure_ascii=False))
+            else:
+                print(f"Job: {data.get('job_id', args.job_id)}")
+                print("Estado: completed (desde artefactos locales)")
+                srcs = data.get("sources", [])
+                if srcs:
+                    print(f"Fuente: {srcs[0].get('resolved_url')}")
+                    print(f"Título: {srcs[0].get('title', 'N/A')}")
+                print(f"Creado: {data.get('created_at', 'N/A')}")
+            return 0
+        print(f"Job no encontrado: {args.job_id}", file=sys.stderr)
+        return 1
 
-        if job.progress:
-            prog = job.progress
-            print(f"  Progress: {prog.get('percent', 0)}% ({prog.get('completed_operations', 0)}/{prog.get('total_operations', 0)})")
-            if prog.get("current_operation"):
-                print(f"  Current: {prog['current_operation']}")
-            if prog.get("message"):
-                print(f"  Message: {prog['message']}")
-
-        if job.error_message:
-            print(f"  Error: {job.error_message}")
-        if job.result_path:
-            print(f"  Result: {job.result_path}")
-
-        return 0
-
-    # List jobs
-    jobs = list_jobs(status=args.status, limit=args.limit)
-    if not jobs:
-        print("No jobs found")
-        return 0
-
-    print(f"Jobs ({len(jobs)} found):")
-    print()
-    for job in jobs:
-        status_str = job.status.value
-        if job.progress:
-            status_str += f" [{job.progress.get('percent', 0)}%]"
-        print(f"  {job.job_id} - {status_str} - {', '.join(job.operations)}")
-
+    if args.json:
+        print(json.dumps(job.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        status_val = job.status.value if hasattr(job.status, "value") else str(job.status)
+        print(f"Job: {job.id}")
+        print(f"Estado: {status_val}")
+        print(f"Título: {job.source_title}")
+        print(f"URL: {job.source_url}")
+        print(f"Tipo: {job.source_type}")
+        print(f"Creado: {job.created_at}")
+        if job.result_metadata:
+            print(f"Resultado: {job.result_metadata}")
     return 0
 
 
+
 def status_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
-    """Add the status subcommand to the parser."""
-    parser = subparsers.add_parser("status", help="Show job status")
-    parser.add_argument("job_id", nargs="?", help="Job ID to show details for")
-    parser.add_argument(
-        "--status",
-        choices=[s.value for s in JobStatus],
-        help="Filter by status",
-    )
-    parser.add_argument(
-        "--limit",
-        type=int,
-        default=20,
-        help="Maximum number of jobs to show (default: 20)",
-    )
-    parser.set_defaults(func=run_status)
-    return parser
+    status_p = subparsers.add_parser("status", help="Muestra el estado de un job.")
+    status_p.add_argument("job_id", help="ID del job.")
+    status_p.set_defaults(func=run_status)
+    return status_p

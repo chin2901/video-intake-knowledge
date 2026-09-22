@@ -1,60 +1,77 @@
+---
+name: video-intake-knowledge
+description: AGY tool and skill for video acquisition, multi-layered extraction, and knowledge routing.
+version: 1.0.0
+---
+
 [[tool:video-intake-knowledge]]
 
-# Herramienta: video-intake-knowledge (agrégala si aún no está)
+# Herramienta y Skill: video-intake-knowledge para AGY
 
-Detectar, adquirir, analizar y convertir videos en conocimiento utilizable para agentes de IA.
+Detectar, adquirir, analizar y convertir vídeos (YouTube, Facebook, Instagram, TikTok y archivos locales) en conocimiento estructurado y activos reutilizables para agentes de IA.
 
-Esta es la misma capacidad que el Skill descrito abajo,
-pero formulada como herramienta para entornos que prefieren
-registrar tools antes que skills.
+## 1. Comandos Disponibles
 
-## Implementación
+- `video-intake doctor` — Diagnóstico del entorno y herramientas nativas
+- `video-intake inspect <url_o_archivo>` — Inspección instantánea (<300ms) de metadatos de vídeo
+- `video-intake extract <url_o_archivo> --select <capas>` — Extracción directa por capas
+- `video-intake interactive <url_o_archivo>` — Orquestador conversacional interactivo en 2 fases
+- `video-intake batch <archivo_de_urls>` — Procesamiento concurrente por lotes
+- `video-intake status <job_id>` — Estado de trabajos en ejecución
+- `video-intake artifacts <job_id>` — Listado de artefactos generados
+- `video-intake export <job_id> [--format markdown|json|html]` — Exportar resultados
+- `video-intake proposals --scaffold {skill,tool,agent,all}` — Scaffolding dinámico de activos
+- `video-intake memory {list,search,get,export,import}` — Gestión de memoria aislada
 
-En cualquier entorno compatible con Agent Skills / SKILL.md:
+---
 
-1. Instalar video-intake-knowledge (ver skill/SKILL.md)
-2. Registrar las herramientas disponibles según sea soportado por el host:
-   - `vitk doctor` - Diagnóstico del entorno
-   - `vitk inspect <url_o_archivo>` - Inspección de metadatos de vídeo
-   - `vitk extract <url_o_archivo>` - Extracción interactiva
-   - `vitk batch <archivo_de_urls>` - Procesamiento por lotes
-   - `vitk status` - Estado de trabajos en ejecución
-   - `vitk artifacts` - Listing de artefactos generados
-   - `vitk export [--format mdx|json|markdown] <job_id>` - Exportar resultados
-   - `vitk knowledge` - Gestión de conocimiento extraído
-3. Usar las herramientas según las necesidades del usuario
+## 2. Protocolo Operativo en 2 Fases
 
-## Detección automática en conversaciones
+Cuando el usuario proporcione un enlace o archivo de vídeo, el agente DEBE ejecutar el flujo conversacional en 2 fases:
 
-Cuando un usuario envía uno o más vídeos o enlaces de vídeo, ofrecer
-automáticamente las opciones de extracción descritas en el skill.
+### FASE 1: Menú interactivo de capas de extracción
+Preguntar qué capas procesar del material detectado:
+```text
+¿Qué necesitas extraer del vídeo?
+  [1] Descarga del vídeo de manera local
+  [2] Descarga del audio del vídeo de manera local
+  [3] Transcripción de audio (con timestamps)
+  [4] Contexto basado en audio (resumen, puntos clave y tópicos)
+  [5] Contexto extraído de manera visual (fotogramas y OCR para diagramas y esquemas)
+  [6] Todo lo anterior (1, 2, 3, 4 y 5)
+  [0] Cancelar
+```
 
-## Ejemplo de uso
+**Ejecución:**
+```bash
+video-intake extract "<URL_O_ARCHIVO>" --select <SELECCION>
+```
 
-User: "Revisa este video de YouTube: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+---
 
-Assistant: Detecta automáticamente el vídeo y ofrece extracción.
+### FASE 2: Enrutamiento inteligente de conocimiento
+Una vez completada la extracción en `artifacts/<job-id>/`:
+```text
+Extracción completada con éxito. ¿Qué deseas hacer con el conocimiento extraído?
+  [1] Aplicarlo como mensaje a la sesión en curso (mostrar en el chat)
+  [2] Añadirlo al contexto de la sesión en curso (como memoria de trabajo compacta)
+  [3] Añadirlo a un banco de memoria existente en ~/.video-intake/
+  [4] Crear un nuevo banco de memoria dedicado en ~/.video-intake/
+  [5] Idear y construir herramientas/skills/agentes mediante análisis inteligente y scaffolding automático
+  [6] Conservar únicamente los artefactos locales en disco
+```
 
-Para cada vídeo detectado, ofrecer el menú de extracción:
-- [1] Descargar vídeo localmente
-- [2] Descargar audio localmente  
-- [3] Transcripción de audio con timestamps
-- [4] Extraer contexto basado en audio
-- [5] Extraer contexto visual
-- [6] Todo lo anterior
-- [0] Cancelar
+Si el usuario elige **[5]**, ejecutar:
+```bash
+video-intake proposals --scaffold {skill,tool,agent,all} --output ./generated
+```
+- **SKILL:** Genera `SKILL.md` con checklist y procedimiento derivado del vídeo.
+- **TOOL:** Genera `tool.py` ejecutable con CLI (`argparse`) y lógica extraída.
+- **AGENTE:** Genera `agent.yaml` y prompt de sistema en `prompts/system.md`.
 
-Selecciones aceptadas: "1", "1,3,5", "1 3 5", "todo", "todos", "6", "cancelar", "0"
+---
 
-## Configuración por entorno
-
-Ver `config/default.yaml` para configuración por defecto y
-`config/low-cost.yaml` para entornos con recursos limitados.
-
-## Seguridad
-
-- Validación SSRF: solo URLs whitelisted + DNS check
-- Detección MIME: archivos descargados se verifican
-- Prompt injection: contenido extraído se sanitiza
-- Consentimiento explícito: no descarga/transcribe/drive sin confirmación
-  del usuario en cada sesión
+## 3. Seguridad y Aislamiento de Memoria
+- Cero bases de datos en Git: Todo almacenamiento persistente reside estrictamente en `~/.video-intake/` (`memory.db`).
+- Validación SSRF determinista contra loopback y rangos privados.
+- Sanitización de subtítulos y OCR contra inyecciones de prompts en LLMs.

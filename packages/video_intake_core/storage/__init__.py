@@ -189,7 +189,8 @@ class StorageManager:
         Returns:
             Path to the job's artifact directory (created if needed).
         """
-        job_dir = self._jobs_dir / job_id
+        from ..utils import sanitize_path
+        job_dir = sanitize_path(self._jobs_dir, job_id)
         job_dir.mkdir(parents=True, exist_ok=True)
         return job_dir
 
@@ -226,16 +227,17 @@ class StorageManager:
         if filename is None:
             filename = artifact_type
 
+        from ..utils import sanitize_path
         # Ensure subdirectory for grouped artifacts
         if "/" in artifact_type or artifact_type in {
             "transcript_raw", "video", "audio", "frames",
             "logs", "exports", "metadata",
         }:
-            sub_dir = job_dir / artifact_type
+            sub_dir = sanitize_path(job_dir, artifact_type)
             sub_dir.mkdir(parents=True, exist_ok=True)
-            dest = sub_dir / (filename or "index")
+            dest = sanitize_path(sub_dir, filename or "index")
         else:
-            dest = job_dir / filename
+            dest = sanitize_path(job_dir, filename)
 
         # Write content
         dest.parent.mkdir(parents=True, exist_ok=True)

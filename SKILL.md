@@ -1,3 +1,9 @@
+---
+name: video-intake-knowledge
+description: Universal skill for video detection, multi-layered extraction, and knowledge routing for AI agents.
+version: 1.0.0
+---
+
 # SKILL: Video Intake Knowledge (`SKILL.md`)
 
 > **Habilidad Portable Multi-Entorno** para la ingesta, análisis, transcripción y enrutamiento de conocimiento de vídeos.  
@@ -9,7 +15,7 @@
 Este repositorio es una **Skill / Habilidad Universal estandarizada (`SKILL.md`)** dotada de un motor de ejecución CLI y scripts utilitarios locales directos (`scripts/` y `video-intake`).  
 - **Por qué una Skill:** Es el estándar agnóstico reconocido transversalmente por todos los entornos de agentes.
 - **Sin sobreingeniería:** Sigue el principio "Menos es Más" de Tony. Sin tablas intermedias, sin bases de datos pre-empaquetadas dentro de Git, sin dependencias innecesarias de servicios de pago.
-- **Cero bancos de memoria en Git:** El repositorio de GitHub está 100% libre de bases de datos SQLite o carpetas `.memory/`. Los bancos de memoria de ideas o de proyectos pertenecen al usuario y se almacenan externamente en `~/.video-intake/memory/` o en la memoria nativa del entorno anfitrión (Hermes host memory, etc.).
+- **Cero bancos de memoria en Git:** El repositorio de GitHub está 100% libre de bases de datos SQLite o carpetas `.memory/`. Los bancos de memoria de ideas o de proyectos pertenecen al usuario y se almacenan externamente en `~/.video-intake/memory.db` o `~/.video-intake/memory/`, o en la memoria nativa del entorno anfitrión (Hermes host memory, etc.).
 
 ---
 
@@ -28,7 +34,7 @@ Esta habilidad se activa automáticamente en cualquier sesión (en curso o nueva
 
 Cuando el agente detecte una o varias fuentes de vídeo, **DEBE** seguir obligatoriamente este flujo conversacional:
 
-### FASE 1: Preguntar qué extraer del vídeo
+### FASE 1: Menú interactivo de capas de extracción
 Preguntar al usuario qué elementos necesita procesar de los vídeos proporcionados (puede seleccionar uno, varios o todos):
 ```text
 ¿Qué necesitas extraer del vídeo?
@@ -42,19 +48,25 @@ Preguntar al usuario qué elementos necesita procesar de los vídeos proporciona
 (Indica una opción, varias separadas por coma como '1, 3, 5', o '6' para todo)
 ```
 
-### FASE 2: Ejecución autónoma con herramientas locales
-Una vez recibida la selección, el agente ejecuta el trabajo utilizando las herramientas y scripts locales del repositorio:
+**Ejecución autónoma con herramientas locales tras la selección:**
+Una vez recibida la selección, el agente o motor ejecuta el trabajo de forma directa utilizando las herramientas locales:
 - **Prioridad 1:** Subtítulos oficiales de la plataforma y extracción nativa de audio/vídeo vía `yt-dlp` y `ffmpeg` (0 coste, 0 GPU, máxima velocidad y precisión).
 - **Prioridad 2:** Transcripción local mediante Whisper (o modelos rápidos locales si están disponibles).
 - **Prioridad 3:** Extracción de fotogramas clave y OCR local con `tesseract` para diagramas y esquemas visuales.
-- **Comando de ejecución recomendado:**
-  ```bash
-  python3 scripts/extract.py "<URL_O_ARCHIVO>" -s <SELECCION>
-  # o modo interactivo completo:
-  python3 scripts/interactive.py "<URL_O_ARCHIVO>"
-  ```
 
-### FASE 3: Preguntar destino / enrutamiento del conocimiento
+Comandos de ejecución recomendados:
+```bash
+# Modo interactivo CLI nativo (presenta Fase 1 y Fase 2):
+video-intake interactive "<URL_O_ARCHIVO>"
+# o mediante script interactivo:
+python3 scripts/interactive.py "<URL_O_ARCHIVO>"
+# o extracción directa por CLI especificando capas:
+video-intake extract "<URL_O_ARCHIVO>" --select 1,3,5
+```
+
+---
+
+### FASE 2: Enrutamiento inteligente de conocimiento
 Una vez completada la extracción y generados los artefactos en `artifacts/<job-id>/`, el agente **DEBE** preguntar al usuario el destino de los resultados:
 ```text
 Extracción completada con éxito. ¿Qué deseas hacer con el conocimiento extraído?
@@ -62,21 +74,24 @@ Extracción completada con éxito. ¿Qué deseas hacer con el conocimiento extra
   [2] Añadirlo al contexto de la sesión en curso (como memoria de trabajo compacta)
   [3] Añadirlo a un banco de memoria existente (ej. Banco de Ideas)
   [4] Crear un nuevo banco de memoria para añadirlo
-  [5] Crear una herramienta, tool, skill o agente con el conocimiento extraído
+  [5] Idear y construir herramientas/skills/agentes mediante análisis inteligente y scaffolding automático
   [6] Conservar únicamente los artefactos locales en disco
 ```
 
 #### Comportamiento según la opción elegida:
-- **Si elige [3] (Banco de memoria existente):**
-  El sistema lista los bancos disponibles en `~/.video-intake/memory/` (ej. `banco-de-ideas`, `trading`, `arquitectura`) o la memoria del host y guarda la entrada.
-- **Si elige [4] (Crear nuevo banco de memoria):**
-  Solicita el nombre del nuevo banco y lo crea de forma limpia en el directorio de usuario (nunca dentro del repo Git).
-- **Si elige [5] (Crear tool, skill o agente):**
-  El sistema analiza el contenido (procedimientos, scripts, diagramas de flujo) y presenta **propuestas reales y viables** de lo que se puede construir:
-  - **SKILL:** Si el vídeo explica un procedimiento repetible, checklist o metodología operativa.
-  - **TOOL:** Si el vídeo describe una función determinista, cálculo, parser o script concreto.
-  - **AGENTE:** Si el vídeo define un rol autónomo persistente con responsabilidades claras y herramientas específicas.
-  *El sistema solo procede a crear el código tras la aprobación explícita de la propuesta por parte del usuario.*
+- **[1] Mensaje en sesión:** Muestra el contenido o resumen clave extraído directamente en la respuesta del chat.
+- **[2] Inyección de contexto compacto:** Inyecta un bloque delimitado de contexto en la sesión actual para uso continuo en tareas posteriores.
+- **[3] Banco de memoria existente:** Lista los bancos disponibles en `~/.video-intake/` o memoria de host (ej. `banco-de-ideas`, `trading`, `arquitectura`) y persiste la entrada estructurada.
+- **[4] Nuevo banco de memoria dedicado:** Solicita el nombre del nuevo banco y lo crea limpiamente en el espacio de usuario (`~/.video-intake/`), jamás dentro del repositorio Git.
+- **[5] Idear y construir herramientas/skills/agentes:** Analiza el contenido (procedimientos, lógica, flujos) y genera andamiajes funcionales y sintácticamente válidos mediante el comando de scaffolding:
+  ```bash
+  video-intake proposals --scaffold {skill,tool,agent,all}
+  ```
+  - **SKILL:** Genera `<output>/<nombre>/SKILL.md` estructurando el procedimiento paso a paso derivado de los temas y timestamps del vídeo.
+  - **TOOL:** Genera `<output>/<nombre>/tool.py` ejecutable (0o755) con CLI (`argparse`) y lógica derivada de las acciones y parámetros del vídeo.
+  - **AGENTE:** Genera `<output>/<nombre>/agent.yaml` con capacidades derivadas y `<output>/<nombre>/prompts/system.md` con las directivas de misión.
+  *El sistema solo procede a crear el código tras la confirmación del usuario.*
+- **[6] Conservar únicamente artefactos locales:** Mantiene los archivos generados en `artifacts/<job-id>/` sin acciones de enrutamiento adicionales.
 
 ---
 
@@ -91,11 +106,12 @@ cd video-intake-knowledge
 
 ### Integración directa con plataformas específicas:
 ```bash
-./install.sh --hermes       # Instala skill y plugin en Hermes Agent
-./install.sh --agy          # Instala skill en AGY
-./install.sh --claude-code  # Instala skill en Claude Code
-./install.sh --opencode     # Instala skill en OpenCode
-./install.sh --codex        # Instala skill en Codex
+./install.sh --hermes       # Instala skill y plugin en Hermes Agent (~/.hermes)
+./install.sh --agy          # Instala skill en AGY (~/.agy)
+./install.sh --claude-code  # Instala skill en Claude Code (~/.claude)
+./install.sh --opencode     # Instala skill en OpenCode (~/.opencode)
+./install.sh --codex        # Instala skill en Codex (~/.codex)
+./install.sh --cursor       # Instala skill e instrucciones en Cursor (~/.cursor y .cursor/skills)
 ./install.sh --all          # Vincula con todos los entornos detectados
 ```
 
@@ -103,7 +119,7 @@ cd video-intake-knowledge
 
 ## 5. Referencia de Comandos CLI
 
-El comando `video-intake` y los scripts utilitarios en `scripts/` proporcionan control total:
+El comando unificado `video-intake` y los scripts utilitarios en `scripts/` proporcionan control determinista:
 
 ```bash
 # Diagnóstico del sistema y dependencias
@@ -111,21 +127,34 @@ video-intake doctor
 # o directamente:
 ./scripts/doctor.sh
 
-# Inspección previa de un vídeo sin descargar
+# Inspección previa de un vídeo sin descargar (<300ms)
 video-intake inspect "https://www.youtube.com/watch?v=EJEMPLO"
 
-# Extracción directa por CLI
+# Orquestador interactivo canónico en dos fases
+video-intake interactive "https://www.youtube.com/watch?v=EJEMPLO"
+# o mediante script directo:
+python3 scripts/interactive.py "https://www.youtube.com/watch?v=EJEMPLO"
+
+# Extracción directa por CLI especificando capas
 video-intake extract "https://www.youtube.com/watch?v=EJEMPLO" --select 1,2,3,4,5
 # o mediante script directo:
 python3 scripts/extract.py "https://www.youtube.com/watch?v=EJEMPLO" -s 6
 
-# Orquestador interactivo en dos fases
-python3 scripts/interactive.py
+# Propuestas y scaffolding dinámico de herramientas, skills y agentes
+video-intake proposals
+video-intake proposals --scaffold skill
+video-intake proposals --scaffold tool
+video-intake proposals --scaffold agent
+video-intake proposals --scaffold all --output ./generated
 
 # Ver estado de trabajos y artefactos
 video-intake status <JOB_ID>
 video-intake artifacts <JOB_ID>
 video-intake export <JOB_ID> --format markdown
+
+# Gestión de memoria aislada en espacio de usuario
+video-intake memory list
+video-intake memory search "término"
 ```
 
 ---
@@ -147,7 +176,7 @@ artifacts/<job-id>/
 ---
 
 ## 7. Garantías de Seguridad y Robustez
-- **Validación SSRF nativa:** Bloqueo en tiempo de validación de direcciones privadas (RFC 1918, loopback, CGNAT) sin cálculo previo masivo en memoria.
-- **Sanitización de nombres de archivo:** Prevención de ataques de path traversal (`../../`).
-- **Protección contra Prompt Injection:** Detección y neutralización de directivas hostiles incrustadas en subtítulos o texto extraído por OCR.
-- **Aislamiento de estado:** Todo dato generado es temporal o reside en la memoria exterior del usuario, preservando la limpieza del código fuente.
+- **Validación SSRF nativa:** Bloqueo por resolución de socket DNS (`socket.getaddrinfo`) de direcciones privadas (RFC 1918, loopback, CGNAT, metadata cloud) previo a cualquier petición.
+- **Sanitización de nombres de archivo:** Prevención estricta de ataques de path traversal (`../../`).
+- **Protección contra Prompt Injection:** Detección y neutralización de directivas hostiles incrustadas en subtítulos o texto extraído por OCR mediante delimitadores XML explícitos.
+- **Aislamiento de estado:** Cero bases de datos en Git; almacenamiento de persistencia estrictamente en `~/.video-intake/` (`memory.db`, `jobs.db`).

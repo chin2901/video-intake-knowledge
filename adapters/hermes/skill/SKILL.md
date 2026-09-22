@@ -15,7 +15,7 @@
 # YouTube, Facebook, Instagram, TikTok y archivos locales.
 
 # PRIORIDAD: Hermes Agent (host nativo)
-# COMPATIBILIDAD: También funciona en otros hosts vía SKILL.md genérico
+# COMPATIBILIDAD: También funciona en otros hosts vía SKILL.md canónico
 
 # =============================================================================
 # Capacidades específicas de Hermes
@@ -39,9 +39,9 @@
 #    - Cancelar trabajos si el usuario lo solicita
 #    - Recibir resultados cuando estén listos
 
-# 4. MEMORIA NATIVA
-#    - Usar el sistema de memoria de Hermes si está disponible
-#    - Almacenar conocimiento extraído en memoria de sesión
+# 4. MEMORIA NATIVA Y PERSISTENTE
+#    - Usar el sistema de memoria nativo de Hermes si está disponible
+#    - Almacenar conocimiento en bancos SQLite aislados en ~/.video-intake/
 #    - Consultar memoria existente antes de extraer nuevo contenido
 
 # =============================================================================
@@ -49,16 +49,10 @@
 # =============================================================================
 
 # 1. Instalar el paquete:
-
-#   pip install video-intake-knowledge
-
-#   o desde el repositorio:
-
 #   cd /srv/video-intake-knowledge
 #   pip install -e .
 
 # 2. Instalar el plugin de Hermes:
-
 #   bash adapters/hermes/install.sh
 
 # 3. Reiniciar Hermes Agent para cargar el plugin.
@@ -68,7 +62,6 @@
 # =============================================================================
 
 # Tras la instalación, Hermes tendrá disponibles las siguientes tools:
-
 # - video_intake_detect_videos: detecta vídeos en un mensaje
 # - video_intake_inspect: inspecciona metadatos de un vídeo
 # - video_intake_extract: inicia extracción interactiva
@@ -99,83 +92,69 @@
 # que el usuario continúe la extracción en múltiples turnos.
 
 # =============================================================================
-# Hooks de Hermes
-# =============================================================================
-
-# El directorio adapters/hermes/hooks/ contiene hooks opcionales:
-
-# - hook_video_intake.sh — Detección de vídeos en mensajes
-#   (se ejecuta en pre-response para detectar URLs y attachments)
-
-# Para habilitar la detección automática, copiar el hook:
-
-#   cp adapters/hermes/hooks/hook_video_intake.sh \
-#      $HOME/.hermes/hooks/pre-response/99-video-intake.sh
-
-# =============================================================================
 # Gestión de trabajos en Hermes
 # =============================================================================
 
 # Los trabajos se ejecutan de forma asíncrona. Hermes puede:
-
-# - Consultar estado: vitk status o video_intake_get_job_status
-# - Cancelar: vitk cancel <job_id> o video_intake_cancel_job
-# - Ver resultados: vitk artifacts <job_id> o video_intake_get_artifacts
-# - Exportar: vitk export <job_id> --format markdown
-
-# Los trabajos se persiguen en SQLite y pueden ser consultados
-# en cualquier momento, incluso si Hermes se reinicia.
+# - Consultar estado: video-intake status <job_id> o video_intake_get_job_status
+# - Cancelar: video-intake cancel <job_id> o video_intake_cancel_job
+# - Ver resultados: video-intake artifacts <job_id> o video_intake_get_artifacts
+# - Exportar: video-intake export <job_id> --format markdown
+# - Propuestas: video-intake proposals --scaffold {skill,tool,agent}
 
 # =============================================================================
-# Memoria nativa de Hermes
+# Aislamiento Estricto de Memoria
 # =============================================================================
 
 # Si Hermes tiene un sistema de memoria nativo disponible, el sistema
 # puede usarlo en lugar del banco de memoria local. Para configurar:
-
 #   memory:
 #     provider: "host_native"  # usar memoria de Hermes si está disponible
 #     fallback_to_local: true  # si no, usar banco local
 
 # Si Hermes no tiene memoria nativa, el sistema usa automáticamente
-# el banco SQLite independiente en /srv/video-intake-knowledge/memory/.
+# el banco SQLite persistente en el espacio de usuario: ~/.video-intake/memory.db
+# NUNCA se almacenan bases de datos ni archivos temporales en el repositorio Git.
 
 # =============================================================================
-# Ejemplo de interacción
+# Ejemplo de interacción en 2 Fases
 # =============================================================================
 
 # Usuario: "Mira este vídeo: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
-# Hermes (con detección automática):
+# Hermes:
 #   "He detectado 1 vídeo.
 #
-#    ¿Qué deseas extraer?
-#
+#    FASE 1: ¿Qué necesitas extraer del vídeo?
 #    [1] Descargar vídeo localmente
 #    [2] Descargar audio localmente
 #    [3] Transcripción de audio con timestamps
-#    [4] Extraer contexto basado en audio
-#    [5] Extraer contexto visual (diagramas, flujos, interfaces)
-#    [6] Todo lo anterior
-#    [0] Cancelar
-#
-#    Puedes responder: 1,3,5; todos; o configurar individualmente."
+#    [4] Contexto basado en audio (resumen, puntos clave y tópicos)
+#    [5] Contexto extraído de manera visual (diagramas, flujos, interfaces)
+#    [6] Todo lo anterior (1, 2, 3, 4 y 5)
+#    [0] Cancelar"
 
 # Usuario: "todo"
 
-# Hermes: "Iniciando extracción completa del vídeo. Esto puede tomar
-#         varios minutos. Puedes consultar el estado con:
-#         vitk status"
+# Hermes ejecuta la extracción con:
+#   video-intake extract "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --select 6
 
-# (Trabajo se ejecuta en background. Hermes puede consultar estado
-#  y notificar al usuario cuando esté completo.)
+# Hermes:
+#   "Extracción completada con éxito.
+#
+#    FASE 2: ¿Qué deseas hacer con el conocimiento extraído?
+#    [1] Aplicarlo como mensaje a la sesión en curso
+#    [2] Añadirlo al contexto de la sesión en curso (memoria de trabajo compacta)
+#    [3] Añadirlo a un banco de memoria existente en ~/.video-intake/
+#    [4] Crear un nuevo banco de memoria para añadirlo
+#    [5] Idear y construir herramientas/skills/agentes (video-intake proposals --scaffold)
+#    [6] Conservar únicamente los artefactos locales en disco"
 
 # =============================================================================
 # Véase también
 # =============================================================================
-
 # - adapters/hermes/install.sh — Instalador del plugin
 # - adapters/hermes/uninstall.sh — Desinstalador del plugin
 # - adapters/hermes/plugin.yaml — Definición del plugin
 # - adapters/hermes/hooks/hook_video_intake.sh — Hook de detección
-# - skill/SKILL.md — Skill portable para otros hosts
+# - SKILL.md — Especificación canónica universal

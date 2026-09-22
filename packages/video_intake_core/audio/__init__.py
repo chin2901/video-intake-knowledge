@@ -85,21 +85,23 @@ def _extract_audio_impl(
 
 
 def _download_to_temp(url: str) -> Path:
-    """Download a video URL to a temporary file using yt-dlp."""
+    """Download audio stream directly from a URL to a temporary file using yt-dlp."""
     import yt_dlp
 
-    tmp = Path(tempfile.mktemp(suffix=".mp4"))
+    tmp = Path(tempfile.mktemp(suffix=".m4a"))
     ydl_opts = {
-        "format": "bestvideo+bestaudio/best",
+        "format": "bestaudio/best",
         "outtmpl": str(tmp),
-        "merge_output_format": "mkv",
         "quiet": True,
         "no_warnings": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     if not tmp.exists():
-        raise RuntimeError(f"Failed to download: {url}")
+        candidates = list(tmp.parent.glob(f"{tmp.stem}.*"))
+        if candidates:
+            return candidates[0]
+        raise RuntimeError(f"Failed to download audio from: {url}")
     return tmp
 
 

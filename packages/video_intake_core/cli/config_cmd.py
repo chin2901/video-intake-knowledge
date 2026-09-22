@@ -1,86 +1,73 @@
-"""
-Config validation command for video-intake-knowledge.
-
-Validates configuration files.
-"""
-
+"""Config validate command for video-intake-knowledge."""
 from __future__ import annotations
 
 import argparse
-import logging
+import json
+import sys
 from pathlib import Path
-
-import yaml
-
-logger = logging.getLogger(__name__)
 
 
 def run_config_validate(args: argparse.Namespace) -> int:
-    """Execute the config validate command."""
-    config_path = Path(args.config_file)
-
-    if not config_path.exists():
-        print(f"Config file not found: {config_path}")
+    """Valida la configuración actual."""
+    config_path = getattr(args, "config", None) or "config/default.yaml"
+    path = Path(config_path)
+    if not path.exists():
+        print(f"Configuración no encontrada: {config_path}", file=sys.stderr)
         return 1
 
     try:
-        with open(config_path, encoding="utf-8") as f:
+        import yaml
+        with open(path) as f:
             config = yaml.safe_load(f)
-
-        if config is None:
-            print(f"Config file is empty: {config_path}")
-            return 1
-
-        # Basic validation
-        required_sections = [
-            "transcription", "visual", "models", "security",
-            "limits", "storage", "acquisition", "memory", "host"
-        ]
-
-        missing = [s for s in required_sections if s not in config]
-        if missing:
-            print(f"Warning: Missing config sections: {', '.join(missing)}")
-        else:
-            print("All required sections present.")
-
-        # Check types
-        errors = []
-        if "limits" in config:
-            limits = config["limits"]
-            for key, expected_type in [
-                ("max_video_duration_minutes", int),
-                ("max_download_size_mb", int),
-                ("max_batch_items", int),
-                ("max_parallel_jobs", int),
-                ("timeout_seconds", int),
-            ]:
-                if key in limits and not isinstance(limits[key], expected_type):
-                    errors.append(f"limits.{key} should be {expected_type.__name__}")
-
-        if errors:
-            print("Validation errors:")
-            for e in errors:
-                print(f"  - {e}")
-            return 1
-
-        print(f"Config file '{config_path}' is valid!")
-        return 0
-
-    except yaml.YAMLError as e:
-        print(f"YAML error: {e}")
-        return 1
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error parseando YAML: {e}", file=sys.stderr)
         return 1
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    # Validaciones básicas
+    storage = config.get("storage", {})
+    if not storage.get("root_dir"):
+        errors.append("storage.root_dir es obligatorio")
+    if not isinstance(storage.get("max_storage_gb"), (int, float)):
+        errors.append("storage.max_storage_gb debe ser numérico")
+
+    limits = config.get("limits", {})
+    if not isinstance(limits.get("max_video_duration_minutes"), (int, float)):
+        errors.append("limits.max_video_duration_minutes debe ser numérico")
+
+    transcription = config.get("transcription", {})
+    if transcription.get("strategy_order") is None:
+        warnings.append("transcription.strategy_order no está definido")
+
+    if args.json:
+        result = {
+            "valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "config_file": config_path,
+        }
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(f"Validando: {config_path}")
+        if errors:
+            print("Errores:")
+            for e in errors:
+                print(f"  ✗ {e}")
+        if warnings:
+            print("Advertencias:")
+            for w in warnings:
+                print(f"  ⚠ {w}")
+        if not errors and not warnings:
+            print("✓ La configuración es válida.")
+    return 0 if not errors else 1
+
 
 
 def config_validate_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
-    """Add the config validate subcommand to the parser."""
-    parser = subparsers.add_parser("config", help="Validate configuration files")
-    subparsers_config = parser.add_subparsers(dest="config_action", required=True)
-
-    validate_parser = subparsers_config.add_parser("validate", help="Validate a config file")
-    validate_parser.add_argument("config_file", help="Path to config YAML file")
-    validate_parser.set_defaults(func=run_config_validate)
-
-    return parser
+    config_p = subparsers.add_parser("config", help="Gestiona la configuración.")
+    config_p.add_argument("subcommand", choices=["validate"], help="Subcomando.")
+    config_p.add_argument("--config", type=str, default=None, help="Ruta al archivo de configuración YAML.")
+    config_p.set_defaults(func=run_config_validate)
+    return config_p

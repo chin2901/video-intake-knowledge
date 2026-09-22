@@ -159,3 +159,10 @@ Para análisis de formato y linting:
 ## 📄 Licencia
 
 Apache-2.0
+
+## Arquitectura
+
+```mermaid
+graph TD
+    A[CLI] --> B[Core]
+```

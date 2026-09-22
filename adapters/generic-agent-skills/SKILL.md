@@ -50,21 +50,21 @@
 # Comandos disponibles
 # =============================================================================
 
-# vitk doctor              — Diagnóstico del entorno
-# vitk inspect <url|file> — Inspección de metadatos de vídeo
-# vitk extract <url|file> — Extracción interactiva de vídeo
-# vitk batch <archivo>    — Procesamiento por lotes
-# vitk status             — Estado de trabajos en ejecución
-# vitk cancel <job_id>    — Cancelar un trabajo
-# vitk artifacts          — Listing de artefactos generados
-# vitk export <job_id>    — Exportar resultados
-# vitk cleanup            — Limpiar artefactos antiguos
-# vitk knowledge          — Gestión de conocimiento extraído
-# vitk config validate    — Validar configuración
-# vitk self-test          — Auto-prueba del sistema
-# vitk models list        — Listar modelos disponibles
-# vitk models install     — Instalar modelo de transcripción
-# vitk models verify      — Verificar modelo instalado
+# video-intake doctor              — Diagnóstico del entorno
+# video-intake inspect <url|file> — Inspección de metadatos de vídeo
+# video-intake extract <url|file> — Extracción interactiva de vídeo
+# video-intake batch <archivo>    — Procesamiento por lotes
+# video-intake status             — Estado de trabajos en ejecución
+# video-intake cancel <job_id>    — Cancelar un trabajo
+# video-intake artifacts          — Listing de artefactos generados
+# video-intake export <job_id>    — Exportar resultados
+# video-intake cleanup            — Limpiar artefactos antiguos
+# video-intake knowledge          — Gestión de conocimiento extraído
+# video-intake config validate    — Validar configuración
+# video-intake self-test          — Auto-prueba del sistema
+# video-intake models list        — Listar modelos disponibles
+# video-intake models install     — Instalar modelo de transcripción
+# video-intake models verify      — Verificar modelo instalado
 
 # =============================================================================
 # Uso básico
@@ -75,7 +75,7 @@
 #    Instagram, TikTok y archivos locales de vídeo.
 #
 # 2. Extraer de un vídeo:
-#    vitk extract https://www.youtube.com/watch?v=dQw4w9WgXcQ
+#    video-intake extract https://www.youtube.com/watch?v=dQw4w9WgXcQ
 #
 #    El sistema iniciará un menú interactivo preguntando qué desea
 #    extraer: [1] descargar vídeo, [2] descargar audio, [3] transcribir,
@@ -85,7 +85,7 @@
 #    Puede responder: 1,3,5 / 1 3 5 / todo / todos / 6 / cancelar / 0
 #
 # 4. Modo batch (múltiples vídeos):
-#    vitk batch urls.txt
+#    video-intake batch urls.txt
 #
 #    El archivo urls.txt debe contener una URL por línea.
 #    El sistema preguntará si aplicar la misma selección a todos
@@ -105,7 +105,7 @@
 #   - mdx       — Markdown extendido con frontmatter y componentes
 #
 # Ejemplo de exportación:
-#   vitk export <job_id> --format mdx --output resultado.mdx
+#   video-intake export <job_id> --format mdx --output resultado.mdx
 
 # =============================================================================
 # Configuración
@@ -118,7 +118,7 @@
 #   - production.yaml — Políticas estrictas para producción
 #
 # Para usar una configuración específica:
-#   vitk extract <url> --config config/low-cost.yaml
+#   video-intake extract <url> --config config/low-cost.yaml
 #
 # Variables de entorno también son respectadas:
 #   VIDEO_INTAKE_CONFIG=/ruta/a/config.yaml
@@ -131,9 +131,9 @@
 
 # El sistema puede almacenar conocimiento extraído en una memoria
 # persistente para consulta futura:
-#   vitk knowledge store <job_id>
-#   vitk knowledge search "término de búsqueda"
-#   vitk knowledge list
+#   video-intake knowledge store <job_id>
+#   video-intake knowledge search "término de búsqueda"
+#   video-intake knowledge list
 #
 # La memoria se almacena en SQLite local por defecto.
 # Para usar la memoria nativa del host (si está disponible):
@@ -156,10 +156,10 @@
 # =============================================================================
 
 # Problemas comunes y soluciones:
-#   - "comando vitk no encontrado": Verify instalación con vitk doctor
+#   - "comando video-intake no encontrado": Verify instalación con video-intake doctor
 #   - "ffmpeg no encontrado": Instalar ffmpeg (apt install ffmpeg)
 #   - "tesseract no encontrado": Instalar tesseract (apt install tesseract-ocr)
-#   - "modelo Whisper no encontrado": vitk models install tiny
+#   - "modelo Whisper no encontrado": video-intake models install tiny
 #   - "URL no funciona": Verificar que la URL es válida y accesible
 #   - "OCR no detecta texto": Ajustar preprocess y languages en config
 #

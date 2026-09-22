@@ -11,9 +11,9 @@
 # de plugins o se referencia en la configuración de herramientasTools.
 #
 # Para probar:
-#   vitk --help
-#   vitk detectar "https://www.youtube.com/watch?v=VIDEO_ID"
-#   vitk extraer "https://www.facebook.com/..." --select transcript
+#   video-intake --help
+#   video-intake inspect "https://www.youtube.com/watch?v=VIDEO_ID"
+#   video-intake extract "https://www.facebook.com/..." --select 3
 #
 # =============================================================================
 
@@ -38,18 +38,11 @@ license: MIT
 # Commands — Qué comandos registra este plugin
 # ------------------------------------------------------------------
 commands:
-  - name: vitk
+  - name: video-intake
     path: ../../scripts/standalone_hermes.sh
     description: |
       CLI principal de video-intake-knowledge.
-      Comandos: detectar, inspect, extraer, menu, list, status, help.
-
-  - name: video-intake
-    path: ../../scripts/standalone_hermes.sh
-    aliases:
-      - vitk
-    description: |
-      Alias para vitk. Puedes usar cualquier nombre.
+      Comandos: inspect, extract, batch, status, artifacts, proposals, memory, doctor.
 
 # ------------------------------------------------------------------
 # Tools — Herramientas que este plugin expone a Hermes Agent
@@ -168,26 +161,19 @@ dependencies:
 # ------------------------------------------------------------------
 examples:
   - description: "Detectar si una URL es procesable"
-    command: "vitk detectar https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    command: "video-intake inspect https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
   - description: "Obtener metadatos sin descargar"
-    command: "vitk inspect https://www.facebook.com/watch/?v=12345"
+    command: "video-intake inspect https://www.facebook.com/watch/?v=12345"
 
   - description: "Extraer transcripción y audio"
     command: |
-      vitk extraer https://www.youtube.com/watch?v=dQw4w9WgXcQ \
-        --select transcript,audio --lang es --model tiny --yes
+      video-intake extract https://www.youtube.com/watch?v=dQw4w9WgXcQ \
+        --select 2,3
 
-  - description: "Extraer todo de múltiples vídeos"
+  - description: "Orquestador interactivo en 2 fases"
     command: |
-      vitk menu \
-        https://www.youtube.com/watch?v=dQw4w9WgXcQ \
-        /ruta/a/video_local.mp4
-
-  - description: "Transcripción con modelo específico"
-    command: |
-      vitk extraer https://www.tiktok.com/@user/video/12345 \
-        --select transcript --lang es --model small --yes
+      video-intake interactive https://www.youtube.com/watch?v=dQw4w9WgXcQ
 
 # =============================================================================
 # Notas de integración
@@ -198,7 +184,7 @@ examples:
 # capa de integración, activando el entorno virtual y ejecutando las
 # funciones Python subyacentes.
 #
-# Para integraciones más profundas (AGY, OpenCode, Claude Code, Codex),
+# Para integraciones con otros entornos (AGY, OpenCode, Claude Code, Codex, Cursor),
 # ver los adaptadores en adapters/<platform>/.
 #
 # =============================================================================

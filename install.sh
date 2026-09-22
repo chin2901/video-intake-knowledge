@@ -15,6 +15,7 @@ INSTALL_AGY=false
 INSTALL_CLAUDE=false
 INSTALL_OPENCODE=false
 INSTALL_CODEX=false
+INSTALL_CURSOR=false
 INSTALL_ALL=false
 SKIP_DOCTOR=false
 
@@ -29,6 +30,7 @@ print_usage() {
     echo "  --claude-code    Instalar/enlazar skill en Claude Code (~/.claude)"
     echo "  --opencode       Instalar/enlazar skill en OpenCode (~/.opencode)"
     echo "  --codex          Instalar/enlazar skill en Codex (~/.codex)"
+    echo "  --cursor         Instalar/enlazar skill y reglas en Cursor (~/.cursor)"
     echo "  --all            Instalar e integrar en todos los entornos detectados"
     echo "  --skip-doctor    Omitir la comprobación final de salud del sistema"
     echo "  --help, -h       Mostrar esta ayuda"
@@ -42,6 +44,7 @@ while [[ $# -gt 0 ]]; do
         --claude-code)   INSTALL_CLAUDE=true; shift ;;
         --opencode)      INSTALL_OPENCODE=true; shift ;;
         --codex)         INSTALL_CODEX=true; shift ;;
+        --cursor)        INSTALL_CURSOR=true; shift ;;
         --all)           INSTALL_ALL=true; shift ;;
         --skip-doctor)   SKIP_DOCTOR=true; shift ;;
         --help|-h)       print_usage; exit 0 ;;
@@ -55,6 +58,7 @@ if $INSTALL_ALL; then
     INSTALL_CLAUDE=true
     INSTALL_OPENCODE=true
     INSTALL_CODEX=true
+    INSTALL_CURSOR=true
 fi
 
 echo "====================================================================="
@@ -164,6 +168,16 @@ if $INSTALL_CODEX || [[ -d "$HOME/.codex" ]]; then
     install_skill_to "$HOME/.codex/skills/video-intake" "Codex"
 fi
 
+# Cursor
+if $INSTALL_CURSOR || [[ -d "$HOME/.cursor" ]]; then
+    install_skill_to "$HOME/.cursor/skills/video-intake" "Cursor"
+    if [[ -d "$ROOT_DIR/adapters/cursor" && -f "$ROOT_DIR/adapters/cursor/.cursorrules" ]]; then
+        mkdir -p "$HOME/.cursor"
+        cp "$ROOT_DIR/adapters/cursor/.cursorrules" "$HOME/.cursor/rules-video-intake" 2>/dev/null || true
+        echo "  [OK] Cursor: Reglas copiadas en $HOME/.cursor/rules-video-intake"
+    fi
+fi
+
 echo ""
 echo "====================================================================="
 echo " Instalación completada con éxito."
@@ -172,6 +186,8 @@ echo ""
 echo "Comandos disponibles:"
 echo "  video-intake --help              Ver todos los comandos"
 echo "  video-intake doctor              Comprobar salud y dependencias"
+echo "  video-intake interactive         Modo interactivo en 2 fases"
+echo "  video-intake proposals           Generar propuestas y scaffolding"
 echo "  python3 scripts/interactive.py   Modo interactivo en 2 fases"
 echo ""
 

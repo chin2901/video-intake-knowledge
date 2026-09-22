@@ -92,7 +92,10 @@ cp -r "$SCRIPT_DIR/tools" "$TARGET_DIR/" 2>/dev/null || true
 cp -r "$SCRIPT_DIR/skill" "$TARGET_DIR/" 2>/dev/null || true
 
 # Copiar scripts necesarios
-if [[ -f "$SCRIPT_DIR/../scripts/standalone_hermes.sh" ]]; then
+if [[ -f "$SCRIPT_DIR/../../scripts/standalone_hermes.sh" ]]; then
+    cp "$SCRIPT_DIR/../../scripts/standalone_hermes.sh" "$TARGET_DIR/"
+    chmod +x "$TARGET_DIR/standalone_hermes.sh" 2>/dev/null || true
+elif [[ -f "$SCRIPT_DIR/../scripts/standalone_hermes.sh" ]]; then
     cp "$SCRIPT_DIR/../scripts/standalone_hermes.sh" "$TARGET_DIR/"
     chmod +x "$TARGET_DIR/standalone_hermes.sh" 2>/dev/null || true
 fi

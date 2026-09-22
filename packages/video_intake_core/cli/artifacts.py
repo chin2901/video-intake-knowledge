@@ -1,68 +1,49 @@
-"""
-Artifacts command for video-intake-knowledge.
-
-Manages and displays job artifacts.
-"""
-
+"""Artifacts command for video-intake-knowledge."""
 from __future__ import annotations
 
 import argparse
-import logging
+import json
+from pathlib import Path
 
-from video_intake_core.artifacts import ArtifactManager
-from video_intake_core.jobs import get_job
-from video_intake_core.storage import StorageManager
-
-logger = logging.getLogger(__name__)
+from video_intake_core.artifacts import list_artifacts
 
 
 def show_artifacts(args: argparse.Namespace) -> int:
-    """Execute the artifacts command."""
-    job_id = args.job_id
-    job = get_job(job_id)
+    """Lista los artefactos de un job."""
 
-    if job is None:
-        print(f"Job not found: {job_id}")
-        return 1
+    try:
+        artifacts = list_artifacts(args.job_id)
+    except Exception:
+        artifacts = []
 
-    if not job.result_path:
-        print(f"No artifacts available for job: {job_id}")
-        return 0
-
-    storage = StorageManager(storage_root=job.result_path)
-    artifact_manager = ArtifactManager(storage=storage)
-    artifacts = artifact_manager.get_artifacts_for_job(job_id)
+    job_dir = Path("artifacts") / args.job_id
+    if not artifacts and job_dir.exists() and job_dir.is_dir():
+        for p in sorted(job_dir.rglob("*")):
+            if p.is_file():
+                artifacts.append({
+                    "path": str(p),
+                    "size_mb": p.stat().st_size / (1024 * 1024),
+                    "name": p.name,
+                })
 
     if not artifacts:
-        print(f"No artifacts found for job: {job_id}")
+        print(f"No hay artefactos para el job: {args.job_id}")
         return 0
 
-    print(f"Artifacts for job: {job_id}")
-    print()
-    for artifact in artifacts:
-        size_str = ""
-        size = artifact.get("size_bytes", 0)
-        if size > 0:
-            if size < 1024:
-                size_str = f" ({size} B)"
-            elif size < 1024 * 1024:
-                size_str = f" ({size / 1024:.1f} KB)"
-            else:
-                size_str = f" ({size / (1024 * 1024):.1f} MB)"
-
-        art_type = artifact.get("artifact_type", "unknown")
-        path = artifact.get("storage_path", "unknown")
-        print(f"  {art_type}{size_str}")
-        print(f"    Path: {path}")
-        if artifact.get("description"):
-            print(f"    Desc: {artifact['description']}")
-
+    if args.json:
+        print(json.dumps(artifacts, indent=2, ensure_ascii=False))
+    else:
+        print(f"Artefactos para {args.job_id}:")
+        for a in artifacts:
+            path_str = a.get("path") if isinstance(a, dict) else getattr(a, "path", str(a))
+            size = a.get("size_mb", 0) if isinstance(a, dict) else (getattr(a, "size_bytes", 0) / (1024 * 1024))
+            print(f"  - {path_str} ({size:.1f} MB)")
     return 0
 
 
+
 def artifacts_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
-    """Add the artifacts subcommand to the parser."""
-    parser = subparsers.add_parser("artifacts", help="List artifacts for a job")
-    parser.add_argument("job_id", help="Job ID to show artifacts for")
-    parser.set_defaults(func=show_artifacts)
-    return parser
+    artifacts_p = subparsers.add_parser("artifacts", help="Lista los artefactos de un job.")
+    artifacts_p.add_argument("job_id", help="ID del job.")
+    artifacts_p.set_defaults(func=show_artifacts)
+    return artifacts_p

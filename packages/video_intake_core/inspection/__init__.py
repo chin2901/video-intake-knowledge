@@ -14,10 +14,9 @@ import json as _json
 import logging
 import subprocess
 import tempfile
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Optional
-
-import yt_dlp
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +49,8 @@ def inspect_video_file(path: str | Path) -> dict[str, Any]:
             - frame_count: Estimated frame count.
             - creation_time: Creation time from metadata if available.
     """
+    if isinstance(path, str) and path.startswith("file://"):
+        path = path[7:]
     path = Path(path)
     if not path.exists():
         return {
@@ -113,11 +114,14 @@ def inspect_video_file(path: str | Path) -> dict[str, Any]:
     result_dict: dict[str, Any] = {
         "path": str(path.resolve()),
         "filename": path.name,
+        "title": path.name,
         "directory": str(path.parent),
         "size_bytes": size,
+        "file_size_bytes": size,
         "mtime": mtime,
         "extension": ext,
         "format": fmt.get("format_name", ext),
+        "format_name": fmt.get("format_name", ext),
         "duration": float(fmt.get("duration", 0)),
         "bitrate": int(fmt.get("bit_rate", 0)),
         "video_count": len(video_streams),
@@ -218,6 +222,7 @@ def inspect_download_url(url: str) -> dict[str, Any]:
     }
 
     try:
+        import yt_dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception as e:
@@ -393,10 +398,6 @@ def inspect_multiple(paths: list[str]) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-from dataclasses import dataclass
-from typing import Any
-
-
 @dataclass
 class VideoInfo:
     """Video inspection result (contract API)."""
@@ -415,12 +416,22 @@ class VideoInfo:
     view_count: int = 0
     like_count: int = 0
     language: str = ""
-    formats: list = None
-    subtitles: dict = None
-    automatic_captions: dict = None
-    captions: dict = None
+    formats: list[dict[str, Any]] = field(default_factory=list)
+    subtitles: dict[str, Any] = field(default_factory=dict)
+    automatic_captions: dict[str, Any] = field(default_factory=dict)
+    captions: dict[str, Any] = field(default_factory=dict)
     is_live: bool = False
     error: str | None = None
+    width: int = 0
+    height: int = 0
+    fps: float = 0.0
+    streams: list[dict[str, Any]] = field(default_factory=list)
+    video_codec: str = ""
+    audio_codec: str = ""
+    audio_channels: int = 0
+    format_name: str = ""
+    file_size_bytes: int = 0
+    platform: str = ""
 
     def __post_init__(self):
         if self.formats is None:
@@ -431,6 +442,11 @@ class VideoInfo:
             self.automatic_captions = {}
         if self.captions is None:
             self.captions = {}
+        if self.streams is None:
+            self.streams = []
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 def inspect_video(
@@ -444,34 +460,96 @@ def inspect_video(
     Returns:
         VideoInfo with inspection results.
     """
-    if isinstance(source, Path) or (isinstance(source, str) and not source.startswith(("http://", "https://"))):
+    is_remote = isinstance(source, str) and source.startswith(("http://", "https://"))
+    if not is_remote:
         result = inspect_video_file(source)
+        video_info = result.get("video", {})
+        audio_info = result.get("audio", {})
+        streams = result.get("streams", [])
+        return VideoInfo(
+            url=result.get("url", result.get("path", str(source))),
+            title=result.get("title") or result.get("filename", ""),
+            description=result.get("description", ""),
+            uploader=result.get("uploader", ""),
+            duration=result.get("duration", 0.0),
+            duration_string=f"{result.get('duration', 0.0):.1f}s",
+            thumbnail=result.get("thumbnail", ""),
+            webpage_url=result.get("webpage_url", ""),
+            extractor=result.get("extractor", "local"),
+            format_count=len(streams),
+            video_quality=video_info.get("height", 0),
+            audio_available=result.get("has_audio", False),
+            view_count=0,
+            like_count=0,
+            language=result.get("language", ""),
+            formats=result.get("formats", []),
+            subtitles=result.get("subtitles", {}),
+            automatic_captions=result.get("automatic_captions", {}),
+            captions=result.get("captions", {}),
+            is_live=False,
+            error=result.get("error"),
+            width=video_info.get("width", 0),
+            height=video_info.get("height", 0),
+            fps=video_info.get("fps", 0.0),
+            streams=streams,
+            video_codec=video_info.get("codec", ""),
+            audio_codec=audio_info.get("codec", ""),
+            audio_channels=audio_info.get("channels", 0),
+            format_name=result.get("format_name") or result.get("format", ""),
+            file_size_bytes=result.get("size_bytes", 0),
+            platform="local",
+        )
     else:
         result = inspect_download_url(source)
+        best_width = 0
+        best_height = 0
+        best_fps = 0.0
+        vcodec = ""
+        acodec = ""
+        formats = result.get("formats", [])
+        for f in formats:
+            if f.get("width", 0) > best_width:
+                best_width = f.get("width", 0)
+                best_height = f.get("height", 0)
+                best_fps = f.get("fps", 0.0)
+            if not vcodec and f.get("vcodec") and f.get("vcodec") != "none":
+                vcodec = f.get("vcodec")
+            if not acodec and f.get("acodec") and f.get("acodec") != "none":
+                acodec = f.get("acodec")
 
-    return VideoInfo(
-        url=result.get("url", result.get("path", "")),
-        title=result.get("title", ""),
-        description=result.get("description", ""),
-        uploader=result.get("uploader", ""),
-        duration=result.get("duration", 0.0),
-        duration_string=result.get("duration_string", ""),
-        thumbnail=result.get("thumbnail", ""),
-        webpage_url=result.get("webpage_url", ""),
-        extractor=result.get("extractor", ""),
-        format_count=result.get("format_count", 0),
-        video_quality=result.get("video_quality", 0),
-        audio_available=result.get("audio_available", False),
-        view_count=result.get("view_count", 0),
-        like_count=result.get("like_count", 0),
-        language=result.get("language", ""),
-        formats=result.get("formats", []),
-        subtitles=result.get("subtitles", {}),
-        automatic_captions=result.get("automatic_captions", {}),
-        captions=result.get("captions", {}),
-        is_live=result.get("is_live", False),
-        error=result.get("error"),
-    )
+        return VideoInfo(
+            url=result.get("url", str(source)),
+            title=result.get("title", ""),
+            description=result.get("description", ""),
+            uploader=result.get("uploader", ""),
+            duration=result.get("duration", 0.0),
+            duration_string=result.get("duration_string", ""),
+            thumbnail=result.get("thumbnail", ""),
+            webpage_url=result.get("webpage_url", ""),
+            extractor=result.get("extractor", ""),
+            format_count=result.get("format_count", len(formats)),
+            video_quality=result.get("video_quality", 0) or best_height,
+            audio_available=result.get("audio_available", False),
+            view_count=result.get("view_count", 0),
+            like_count=result.get("like_count", 0),
+            language=result.get("language", ""),
+            formats=formats,
+            subtitles=result.get("subtitles", {}),
+            automatic_captions=result.get("automatic_captions", {}),
+            captions=result.get("captions", {}),
+            is_live=result.get("is_live", False),
+            error=result.get("error"),
+            width=best_width,
+            height=best_height or result.get("video_quality", 0),
+            fps=best_fps,
+            streams=formats,
+            video_codec=vcodec,
+            audio_codec=acodec,
+            audio_channels=2 if result.get("audio_available") else 0,
+            format_name=result.get("format", ""),
+            file_size_bytes=result.get("filesize", 0) or result.get("filesize_approx", 0),
+            platform=result.get("extractor", ""),
+        )
 
 
 def inspect_local_video(
@@ -485,16 +563,7 @@ def inspect_local_video(
     Returns:
         VideoInfo with inspection results.
     """
-    result = inspect_video_file(path)
-    return VideoInfo(
-        url=result.get("path", ""),
-        title=result.get("filename", ""),
-        duration=result.get("duration", 0.0),
-        video_quality=result.get("video", {}).get("height", 0),
-        audio_available=result.get("has_audio", False),
-        language="",
-        error=result.get("error"),
-    )
+    return inspect_video(path)
 
 
 def inspect_remote_video(

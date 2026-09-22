@@ -52,6 +52,10 @@ def generate_audio_context(
         AudioContext dict with all extracted knowledge.
     """
     text = full_text.strip()
+    from ..utils.validation import sanitize_for_prompt, wrap_for_llm
+    if text:
+        text = wrap_for_llm("video_transcript", sanitize_for_prompt(text))
+        
     if not text:
         return _empty_audio_context(source_info)
 
@@ -2138,10 +2142,14 @@ def _extract_visual_text(ocr_results: list[dict[str, Any]]) -> dict[str, Any]:
                 "frame": result.get("frame_path", ""),
             })
 
+    from ..utils.validation import sanitize_for_prompt, wrap_for_llm
+    full_ocr_text = " ".join(all_text)
+    full_ocr_text_safe = wrap_for_llm("ocr_extracted_content", sanitize_for_prompt(full_ocr_text))
+
     return {
-        "full_text": " ".join(all_text),
+        "full_text": full_ocr_text_safe,
         "text_by_frame": [
-            {"frame": r.get("frame_path", ""), "text": r.get("text", "")}
+            {"frame": r.get("frame_path", ""), "text": wrap_for_llm("ocr_extracted_content", sanitize_for_prompt(r.get("text", "")))}
             for r in ocr_results if r.get("text")
         ],
         "total_blocks": count,

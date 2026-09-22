@@ -85,16 +85,25 @@ def sanitize_path(base: Path, user_path: str | Path) -> Path:
         Resolved path within base.
 
     Raises:
-        ValueError: If the resulting path escapes the base directory.
+        ValueError: If the resulting path escapes the base directory or contains null bytes.
     """
+    raw_str = str(user_path)
+    if "\x00" in raw_str:
+        raise ValueError("Path contains null bytes")
+
     base = base.resolve()
-    user_path = Path(user_path)
+    user_p = Path(user_path)
 
-    # If user_path is absolute or contains traversal, reject
-    if user_path.is_absolute():
-        raise ValueError(f"Absolute paths not allowed: {user_path}")
+    # If user_p is absolute, check if it is within base
+    if user_p.is_absolute():
+        resolved_abs = user_p.resolve()
+        try:
+            resolved_abs.relative_to(base)
+            return resolved_abs
+        except ValueError:
+            raise ValueError(f"Absolute path escapes base {base}: {user_path}") from None
 
-    combined = (base / user_path).resolve()
+    combined = (base / user_p).resolve()
 
     # Check containment
     try:

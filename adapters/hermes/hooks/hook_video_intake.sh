@@ -18,7 +18,7 @@ set -e
 # Configuración
 # =============================================================================
 
-VIDEO_INTAKE_CMD="${VIDEO_INTAKE_CMD:-vitk}"
+VIDEO_INTAKE_CMD="${VIDEO_INTAKE_CMD:-video-intake}"
 MAX_FILE_SIZE_MB="${MAX_FILE_SIZE_MB:-100}"
 SUPPORTED_EXTENSIONS="mp4 mov mkv webm avi m4v"
 

@@ -15,7 +15,7 @@ from ipaddress import IPv4Address, IPv4Network
 from pathlib import Path
 from typing import Any
 
-# Import utilities from video_intake_core.utils directly to avoid circular imports
+# Import utilities directly to avoid circular imports
 from video_intake_core.utils import (
     sanitize_filename,
     sanitize_path,
@@ -23,10 +23,15 @@ from video_intake_core.utils import (
     compute_sha256,
     detect_video_mime,
     VIDEO_EXTENSIONS,
+)
+from video_intake_core.utils.validation import (
     sanitize_for_prompt as _sanitize_for_prompt,
     redact_sensitive_data as _redact_sensitive_data,
     validate_url as _validate_url,
+    is_safe_url as _is_safe_url,
+    wrap_for_llm as _wrap_for_llm,
     ValidationResult,
+    SSRF_BLOCKED_HOSTS,
 )
 
 __all__ = [
@@ -34,6 +39,7 @@ __all__ = [
     "validate_local_file",
     "check_download_size",
     "sanitize_for_prompt",
+    "wrap_for_llm",
     "redact_sensitive_data",
     "is_safe_url",
     "validate_url",
@@ -100,8 +106,8 @@ def validate_video_url(url: str, max_redirects: int = 5) -> tuple[str, list[str]
     Performs:
     - Scheme check (only http/https allowed)
     - Host validation (no localhost, private IPs, metadata endpoints)
-    - IP resolution check for blocked addresses
-    - Redirect chain validation (each hop checked for SSRF)
+    - Socket-level DNS resolution check for blocked addresses
+    - Non-canonical IP decoding (octal, hex, decimal integer)
 
     Args:
         url: The URL to validate.
@@ -113,59 +119,33 @@ def validate_video_url(url: str, max_redirects: int = 5) -> tuple[str, list[str]
     Raises:
         ValueError: If the URL is invalid, dangerous, or exceeds redirect limit.
     """
-    parsed = urllib.parse.urlparse(url)
+    res = _validate_url(url)
+    if not res.is_valid:
+        raise ValueError(res.error or f"Dangerous or invalid URL for SSRF: {url}")
+    return res.normalized, []
 
-    # Scheme check
-    if parsed.scheme.lower() not in ("http", "https"):
-        raise ValueError(
-            f"URL scheme '{parsed.scheme}' not allowed. Only http and https."
-        )
 
-    # Empty host check
-    if not parsed.hostname:
-        raise ValueError(f"URL has no hostname: {url}")
-
-    hostname = parsed.hostname.lower()
-
-    # Known bad hosts
-    if hostname in SSRF_BLOCKED_HOSTS:
-        raise ValueError(f"URL host is blocked: {hostname}")
-
-    # Localdomain check
-    if hostname.endswith(".local") or hostname.endswith(".internal"):
-        raise ValueError(f"URL host appears to be internal: {hostname}")
-
-    # IPv4 literal check
-    try:
-        addr = IPv4Address(hostname)
-        if _is_blocked_ip(str(addr)):
-            raise ValueError(f"URL host IP is blocked: {hostname}")
-    except ValueError:
-        pass  # Not an IPv4 literal, DNS resolution needed
-
-    # Build normalized URL
-    netloc = hostname
-    if parsed.port and parsed.port not in (80, 443):
-        netloc = f"{hostname}:{parsed.port}"
-
-    normalized = urllib.parse.urlunparse(
-        (
-            parsed.scheme.lower(),
-            netloc,
-            parsed.path or "/",
-            parsed.params,
-            parsed.query,
-            "",
-        )
-    )
-
-    return normalized, []
+SENSITIVE_DIRECTORIES: tuple[str, ...] = (
+    "/etc",
+    "/proc",
+    "/sys",
+    "/dev",
+    "/root",
+    "/var/run",
+    "/var/log",
+    "/boot",
+    "/bin",
+    "/sbin",
+    "/usr/bin",
+    "/usr/sbin",
+)
 
 
 def validate_local_file(
     path: str | Path,
     max_size_mb: int = 10000,
     allowed_extensions: frozenset[str] | None = None,
+    allowed_roots: list[Path] | None = None,
 ) -> Path:
     """Validate a local video file path and return the resolved path.
 
@@ -173,12 +153,14 @@ def validate_local_file(
     - File exists and is a regular file
     - Extension is in allowed list
     - Size is under the maximum
-    - Path is within an allowed base (no traversal to sensitive dirs)
+    - Path is not in a sensitive system directory (/etc, /proc, /sys, /dev, /root, /var/run)
+    - Path is within allowed_roots if provided
 
     Args:
         path: Path to the local file.
         max_size_mb: Maximum file size in megabytes (default 10 GB).
         allowed_extensions: Set of allowed extensions (default: video extensions).
+        allowed_roots: Optional list of allowed base directory roots.
 
     Returns:
         Resolved Path object.
@@ -187,24 +169,34 @@ def validate_local_file(
         ValueError: If validation fails.
         FileNotFoundError: If file does not exist.
     """
-    path = Path(path)
+    raw_str = str(path)
+    if "\x00" in raw_str:
+        raise ValueError("Path contains null bytes")
 
-    if not path.exists():
+    if raw_str.startswith("file://"):
+        raw_str = raw_str[7:]
+
+    p = Path(raw_str)
+
+    if not p.exists():
         raise FileNotFoundError(f"File not found: {path}")
 
-    if not path.is_file():
+    # Resolve symlinks to prevent symlink traversal to sensitive dirs
+    resolved = p.resolve()
+
+    if not resolved.is_file():
         raise ValueError(f"Path is not a file: {path}")
 
     # Check extension
     exts = allowed_extensions or VIDEO_EXTENSIONS
-    if path.suffix.lower() not in exts:
+    if resolved.suffix.lower() not in exts:
         raise ValueError(
-            f"File extension '{path.suffix}' not in allowed video types: {sorted(exts)}"
+            f"File extension '{resolved.suffix}' not in allowed video types: {sorted(exts)}"
         )
 
     # Check size
     try:
-        size_bytes = path.stat().st_size
+        size_bytes = resolved.stat().st_size
     except OSError as e:
         raise ValueError(f"Cannot read file metadata: {path}") from e
 
@@ -215,15 +207,28 @@ def validate_local_file(
             f"{max_size_mb} MB"
         )
 
-    # Path traversal check — reject paths to sensitive directories
-    sensitive_dirs = ("/etc", "/proc", "/sys", "/dev", "/root", "/var/run")
-    resolved = path.resolve()
-    for sensitive in sensitive_dirs:
+    # Path traversal check — reject paths to sensitive system directories
+    for sensitive in SENSITIVE_DIRECTORIES:
         try:
             resolved.relative_to(Path(sensitive).resolve())
             raise ValueError(f"File is in a sensitive directory: {path}")
-        except ValueError:
-            pass  # Not under this sensitive dir, continue checking
+        except ValueError as e:
+            if "sensitive directory" in str(e):
+                raise
+            pass
+
+    # Check containment in allowed_roots if specified
+    if allowed_roots:
+        contained = False
+        for root in allowed_roots:
+            try:
+                resolved.relative_to(root.resolve())
+                contained = True
+                break
+            except ValueError:
+                pass
+        if not contained:
+            raise ValueError(f"File is outside permitted directories: {path}")
 
     return resolved
 
@@ -299,7 +304,7 @@ def sanitize_for_prompt(text: str) -> str:
         (r"you\s+are\s+now\s+(a|an)\s+\w+", "[ROLE_OVERRIDE_BLOCKED]"),
         (r"forget\s+(everything|all|previous)\s+instructions?", "[INSTRUCTION_RESET_BLOCKED]"),
         (r"new\s+instructions?\s*:", "[NEW_INSTRUCTIONS_BLOCKED]"),
-        (r"ignore\s+(all|previous|above)\s+(rules|instructions|policy)", "[INSTRUCTION_IGNORE_BLOCKED]"),
+        (r"ignore\s+(?:all\s+)?(?:previous\s+)?(?:above\s+)?(?:rules|instructions|policy)", "[INSTRUCTION_IGNORE_BLOCKED]"),
         (r"##\s*instructions\s*##", "[INSTRUCTION_BLOCK_HEADER]"),
     ]
 
@@ -371,108 +376,7 @@ def validate_url(url: str, allowed_domains: list[str] | None = None) -> Validati
     Returns:
         ValidationResult with is_valid, normalized, and error.
     """
-    import urllib.parse
-    from ipaddress import IPv4Address, IPv4Network
-    
-    # Blocked networks
-    blocked_networks = [
-        IPv4Network("10.0.0.0/8"),
-        IPv4Network("172.16.0.0/12"),
-        IPv4Network("192.168.0.0/16"),
-        IPv4Network("169.254.0.0/16"),  # link-local
-        IPv4Network("0.0.0.0/8"),
-        IPv4Network("100.64.0.0/10"),   # CGNAT
-        IPv4Network("127.0.0.0/8"),      # loopback
-        IPv4Network("224.0.0.0/4"),     # multicast
-        IPv4Network("240.0.0.0/4"),     # reserved
-        IPv4Network("255.255.255.255/32"),
-    ]
-    
-    blocked_hosts = {
-        "localhost", "127.0.0.1", "::1", "0.0.0.0", "0",
-        "metadata.google.internal", "metadata.google",
-        "169.254.169.254", "metadata.google.com",
-        "metadata.google.internal.", "vpc-internal.meta.internal",
-    }
-    
-    try:
-        parsed = urllib.parse.urlparse(url)
-        scheme = parsed.scheme.lower()
-        
-        if scheme not in ("http", "https"):
-            return ValidationResult(
-                is_valid=False,
-                normalized="",
-                error=f"URL scheme '{scheme}' not allowed. Only http and https are permitted."
-            )
-        
-        if not parsed.hostname:
-            return ValidationResult(
-                is_valid=False,
-                normalized="",
-                error=f"URL has no hostname: {url}"
-            )
-        
-        host = parsed.hostname.lower()
-        
-        # Check blocked hosts
-        if host in blocked_hosts:
-            error_msg = "URL host is blocked: " + host
-            if host in ("169.254.169.254", "metadata.google.internal", "metadata.google", "metadata.google.com", "metadata.google.internal.", "vpc-internal.meta.internal"):
-                error_msg = "SSRF blocked: " + host
-            return ValidationResult(
-                is_valid=False,
-                normalized="",
-                error=error_msg
-            )
-        
-        # Check blocked IP ranges
-        try:
-            addr = IPv4Address(host)
-            for net in blocked_networks:
-                if addr in net:
-                    return ValidationResult(
-                        is_valid=False,
-                        normalized="",
-                        error=f"URL host resolves to a blocked IP address: {host}"
-                    )
-        except ValueError:
-            pass  # Not an IP literal
-        
-        # Check for .local domains
-        if host.endswith(".local"):
-            return ValidationResult(
-                is_valid=False,
-                normalized="",
-                error=f"URL host is a local/mDNS name: {host}"
-            )
-        
-        # Check allowed domains
-        if allowed_domains:
-            if not any(host == d or host.endswith("." + d) for d in allowed_domains):
-                return ValidationResult(
-                    is_valid=False,
-                    normalized="",
-                    error=f"URL host '{host}' not in allowed domains"
-                )
-        
-        # Normalize: remove default ports, lowercase scheme and host
-        netloc = host
-        if parsed.port and parsed.port not in (80, 443):
-            netloc = f"{netloc}:{parsed.port}"
-        
-        normalized = urllib.parse.urlunparse(
-            (scheme, netloc, parsed.path, parsed.params, parsed.query, "")
-        )
-        
-        return ValidationResult(is_valid=True, normalized=normalized, error=None)
-        
-    except Exception as e:
-        return ValidationResult(
-            is_valid=False,
-            normalized="",
-            error=f"Validation error: {e}"
-        )
+    return _validate_url(url, allowed_domains)
 
 
 def is_safe_url(url: str, internal_ranges: list[str] | None = None) -> bool:
@@ -487,6 +391,19 @@ def is_safe_url(url: str, internal_ranges: list[str] | None = None) -> bool:
     """
     result = validate_url(url)
     return result.is_valid
+
+
+def wrap_for_llm(tag_or_text: str, content: str | None = None) -> str:
+    """Enclose LLM-bound knowledge inside explicit XML boundaries with prompt sanitization.
+
+    Args:
+        tag_or_text: XML tag name (e.g. 'video_transcript') or text content to wrap.
+        content: Content when tag is provided as first argument.
+
+    Returns:
+        XML-wrapped sanitized string.
+    """
+    return _wrap_for_llm(tag_or_text, content)
 
 
 # ----------------------------------------------------------------------
@@ -545,8 +462,10 @@ class SSrfProtection:
         Raises:
             ValueError: If the URL is unsafe.
         """
-        from video_intake_core.utils.validation import validate_url
-        return validate_url(url)
+        res = validate_url(url)
+        if not res.is_valid:
+            raise ValueError(res.error or f"Unsafe URL: {url}")
+        return res.normalized
 
 
 class PromptInjectionProtection:
@@ -609,11 +528,12 @@ class PromptInjectionProtection:
         else:
             return {"is_suspicious": True, "risk_level": "high", "patterns_found": patterns_found}
 
-    def wrap_for_llm(self, text: str) -> str:
+    def wrap_for_llm(self, text: str, tag: str = "DATA_CONTENT") -> str:
         """Wrap text for safe inclusion in LLM prompts.
 
         Args:
             text: The text to wrap.
+            tag: XML tag boundary name (default: 'DATA_CONTENT').
 
         Returns:
             Wrapped text with injection protection markers.
@@ -621,10 +541,4 @@ class PromptInjectionProtection:
         if not text:
             return ""
 
-        # Sanitize the text first
-        sanitized = sanitize_for_prompt(text)
-
-        # Add wrapper markers
-        wrapped = f"DATA_START\n{sanitized}\nDATA_END"
-
-        return wrapped
+        return wrap_for_llm(tag, text)

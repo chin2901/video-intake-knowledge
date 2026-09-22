@@ -1,0 +1,43 @@
+# Cursor Rules for video-intake-knowledge
+# Universal Video Intake, Transcription, and Knowledge Routing
+
+When the user provides a video link (YouTube, Facebook, Instagram, TikTok) or a local video file (MP4, MOV, MKV, WebM, AVI):
+
+## 1. Detection
+Acknowledge the video source immediately. Report detected platform and video title or file name.
+
+## 2. Phase 1: Interactive Extraction Menu
+Ask the user which layers to extract:
+  [1] Descarga del vídeo de manera local
+  [2] Descarga del audio del vídeo de manera local
+  [3] Transcripción de audio (con timestamps)
+  [4] Contexto basado en audio (resumen, puntos clave y tópicos)
+  [5] Contexto extraído de manera visual (fotogramas y OCR para diagramas, esquemas, flujos)
+  [6] Todo lo anterior (1, 2, 3, 4 y 5)
+
+Command to run:
+```bash
+video-intake extract "<URL_OR_PATH>" --select <SELECTION>
+# Or use the full conversational orchestrator:
+video-intake interactive "<URL_OR_PATH>"
+```
+
+## 3. Phase 2: Knowledge Routing
+Upon extraction completion, present Phase 2 destination options:
+  [1] Aplicarlo como mensaje a la sesión en curso (mostrar en el chat)
+  [2] Añadirlo al contexto de la sesión en curso (memoria de trabajo compacta)
+  [3] Añadirlo a un banco de memoria existente (ej. Banco de Ideas en ~/.video-intake/)
+  [4] Crear un nuevo banco de memoria para añadirlo (~/.video-intake/)
+  [5] Idear y construir herramientas/skills/agentes mediante análisis inteligente y scaffolding automático
+  [6] Conservar únicamente los artefactos locales en disco
+
+If the user selects [5] (Proposals & Scaffolding):
+Run:
+```bash
+video-intake proposals --scaffold {skill,tool,agent,all} --output ./generated
+```
+
+## 4. Security & State Isolation
+- Never commit SQLite databases or `.memory/` artifacts to the Git workspace.
+- All persistent user memory lives in `~/.video-intake/memory.db`.
+- Transcripts and OCR content are enclosed in safe boundaries.

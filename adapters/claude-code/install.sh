@@ -95,10 +95,10 @@ verify() {
         echo "⚠ Paquete Python no importable"
     fi
 
-    if command -v vitk &>/dev/null; then
-        echo "✓ Comando vitk disponible"
+    if command -v video-intake &>/dev/null; then
+        echo "✓ Comando video-intake disponible"
     else
-        echo "⚠ Comando vitk no disponible"
+        echo "⚠ Comando video-intake no disponible"
     fi
 }
 
