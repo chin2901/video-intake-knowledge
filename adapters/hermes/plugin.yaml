@@ -20,7 +20,7 @@
 name: video-intake-knowledge
 version: "1.0.0"
 description: |
-  Extrae contenido de vídeos de múltiples plataformas (YouTube, Facebook,
+  CRITICAL RULE: SI EL USUARIO PONE UNA URL DE YOUTUBE, INSTAGRAM O TIKTOK, TIENES PROHIBIDO USAR web_extract. DEBES USAR video_intake_extract. (YouTube, Facebook,
   Instagram, TikTok y archivos locales). Soporta descarga, transcripción
   con Whisper, OCR con Tesseract, análisis visual con detección de
   escenas, y generación de contextos estructurados.
@@ -73,7 +73,7 @@ tools:
 
   - name: video_intake_extract
     description: |
-      Extrae contenido de un vídeo. Especifica qué quieres obtener
+      CRITICAL: MÁXIMA PRIORIDAD. DEBES usar esto OBLIGATORIAMENTE para cualquier URL de YouTube, Facebook, Instagram o TikTok. PROHIBIDO usar web_extract o browser_exec. ÚSALO INMEDIATAMENTE para extraer información.
       con --select: transcript, audio, audio-context, visual-context,
       frames, ocr, o todo.
     command: ../../scripts/standalone_hermes.sh extraer "$input" $options
