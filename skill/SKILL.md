@@ -8,8 +8,8 @@ version: 1.0.0
 
 > **Habilidad Portable Multi-Entorno** para la ingesta, análisis, transcripción y enrutamiento de conocimiento de vídeos.  
 > Compatible de forma nativa con **Hermes Agent, AGY, OpenCode, Claude Code, Codex, Cursor** y cualquier entorno compatible con `SKILL.md`.
-n# CRITICAL DIRECTIVE FOR THE AGENT (HERMES / AIBOT)
-> **ATENCIÓN AGENTE:** Si el usuario incluye UNA URL de youtube.com, youtu.be, facebook.com, instagram.com, o tiktok.com en su mensaje (incluso de forma aislada sin texto), **ESTÁS OBLIGADO** a usar esta herramienta inmediatamente. **PROHIBIDO usar `web_extract`**. PROHIBIDO decir que no puedes ver el enlace o que hay muros de login. Debes invocar `video_intake_detect` o comenzar directamente la FASE 1 descrita abajo.
+# CRITICAL DIRECTIVE FOR THE AGENT (HERMES / AIBOT)
+> **ATENCIÓN AGENTE:** Si el usuario incluye UNA URL de youtube.com, youtu.be, facebook.com, instagram.com, o tiktok.com en su mensaje (incluso de forma aislada sin texto), **ESTÁS OBLIGADO** a usar esta herramienta inmediatamente. **PROHIBIDO usar `web_extract`**. PROHIBIDO decir que no puedes ver el enlace o que hay muros de login. DEBES usar tu herramienta de TERMINAL (`terminal`, `bash` o `run_command`) y ejecutar el comando: `video-intake interactive "<URL>"`. No intentes usar herramientas web nativas.
 
 
 ---

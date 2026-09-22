@@ -2,7 +2,7 @@
 # Universal Video Intake, Transcription, and Knowledge Routing
 
 n# CRITICAL DIRECTIVE FOR CURSOR
-> **ATENCIÓN CURSOR:** Si el usuario incluye UNA URL de youtube.com, youtu.be, facebook.com, instagram.com, o tiktok.com en el chat (incluso de forma aislada sin texto), **ESTÁS OBLIGADO** a proponer usar `video-intake` inmediatamente. **PROHIBIDO** decir que no puedes ver el enlace o intentar descargar el HTML directamente con herramientas de scraping web básicas. Usa las instrucciones de Phase 1.
+> **ATENCIÓN CURSOR:** Si el usuario incluye UNA URL de youtube.com, youtu.be, facebook.com, instagram.com, o tiktok.com en el chat (incluso de forma aislada sin texto), **ESTÁS OBLIGADO** a usar tu herramienta de TERMINAL y ejecutar el comando `video-intake interactive "<URL>"` inmediatamente. **PROHIBIDO** decir que no puedes ver el enlace o intentar descargar el HTML directamente con herramientas de scraping web básicas. Usa las instrucciones de Phase 1.
 
 When the user provides a video link (YouTube, Facebook, Instagram, TikTok) or a local video file (MP4, MOV, MKV, WebM, AVI):
 
