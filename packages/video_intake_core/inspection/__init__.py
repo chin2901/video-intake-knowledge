@@ -275,7 +275,7 @@ def inspect_download_url(url: str) -> dict[str, Any]:
     # Detect best video quality
     best_video_height = 0
     for fmt in info.get("formats", []):
-        h = fmt.get("height", 0)
+        h = fmt.get("height") or 0
         if h > best_video_height:
             best_video_height = h
 
@@ -508,10 +508,10 @@ def inspect_video(
         acodec = ""
         formats = result.get("formats", [])
         for f in formats:
-            if f.get("width", 0) > best_width:
-                best_width = f.get("width", 0)
-                best_height = f.get("height", 0)
-                best_fps = f.get("fps", 0.0)
+            if (f.get("width") or 0) > best_width:
+                best_width = f.get("width") or 0
+                best_height = f.get("height") or 0
+                best_fps = f.get("fps") or 0.0
             if not vcodec and f.get("vcodec") and f.get("vcodec") != "none":
                 vcodec = f.get("vcodec")
             if not acodec and f.get("acodec") and f.get("acodec") != "none":
