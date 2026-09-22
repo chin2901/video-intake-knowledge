@@ -145,6 +145,9 @@ if $INSTALL_HERMES || [[ -d "$HOME/.hermes" ]]; then
         mkdir -p "$HOME/.hermes/plugins"
         ln -sfn "$ROOT_DIR/adapters/hermes" "$HOME/.hermes/plugins/video-intake"
         echo "  [OK] Hermes Plugin: Vinculado en $HOME/.hermes/plugins/video-intake"
+        mkdir -p "$HOME/.hermes/hooks/pre-response"
+        ln -sfn "$ROOT_DIR/adapters/hermes/hooks/hook_video_intake.sh" "$HOME/.hermes/hooks/pre-response/99-video-intake.sh"
+        echo "  [OK] Hermes Hook: Activado en $HOME/.hermes/hooks/pre-response/99-video-intake.sh"
     fi
 fi
 
