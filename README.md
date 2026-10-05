@@ -87,6 +87,17 @@ video-intake auth status
 video-intake auth detect
 video-intake auth menu
 
+# Procesamiento masivo por listas de URLs (.txt, .yaml, .json)
+video-intake batch ./urls.txt
+
+# Búsqueda semántica en el banco de memoria indexado
+video-intake memory --search "arquitectura"
+video-intake memory --list
+
+# Exportación multiformato (Obsidian Vault, HTML5 autónomo, JSON estructurado)
+video-intake export <JOB_ID> --format obsidian
+video-intake export <JOB_ID> --format html
+
 # Inspeccionar metadatos crudos sin descargar
 video-intake inspect "https://www.youtube.com/watch?v=VIDEO_ID"
 
@@ -102,6 +113,8 @@ video-intake extract "https://youtu.be/..." --select 3,5
 - **Compatibilidad Universal de Vídeo:** Normalización por defecto a **H.264 + AAC en MP4 con `faststart`** (reproducción instantánea en iPhone, WhatsApp, TVs y navegadores).
 - **Visión Inteligente:** Filtro de nitidez laplaciano para descartar fotogramas borrosos, detección de cambio real de diapositivas y extracción sintáctica de bloques de código.
 - **Estructuración de Conocimiento:** Generación automática de Tabla de Contenidos interactiva (`toc.md`), Dossier Ejecutivo (`executive_summary.md`) y Reporte Integral (`knowledge_report.md`).
+- **Indexación y Búsqueda Semántica:** Registro automático de cada vídeo analizado en el banco de memoria local SQLite (`video-intake memory --search`).
+- **Exportación Universal:** Salida a notas compatibles con Obsidian (Frontmatter YAML + callouts), páginas HTML interactivas o JSON.
 
 ---
 
@@ -110,7 +123,7 @@ video-intake extract "https://youtu.be/..." --select 3,5
 - `skill/SKILL.md` : **El cerebro.** Única directiva maestra inyectada a los agentes.
 - `install.sh` : Autodescubrimiento y vinculación de entornos.
 - `packages/video_intake_core/` : Núcleo modular de extracción (audio, vision, ocr, memory, orchestrator).
-- `tests/` : Suite completa de testing (300 tests pasando al 100%, e2e, unitario, contratos y seguridad).
+- `tests/` : Suite completa de testing (304 tests pasando al 100%, e2e, unitario, contratos y seguridad).
 - `adapters/cursor/` : Archivo `.cursorrules` para compatibilidad IDE nativa.
 
 ---

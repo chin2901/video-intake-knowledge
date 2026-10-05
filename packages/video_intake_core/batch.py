@@ -203,6 +203,13 @@ def run_batch(
 
         with open(m_path, encoding="utf-8") as f:
             manifest_data = yaml.safe_load(f)
+    elif m_path.suffix.lower() == ".txt":
+        txt_entries = []
+        for line in m_path.read_text(encoding="utf-8").splitlines():
+            clean_line = line.strip()
+            if clean_line and not clean_line.startswith("#"):
+                txt_entries.append({"url": clean_line, "select": "6"})
+        manifest_data = txt_entries
     else:
         with open(m_path, encoding="utf-8") as f:
             manifest_data = json.load(f)

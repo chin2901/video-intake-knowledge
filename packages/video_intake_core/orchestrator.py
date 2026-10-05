@@ -934,6 +934,38 @@ def check_and_extract(
     except Exception as e:
         logger.debug("No se pudo registrar en JobManager: %s", e)
 
+    # Indexar en el banco de memoria semántica de video-intake
+    try:
+        from video_intake_core.memory import LocalSQLiteMemoryProvider, MemoryEntry
+
+        mem_provider = LocalSQLiteMemoryProvider()
+        target_summary = artifacts.get("executive_summary") or artifacts.get("summary") or ""
+        target_content = artifacts.get("knowledge_report") or artifacts.get("transcripts") or ""
+        if isinstance(target_content, list):
+            target_content = "\n".join(str(t) for t in target_content)
+
+        first_src = sources[0] if sources else {}
+        src_url = first_src.get("resolved_url") or first_src.get("original_input") or ""
+        src_title = first_src.get("title") or "Video"
+
+        mem_entry = MemoryEntry(
+            job_id=job_id,
+            source_url=src_url,
+            source_title=src_title,
+            content_type="knowledge_report" if artifacts.get("knowledge_report") else "transcript",
+            content=str(target_content),
+            summary=str(target_summary),
+            metadata={
+                "video_title": src_title,
+                "operations": [str(op) for op in operations],
+                "platform": first_src.get("platform", "unknown"),
+            },
+        )
+        mem_provider.store_entry(mem_entry)
+        logger.debug("Conocimiento indexado en MemoryProvider para job %s", job_id)
+    except Exception as e:
+        logger.debug("No se pudo indexar en MemoryProvider: %s", e)
+
     print(f"\n[✔] Extracción completada con éxito. Artefactos guardados en:\n    {job_dir}")
     return artifacts
 

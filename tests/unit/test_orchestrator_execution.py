@@ -230,6 +230,14 @@ def test_cli_extract_and_followup(sample_video_path: str, tmp_path: Path, monkey
     assert ret_export_json == 0
     assert (tmp_path / "exports" / "export.json").exists()
 
+    # memory automatic indexing check
+    from video_intake_core.memory import LocalSQLiteMemoryProvider, MemoryQuery
+
+    mem = LocalSQLiteMemoryProvider()
+    found_mem = mem.search_entries(MemoryQuery(job_id=job_id))
+    assert len(found_mem) >= 1
+    assert found_mem[0].job_id == job_id
+
     # cleanup dry run
     args_cleanup = argparse.Namespace(
         max_age_days=90,

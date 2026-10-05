@@ -124,3 +124,24 @@ def test_cmd_batch_cli(sample_video_path: Path, tmp_path: Path):
     )
     code = cmd_batch(args)
     assert code == 0
+
+
+def test_batch_runner_txt_manifest(sample_video_path: Path, tmp_path: Path):
+    """Verify batch runner supports line-by-line .txt file manifests."""
+    txt_file = tmp_path / "urls.txt"
+    txt_file.write_text(
+        f"# Comments should be ignored\n\nfile://{sample_video_path}\nfile://{sample_video_path}\n",
+        encoding="utf-8",
+    )
+
+    db_path = tmp_path / "txt_jobs.db"
+    result = run_batch(
+        manifest_path=txt_file,
+        max_workers=2,
+        output_dir=tmp_path / "txt_artifacts",
+        db_path=db_path,
+    )
+
+    assert result.total == 2
+    assert result.successful == 2
+    assert result.failed == 0
