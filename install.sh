@@ -50,25 +50,36 @@ echo "  Python detectado: $PY_BIN (versión $PY_VERSION)"
 
 # 2. Entorno virtual e instalación
 echo "[2/4] Instalando paquete y CLI (video-intake)..."
-if [[ -z "${VIRTUAL_ENV:-}" ]]; then
-    if [[ ! -d "$ROOT_DIR/venv" ]]; then
-        "$PY_BIN" -m venv "$ROOT_DIR/venv"
-    fi
-    PIP_CMD="$ROOT_DIR/venv/bin/pip"
-    PYTHON_EXEC="$ROOT_DIR/venv/bin/python3"
+if command -v uv &>/dev/null; then
+    echo "  [OK] Gestor rápido 'uv' detectado. Sincronizando entorno virtual..."
+    uv sync --extra core --directory "$ROOT_DIR" --quiet
+    BIN_SRC="$ROOT_DIR/.venv/bin/video-intake"
+    PYTHON_EXEC="$ROOT_DIR/.venv/bin/python3"
 else
-    PIP_CMD="pip"
-    PYTHON_EXEC="$PY_BIN"
+    if [[ -z "${VIRTUAL_ENV:-}" ]]; then
+        if [[ ! -d "$ROOT_DIR/venv" ]]; then
+            "$PY_BIN" -m venv "$ROOT_DIR/venv"
+        fi
+        PIP_CMD="$ROOT_DIR/venv/bin/pip"
+        PYTHON_EXEC="$ROOT_DIR/venv/bin/python3"
+        BIN_SRC="$ROOT_DIR/venv/bin/video-intake"
+    else
+        PIP_CMD="pip"
+        PYTHON_EXEC="$PY_BIN"
+        BIN_SRC="$(command -v video-intake 2>/dev/null || echo "")"
+    fi
+    "$PIP_CMD" install -e "$ROOT_DIR" --quiet
 fi
-
-"$PIP_CMD" install -e "$ROOT_DIR" --quiet
 echo "  [OK] Dependencias de Python instaladas."
 
 # Crear symlink en ~/.local/bin
 LOCAL_BIN="$HOME/.local/bin"
 mkdir -p "$LOCAL_BIN"
-if [[ -f "$ROOT_DIR/venv/bin/video-intake" ]]; then
-    ln -sf "$ROOT_DIR/venv/bin/video-intake" "$LOCAL_BIN/video-intake"
+if [[ -n "${BIN_SRC:-}" && -f "$BIN_SRC" ]]; then
+    ln -sf "$BIN_SRC" "$LOCAL_BIN/video-intake"
+    echo "  [OK] CLI habilitado globalmente: $LOCAL_BIN/video-intake"
+elif [[ -f "$ROOT_DIR/.venv/bin/video-intake" ]]; then
+    ln -sf "$ROOT_DIR/.venv/bin/video-intake" "$LOCAL_BIN/video-intake"
     echo "  [OK] CLI habilitado globalmente: $LOCAL_BIN/video-intake"
 fi
 

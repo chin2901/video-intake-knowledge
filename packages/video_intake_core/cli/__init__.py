@@ -26,11 +26,15 @@ solicita (``--json``) para integración con máquinas.
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from video_intake_core.artifacts import ArtifactManager
+    from video_intake_core.memory import MemoryProvider
+    from video_intake_core.storage import StorageManager
 
 logger = logging.getLogger("video_intake")
 DEFAULT_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -46,9 +50,31 @@ DEFAULT_LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 # ============================================================================
 
 
+def _resolve_config_path(raw_path: str | Path | None = None) -> Path:
+    """Resuelve la ruta del archivo de configuración."""
+    if raw_path:
+        return Path(raw_path)
+    # 1. Directorio actual
+    local_cfg = Path("config/default.yaml")
+    if local_cfg.exists():
+        return local_cfg
+    # 2. Configuración de usuario
+    user_cfg = Path.home() / ".video-intake" / "config.yaml"
+    if user_cfg.exists():
+        return user_cfg
+    # 3. Raíz canónica del proyecto
+    repo_cfg = Path(__file__).resolve().parent.parent.parent.parent / "config" / "default.yaml"
+    if repo_cfg.exists():
+        return repo_cfg
+    canonical = Path("/srv/video-intake-knowledge/config/default.yaml")
+    if canonical.exists():
+        return canonical
+    return local_cfg
+
+
 def _resolve_config(args: argparse.Namespace) -> dict[str, Any]:
     """Carga la configuración de la ruta indicada o del default."""
-    config_path = getattr(args, "config", None) or "config/default.yaml"
+    config_path = _resolve_config_path(getattr(args, "config", None))
     from video_intake_core.policies import PolicyResolver
 
     resolver = PolicyResolver(config_path=str(config_path))
@@ -75,8 +101,7 @@ def _make_memory(args: argparse.Namespace) -> MemoryProvider:
     import os
 
     config = _resolve_config(args)
-    default_provider = config.get("memory", {}).get("default_provider", "local")
-    from video_intake_core.memory import MemoryProvider, LocalSQLiteMemoryProvider
+    from video_intake_core.memory import LocalSQLiteMemoryProvider
 
     default_db = Path.home() / ".video-intake" / "memory.db"
     raw_path = (
@@ -92,7 +117,7 @@ def _make_memory(args: argparse.Namespace) -> MemoryProvider:
 
 def _detect_sources(urls: list[str], files: list[str]) -> list[dict[str, Any]]:
     """Combina detección de URLs y archivos locales."""
-    from video_intake_core.acquisition import detect_video_sources, SourceType
+    from video_intake_core.acquisition import detect_video_sources
 
     sources: list[dict[str, Any]] = []
 
