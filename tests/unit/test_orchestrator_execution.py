@@ -77,6 +77,12 @@ def test_check_and_extract_local_video(sample_video_path: str, tmp_path: Path):
     assert "video" in artifacts["files"]
     assert "audio" in artifacts["files"]
     assert Path(artifacts["files"]["audio"]).exists()
+    assert "toc" in artifacts["files"]
+    assert "executive_summary" in artifacts["files"]
+    assert "knowledge_report" in artifacts["files"]
+    assert (Path(artifacts["job_dir"]) / "toc.md").exists()
+    assert (Path(artifacts["job_dir"]) / "executive_summary.md").exists()
+    assert (Path(artifacts["job_dir"]) / "knowledge_report.md").exists()
     assert (Path(artifacts["job_dir"]) / "artifacts_manifest.json").exists()
 
 

@@ -22,6 +22,20 @@ from typing import Any, Optional
 
 from ..schemas import validate_against_schema
 from ..utils import generate_id, sanitize_string, now_utc
+from .executive_summary import (
+    format_executive_summary_markdown,
+    generate_structured_executive_summary,
+)
+from .knowledge_report import (
+    export_knowledge_report,
+    generate_comprehensive_markdown_report,
+)
+from .toc import (
+    format_timestamp,
+    format_toc_markdown,
+    generate_table_of_contents,
+    parse_seconds,
+)
 
 logger = logging.getLogger(__name__)
 

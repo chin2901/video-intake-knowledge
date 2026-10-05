@@ -19,6 +19,24 @@ import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
+from .code_detection import (
+    detect_code_content,
+    enrich_ocr_with_code_detection,
+    format_technical_ocr,
+)
+from .sharpness import (
+    calculate_sharpness,
+    filter_blurry_frames,
+    is_blurry,
+)
+from .slide_detection import (
+    calculate_frame_similarity,
+    calculate_mse,
+    calculate_ssim,
+    detect_slide_transitions,
+    filter_duplicate_frames,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -205,11 +223,15 @@ def _extract_keyframes_impl(
     output_dir: Optional[str | Path] = None,
     image_format: str = "png",
     scene_frame_offset: float = 0.1,
+    filter_blur: bool = True,
+    sharpness_threshold: float = 80.0,
+    deduplicate_slides: bool = True,
+    similarity_threshold: float = 0.92,
 ) -> list[dict[str, Any]]:
     """Extract keyframes from a video (internal implementation).
 
     Extracts frames at scene changes, evenly spaced intervals,
-    or both.
+    or both, filtering out blurry frames and duplicate slides.
 
     Args:
         video_path: Path to video file.
@@ -218,15 +240,13 @@ def _extract_keyframes_impl(
         output_dir: Directory for output frames. Auto-created if needed.
         image_format: Image format: png, jpg, jpeg, bmp.
         scene_frame_offset: Offset from scene start in seconds.
+        filter_blur: If True, drop blurry frames via Laplacian variance.
+        sharpness_threshold: Minimum sharpness score.
+        deduplicate_slides: If True, drop duplicate consecutive frames via SSIM/MSE.
+        similarity_threshold: Similarity score above which frames are considered duplicate.
 
     Returns:
-        List of frame dicts with:
-            - timestamp: Time of frame in seconds.
-            - timestamp_str: Time as HH:MM:SS.mmm.
-            - frame_path: Path to saved image.
-            - width: Frame width.
-            - height: Frame height.
-            - index: Frame index.
+        List of frame dicts with timestamp, frame_path, dimensions, and index.
     """
     video_path = Path(video_path)
     if not video_path.exists():
@@ -290,6 +310,14 @@ def _extract_keyframes_impl(
                 }
             )
             frame_idx += 1
+
+    # Apply Laplacian variance sharpness filter to discard blurry frames
+    if filter_blur and frames:
+        frames = filter_blurry_frames(frames, threshold=sharpness_threshold, min_keep=1)
+
+    # Apply SSIM/MSE perceptual similarity to filter duplicate slides/screens
+    if deduplicate_slides and frames:
+        frames = filter_duplicate_frames(frames, similarity_threshold=similarity_threshold)
 
     return frames
 
@@ -442,6 +470,9 @@ def extract_keyframes(
 ) -> list[dict[str, Any]]:
     """Extract keyframes from a video (contract API).
 
+    Extracts keyframes at scene changes and intervals, filtering out blurry
+    frames and duplicate slides.
+
     Args:
         video_path: Path to video file.
         scenes: List of scene dicts from detect_scenes().
@@ -455,11 +486,13 @@ def extract_keyframes(
         scene_changes=scenes,
         max_frames=20,
         output_dir=output_dir,
+        filter_blur=True,
+        deduplicate_slides=True,
     )
 
 
 def analyze_keyframe(frame_path: str | Path) -> dict[str, Any]:
-    """Analyze a keyframe for visual elements (contract API).
+    """Analyze a keyframe for visual elements, sharpness, and code (contract API).
 
     Args:
         frame_path: Path to frame image.
@@ -467,10 +500,53 @@ def analyze_keyframe(frame_path: str | Path) -> dict[str, Any]:
     Returns:
         Dict with analysis results.
     """
-    # Placeholder for future implementation
+    p = Path(frame_path)
+    sharpness = calculate_sharpness(p)
+    blurry = is_blurry(p, threshold=80.0)
+
+    # Detect code if text can be extracted via OCR
+    text = ""
+    is_code = False
+    code_lang = ""
+    formatted_md = ""
+    try:
+        from video_intake_core.ocr import extract_text
+
+        ocr_res = extract_text(p)
+        text = ocr_res.get("text", "")
+        if text:
+            detection = detect_code_content(text)
+            is_code = detection["is_code"]
+            code_lang = detection["language"]
+            formatted_md = detection["formatted_markdown"]
+    except Exception as e:
+        logger.debug("analyze_keyframe OCR/code detection fallback: %s", e)
+
+    elements = []
+    if is_code:
+        elements.append("code")
+    if text:
+        elements.append("text")
+    if not elements:
+        elements.append("visual_graphic")
+
+    desc = f"Sharpness score {sharpness:.1f}."
+    if is_code:
+        desc += f" Contiene bloque de código ({code_lang})."
+    elif text:
+        desc += " Texto o diagrama detectado."
+    else:
+        desc += " Fotograma visual o gráfico."
+
     return {
         "frame_path": str(frame_path),
-        "elements": [],
-        "description": "",
-        "confidence": 0.0,
+        "sharpness": sharpness,
+        "is_blurry": blurry,
+        "elements": elements,
+        "description": desc,
+        "text": text,
+        "is_code": is_code,
+        "code_language": code_lang,
+        "formatted_markdown": formatted_md,
+        "confidence": round(min(sharpness / 200.0, 1.0), 2),
     }

@@ -208,6 +208,15 @@ def extract_text(
             "tesseract_version": _get_tesseract_version(),
         }
 
+        # Code and terminal syntax detection
+        from video_intake_core.visual.code_detection import detect_code_content
+
+        code_info = detect_code_content(full_text)
+        result["is_code"] = code_info["is_code"]
+        result["code_language"] = code_info["language"]
+        result["code_confidence"] = code_info["confidence"]
+        result["formatted_markdown"] = code_info["formatted_markdown"]
+
         # Save OCR data as JSON next to frame if path is set
         _save_ocr_to_json(result, frame_path)
 
@@ -226,6 +235,10 @@ def extract_text(
             "preprocessing": preprocessing,
             "tesseract_version": _get_tesseract_version(),
             "error": str(e),
+            "is_code": False,
+            "code_language": "",
+            "code_confidence": 0.0,
+            "formatted_markdown": "",
         }
 
 

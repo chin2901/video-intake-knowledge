@@ -25,6 +25,14 @@ from typing import Any
 
 from video_intake_core.acquisition import SourceType, detect_source
 from video_intake_core.audio import download_audio_only, extract_audio
+from video_intake_core.context import (
+    format_executive_summary_markdown,
+    format_timestamp,
+    format_toc_markdown,
+    generate_comprehensive_markdown_report,
+    generate_structured_executive_summary,
+    generate_table_of_contents,
+)
 from video_intake_core.jobs import JobManager, JobState
 from video_intake_core.memory import (
     LocalSQLiteMemoryProvider,
@@ -39,7 +47,13 @@ from video_intake_core.transcription import (
     format_subtitles_to_markdown,
     transcribe_with_whisper,
 )
-from video_intake_core.visual import detect_scenes, extract_keyframes
+from video_intake_core.visual import (
+    detect_code_content,
+    detect_scenes,
+    extract_keyframes,
+    filter_blurry_frames,
+    filter_duplicate_frames,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -533,6 +547,7 @@ def check_and_extract(
 
         # 3. Transcripción de audio (subtítulos nativos o whisper) mediante transcription module
         transcript_text = ""
+        transcript_segments: list[dict[str, Any]] = []
         if 3 in operations or 4 in operations:
             print("[3/5] Obteniendo transcripción de audio...")
             # Prioridad 1: Subtítulos nativos (Estrategia Zero-GPU / Subtitles First)
@@ -547,6 +562,7 @@ def check_and_extract(
                 logger.debug("Fast native subtitle extraction fallback: %s", e)
 
             if fast_subs and fast_subs.get("segments"):
+                transcript_segments = fast_subs["segments"]
                 transcript_text = fast_subs.get("markdown") or format_subtitles_to_markdown(
                     fast_subs["segments"],
                     source_info={
@@ -565,6 +581,7 @@ def check_and_extract(
                 try:
                     local_subs = extract_local_captions(video_file)
                     if local_subs:
+                        transcript_segments = local_subs
                         transcript_text = format_subtitles_to_markdown(
                             local_subs,
                             source_info={
@@ -658,8 +675,12 @@ def check_and_extract(
                         transcript_text = (
                             whisper_res.get("full_text") or whisper_res.get("text") or ""
                         )
+                        if whisper_res.get("segments"):
+                            transcript_segments = whisper_res["segments"]
                     elif whisper_res and hasattr(whisper_res, "text") and whisper_res.text:
                         transcript_text = whisper_res.text
+                        if hasattr(whisper_res, "segments") and whisper_res.segments:
+                            transcript_segments = list(whisper_res.segments)
                     if transcript_text:
                         print(
                             f"  [OK] Transcripción completada con módulo Whisper ({engine_used})."
@@ -756,17 +777,47 @@ def check_and_extract(
                 subprocess.run(cmd, capture_output=True, text=True)
                 frames = sorted(frames_dir.glob("*.jpg"))
 
-            print(f"  [OK] {len(frames)} fotogramas clave extraídos.")
+            # Filtrar fotogramas borrosos y duplicados
+            if frames:
+                frames = filter_blurry_frames(frames, threshold=80.0, min_keep=1)
+                frames = filter_duplicate_frames(frames, similarity_threshold=0.92)
+                # Purga de fotogramas descartados para que OCR y el reporte sólo procesen fotogramas nítidos
+                retained_set = {Path(f).resolve() for f in frames}
+                for disk_frame in list(frames_dir.glob("*.png")) + list(frames_dir.glob("*.jpg")):
+                    if disk_frame.resolve() not in retained_set:
+                        with contextlib.suppress(Exception):
+                            disk_frame.unlink(missing_ok=True)
+
+            print(f"  [OK] {len(frames)} fotogramas clave nítidos y deduplicados.")
 
             ocr_text = []
+            ocr_results = []
             if frames:
                 try:
-                    ocr_results = ocr_frame_directory(frames_dir, pattern="*.*")
+                    raw_ocr = ocr_frame_directory(frames_dir, pattern="*.*")
+                    retained_paths = {Path(f).resolve() for f in frames}
+                    ocr_results = [
+                        item
+                        for item in raw_ocr
+                        if Path(item.get("frame_path", "")).resolve() in retained_paths
+                    ]
                     for ocr_item in ocr_results:
                         txt = ocr_item.get("text", "").strip()
                         f_name = Path(ocr_item.get("frame_path", "")).name
                         if txt:
-                            ocr_text.append(f"### Fotograma {f_name}\n{txt}")
+                            if ocr_item.get("is_code") and ocr_item.get("formatted_markdown"):
+                                lang = ocr_item.get("code_language", "code")
+                                ocr_text.append(
+                                    f"### Fotograma {f_name} (Código {lang})\n{ocr_item['formatted_markdown']}"
+                                )
+                            else:
+                                cd = detect_code_content(txt)
+                                if cd["is_code"]:
+                                    ocr_text.append(
+                                        f"### Fotograma {f_name} (Código {cd['language']})\n{cd['formatted_markdown']}"
+                                    )
+                                else:
+                                    ocr_text.append(f"### Fotograma {f_name}\n{txt}")
                 except Exception as e:
                     logger.debug("Modular OCR failed: %s", e)
 
@@ -782,7 +833,13 @@ def check_and_extract(
                         if txt_path.exists():
                             content = txt_path.read_text(encoding="utf-8", errors="ignore").strip()
                             if content:
-                                ocr_text.append(f"### Fotograma {frame.name}\n{content}")
+                                cd = detect_code_content(content)
+                                if cd["is_code"]:
+                                    ocr_text.append(
+                                        f"### Fotograma {frame.name} (Código {cd['language']})\n{cd['formatted_markdown']}"
+                                    )
+                                else:
+                                    ocr_text.append(f"### Fotograma {frame.name}\n{content}")
 
             vis_content = f"""# Contexto Visual: {title}
 - Fotogramas analizados: {len(frames)}
@@ -794,6 +851,68 @@ def check_and_extract(
             artifacts["files"]["visual_context"] = str(vis_path)
             artifacts["visual_context"] = vis_content
             print("  [OK] Contexto visual generado.")
+
+        # Generación automática de artefactos de conocimiento de élite
+        try:
+            src_info = sources[0] if sources else {"title": title, "resolved_url": target}
+            target_text = transcript_text or title
+            keyframes_meta = []
+            if "frames" in locals() and frames:
+                for idx, f in enumerate(frames):
+                    sec = idx * 5.0
+                    keyframes_meta.append(
+                        {
+                            "frame_path": str(f),
+                            "timestamp": sec,
+                            "timestamp_str": format_timestamp(sec),
+                        }
+                    )
+
+            # 1. Tabla de Contenidos interactiva (TOC) con timestamps formateados (00:01:23)
+            toc_chapters = generate_table_of_contents(
+                segments=transcript_segments
+                if "transcript_segments" in locals() and transcript_segments
+                else None,
+                video_duration=None,
+                full_text=target_text,
+                keyframes=keyframes_meta,
+            )
+            toc_content = format_toc_markdown(toc_chapters, title=f"Tabla de Contenidos: {title}")
+            toc_path = job_dir / "toc.md"
+            toc_path.write_text(toc_content, encoding="utf-8")
+            artifacts["files"]["toc"] = str(toc_path)
+            artifacts["toc"] = toc_content
+
+            # 2. Resumen Ejecutivo estructurado
+            summary_dict = generate_structured_executive_summary(
+                text=target_text,
+                source_info=src_info,
+            )
+            exec_content = format_executive_summary_markdown(
+                summary_dict, title=f"Resumen Ejecutivo: {title}"
+            )
+            exec_path = job_dir / "executive_summary.md"
+            exec_path.write_text(exec_content, encoding="utf-8")
+            artifacts["files"]["executive_summary"] = str(exec_path)
+            artifacts["executive_summary"] = exec_content
+
+            # 3. Reporte Markdown completo integrador
+            report_content = generate_comprehensive_markdown_report(
+                title=title,
+                source_info=src_info,
+                toc_data=toc_content,
+                executive_summary_data=exec_content,
+                transcript_text=transcript_text,
+                keyframes=keyframes_meta,
+                ocr_results=ocr_results if "ocr_results" in locals() and ocr_results else None,
+            )
+            report_path = job_dir / "knowledge_report.md"
+            report_path.write_text(report_content, encoding="utf-8")
+            artifacts["files"]["knowledge_report"] = str(report_path)
+            artifacts["knowledge_report"] = report_content
+            print("  [OK] TOC interactivo, Resumen Ejecutivo y Reporte Integral generados.")
+        except Exception as e:
+            logger.debug("Generación de artefactos de conocimiento de élite en orchestrator: %s", e)
 
     # Guardar manifiesto de artefactos
     manifest_path = job_dir / "artifacts_manifest.json"
