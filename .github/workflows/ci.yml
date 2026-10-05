@@ -137,24 +137,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        fetch-depth: 0
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "${{ env.UV_VERSION }}"
 
       - name: GitLeaks — buscar secretos
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Detect secrets in files
-        run: |
-          git log --all --format="%H" | xargs -I{} \
-            git diff-tree --no-commit-id --name-only -r {} | \
-            sort -u | xargs grep -l -E "([
-            ]*[A-Za-z0-9+/]{40}[ ]*|
-            aws_[a-z]+_[a-z0-9]+|
-            sk-[a-z0-9]+|
-            ghp_[a-z0-9]+|
-            hf_[a-z0-9]+
-            )" || true
 
       - name: Ruff — Detect insecure patterns
         run: |
