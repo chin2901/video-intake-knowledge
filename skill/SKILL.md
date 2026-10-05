@@ -173,15 +173,25 @@ artifacts/<job-id>/
 ├── transcript.md              # Transcripción con timestamps (si se seleccionó 3)
 ├── audio_context.md           # Resumen y tópicos clave (si se seleccionó 4)
 ├── visual_context.md          # Diagramas y texto OCR (si se seleccionó 5)
-└── frames/                    # Fotogramas clave analizados
+├── toc.md                     # Tabla de contenidos cronológica con timestamps clicables
+├── executive_summary.md       # Dossier ejecutivo estructurado (glosario, herramientas, action items)
+├── knowledge_report.md        # Reporte integral unificado (texto + visión + código + enlaces)
+└── frames/                    # Fotogramas clave nítidos (filtrados por nitidez y deduplicados)
 ```
 
 **Formato de vídeo por defecto:** los vídeos descargados se normalizan SIEMPRE a
 `H.264 (AVC) + AAC` en contenedor `MP4` con `faststart`, el estándar universal de
-compatibilidad (iPhone, WhatsApp, TV, navegadores). codecs poco soportados como
+compatibilidad (iPhone, WhatsApp, TV, navegadores). Codecs poco soportados como
 VP9-WebM quedan transcodificados automáticamente. Configurable en
 `config/default.yaml` → `acquisition.output_format` (o desactivable con
 `VITK_OUTPUT_FORMAT=none`).
+
+**Motor de Transcripción Inteligente:**
+- **Zero-GPU First:** Extracción instantánea (<1s) de subtítulos oficiales o automáticos en VTT, SRT o XML de YouTube previo a cualquier inferencia.
+- **`faster-whisper` (CTranslate2):** Aceleración 4x-8x en CPU con cuantización `int8` y fallback automático a `openai-whisper`.
+
+**Autenticación de Sesión (`video-intake auth`):**
+Si el agente detecta un error de restricción de edad, cuenta privada o bloqueo WAF en Instagram, TikTok o YouTube, invocar `video-intake auth detect` o indicar al usuario configurar cookies con `video-intake auth menu`.
 
 ---
 

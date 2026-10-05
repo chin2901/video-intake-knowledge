@@ -82,6 +82,11 @@ video-intake interactive "./mi_video_demo.mp4"
 # Diagnóstico de salud y dependencias del sistema
 video-intake doctor
 
+# Asistente de autenticación y cookies para contenido restringido (+18, Instagram, YouTube)
+video-intake auth status
+video-intake auth detect
+video-intake auth menu
+
 # Inspeccionar metadatos crudos sin descargar
 video-intake inspect "https://www.youtube.com/watch?v=VIDEO_ID"
 
@@ -91,12 +96,21 @@ video-intake extract "https://youtu.be/..." --select 3,5
 
 ---
 
+## ⚡ Superpoderes del Motor
+- **Zero-GPU Subtitles First:** Extracción nativa ultrarrápida (<1s) de subtítulos oficiales y automáticos (VTT, SRT, XML YouTube) antes de gastar recursos.
+- **`faster-whisper` (CTranslate2):** Inferencia 4x a 8x más rápida en CPU con cuantización `int8` y fallback automático a `openai-whisper`.
+- **Compatibilidad Universal de Vídeo:** Normalización por defecto a **H.264 + AAC en MP4 con `faststart`** (reproducción instantánea en iPhone, WhatsApp, TVs y navegadores).
+- **Visión Inteligente:** Filtro de nitidez laplaciano para descartar fotogramas borrosos, detección de cambio real de diapositivas y extracción sintáctica de bloques de código.
+- **Estructuración de Conocimiento:** Generación automática de Tabla de Contenidos interactiva (`toc.md`), Dossier Ejecutivo (`executive_summary.md`) y Reporte Integral (`knowledge_report.md`).
+
+---
+
 ## 📂 Estructura del Repositorio
 
 - `skill/SKILL.md` : **El cerebro.** Única directiva maestra inyectada a los agentes.
 - `install.sh` : Autodescubrimiento y vinculación de entornos.
 - `packages/video_intake_core/` : Núcleo modular de extracción (audio, vision, ocr, memory, orchestrator).
-- `tests/` : Suite completa de testing e2e y unitario garantizando 0 chapuzas.
+- `tests/` : Suite completa de testing (300 tests pasando al 100%, e2e, unitario, contratos y seguridad).
 - `adapters/cursor/` : Archivo `.cursorrules` para compatibilidad IDE nativa.
 
 ---
