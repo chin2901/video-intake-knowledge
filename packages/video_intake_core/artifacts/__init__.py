@@ -1,4 +1,3 @@
-
 """
 Artifacts module.
 
@@ -142,10 +141,7 @@ class ArtifactManager:
             metadata=metadata,
         )
 
-        logger.info(
-            f"Registered audio artifact {artifact_id}"
-            f"({audio_path.stat().st_size} bytes)"
-        )
+        logger.info(f"Registered audio artifact {artifact_id}({audio_path.stat().st_size} bytes)")
         return artifact_id
 
     # ------------------------------------------------------------------
@@ -164,9 +160,7 @@ class ArtifactManager:
         artifact_ids: list[str] = []
 
         for idx, frame_path in enumerate(frame_paths):
-            artifact_id = (
-                f"frame_{compute_sha256(frame_path.name)[:16]}"
-            )
+            artifact_id = f"frame_{compute_sha256(frame_path.name)[:16]}"
 
             self._storage.register_artifact(
                 artifact_id=artifact_id,
@@ -182,9 +176,7 @@ class ArtifactManager:
             )
             artifact_ids.append(artifact_id)
 
-        logger.info(
-            f"Registered {len(artifact_ids)} frame artifacts for job {job_id}"
-        )
+        logger.info(f"Registered {len(artifact_ids)} frame artifacts for job {job_id}")
         return artifact_ids
 
     # ------------------------------------------------------------------
@@ -222,9 +214,7 @@ class ArtifactManager:
                 if block.get("text"):
                     all_text.append(block["text"])
 
-        avg_confidence = (
-            total_confidence / total_blocks if total_blocks > 0 else 0.0
-        )
+        avg_confidence = total_confidence / total_blocks if total_blocks > 0 else 0.0
 
         self._storage.register_artifact(
             artifact_id=artifact_id,
@@ -287,9 +277,7 @@ class ArtifactManager:
             filename=safe_type,
         )
 
-        artifact_id = (
-            f"context_{compute_sha256(content[:64])[:16]}"
-        )
+        artifact_id = f"context_{compute_sha256(content[:64])[:16]}"
 
         self._storage.register_artifact(
             artifact_id=artifact_id,
@@ -305,8 +293,7 @@ class ArtifactManager:
         )
 
         logger.info(
-            f"Registered context artifact {artifact_id}"
-            f"type={context_type} ({len(content)} chars)"
+            f"Registered context artifact {artifact_id}type={context_type} ({len(content)} chars)"
         )
         return artifact_id
 
@@ -355,10 +342,7 @@ class ArtifactManager:
             metadata=metadata,
         )
 
-        logger.info(
-            f"Registered video artifact {artifact_id}"
-            f"({video_path.stat().st_size} bytes)"
-        )
+        logger.info(f"Registered video artifact {artifact_id}({video_path.stat().st_size} bytes)")
         return artifact_id
 
     # ------------------------------------------------------------------
@@ -381,6 +365,7 @@ class ArtifactManager:
 def list_artifacts(job_id: str) -> list[dict[str, Any]]:
     """List all artifacts for a job."""
     from video_intake_core.storage import StorageManager
+
     mgr = StorageManager()
     artifacts = mgr.list_artifacts(job_id)
     return [
