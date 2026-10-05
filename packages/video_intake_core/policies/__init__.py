@@ -136,7 +136,28 @@ class PolicyResolver:
 
     def get_transcription_local_engine(self) -> str:
         """Get the local transcription engine to use."""
-        return self._transcription_policy.get("local_engine", "whisper")
+        import os
+
+        return (
+            os.environ.get("VITK_TRANSCRIPTION_ENGINE")
+            or self._transcription_policy.get("engine")
+            or self._transcription_policy.get("local_engine")
+            or "auto"
+        )
+
+    def get_transcription_engine(self) -> str:
+        """Get the transcription engine (auto | faster-whisper | whisper)."""
+        return self.get_transcription_local_engine()
+
+    def get_transcription_compute_type(self) -> str:
+        """Get the quantization compute type for faster-whisper (int8, float16, etc.)."""
+        import os
+
+        return (
+            os.environ.get("VITK_TRANSCRIPTION_COMPUTE_TYPE")
+            or self._transcription_policy.get("compute_type")
+            or "int8"
+        )
 
     def get_transcription_model(self) -> str:
         """Get the default transcription model."""

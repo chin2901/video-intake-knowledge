@@ -15,6 +15,9 @@ Provee el comando ``video-intake`` con todas las operaciones habilitadas:
 - config validate
 - self-test
 - models (list, install, verify, remove)
+- proposals
+- memory
+- auth (status, detect, test, set-browser, set-cookies, clear)
 
 Soporta modo interactivo y no interactivo. Produce salida JSON cuando se
 solicita (``--json``) para integración con máquinas.
@@ -250,6 +253,10 @@ def build_parser() -> argparse.ArgumentParser:
     from video_intake_core.cli.memory import memory_command
 
     memory_command(sub)
+
+    from video_intake_core.cli.auth import auth_command
+
+    auth_command(sub)
 
     return parser
 

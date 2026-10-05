@@ -112,6 +112,14 @@ class TestCLIStructure:
         assert callable(models_install_command)
         assert callable(models_verify_command)
 
+    def test_cli_auth_exists(self):
+        """The auth command exists in CLI."""
+        from video_intake_core.cli.auth import (
+            auth_command,
+        )
+
+        assert callable(auth_command)
+
 
 class TestCLIMenu:
     """Tests for the interactive menu parser."""

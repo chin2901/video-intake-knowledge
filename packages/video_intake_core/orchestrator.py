@@ -34,7 +34,9 @@ from video_intake_core.memory import (
 from video_intake_core.ocr import ocr_frame_directory
 from video_intake_core.transcription import (
     extract_captions_from_platform,
+    extract_fast_native_subtitles,
     extract_local_captions,
+    format_subtitles_to_markdown,
     transcribe_with_whisper,
 )
 from video_intake_core.visual import detect_scenes, extract_keyframes
@@ -249,6 +251,54 @@ def _resolve_whisper_model() -> str:
     return "base"
 
 
+def _resolve_whisper_engine() -> str:
+    """Resuelve el motor de transcripción (auto | faster-whisper | whisper) desde la config."""
+    for cand in (
+        Path("config/default.yaml"),
+        Path(__file__).resolve().parents[2] / "config" / "default.yaml",
+    ):
+        if cand.exists():
+            try:
+                from video_intake_core.policies import PolicyResolver
+
+                return PolicyResolver(config_path=str(cand)).get_transcription_engine()
+            except Exception as e:
+                logger.debug("No se pudo cargar transcription engine desde %s: %s", cand, e)
+    return "auto"
+
+
+def _resolve_whisper_compute_type() -> str:
+    """Resuelve el tipo de cuantización para faster-whisper (int8, float16, etc.)."""
+    for cand in (
+        Path("config/default.yaml"),
+        Path(__file__).resolve().parents[2] / "config" / "default.yaml",
+    ):
+        if cand.exists():
+            try:
+                from video_intake_core.policies import PolicyResolver
+
+                return PolicyResolver(config_path=str(cand)).get_transcription_compute_type()
+            except Exception as e:
+                logger.debug("No se pudo cargar compute_type desde %s: %s", cand, e)
+    return "int8"
+
+
+def _resolve_transcription_language() -> str:
+    """Resuelve el idioma preferido de transcripción."""
+    for cand in (
+        Path("config/default.yaml"),
+        Path(__file__).resolve().parents[2] / "config" / "default.yaml",
+    ):
+        if cand.exists():
+            try:
+                from video_intake_core.policies import PolicyResolver
+
+                return PolicyResolver(config_path=str(cand)).get_transcription_language() or "es"
+            except Exception as e:
+                logger.debug("No se pudo cargar language desde %s: %s", cand, e)
+    return "es"
+
+
 def _proc_env() -> dict[str, str]:
     """Entorno para subprocesos. Corrige XDG_CONFIG_HOME (HOME/XDG remapeados
     por entornos de ejecución tipo HERMES) cuando se usan cookies de navegador.
@@ -393,10 +443,28 @@ def check_and_extract(
                         if 1 in operations:
                             artifacts["files"]["video"] = str(video_file)
                 else:
+                    err_msg = res.stderr[:200]
                     print(
-                        f"  [AVISO] Descarga directa de vídeo no completada: {res.stderr[:200]}",
+                        f"  [AVISO] Descarga directa de vídeo no completada: {err_msg}",
                         file=sys.stderr,
                     )
+                    if (
+                        not auth.get("cookies_from_browser") and not auth.get("cookies_path")
+                    ) and any(
+                        k in res.stderr.lower()
+                        for k in (
+                            "login",
+                            "sign in",
+                            "confirm your age",
+                            "restricted",
+                            "inicia sesión",
+                            "403",
+                        )
+                    ):
+                        print(
+                            "  [PISTA] Este vídeo parece requerir autenticación. Puedes configurarla con: video-intake auth",
+                            file=sys.stderr,
+                        )
 
         # 2. Descarga o extracción de audio local (.mp3) mediante audio module
         if 2 in operations or 3 in operations or 4 in operations:
@@ -467,13 +535,43 @@ def check_and_extract(
         transcript_text = ""
         if 3 in operations or 4 in operations:
             print("[3/5] Obteniendo transcripción de audio...")
-            # Prioridad 1: Subtítulos locales mediante transcripción modular
-            if is_local and video_file:
+            # Prioridad 1: Subtítulos nativos (Estrategia Zero-GPU / Subtitles First)
+            fast_subs = None
+            try:
+                fast_subs = extract_fast_native_subtitles(
+                    video_file if (is_local and video_file) else target,
+                    language=_resolve_transcription_language(),
+                    auth=auth,
+                )
+            except Exception as e:
+                logger.debug("Fast native subtitle extraction fallback: %s", e)
+
+            if fast_subs and fast_subs.get("segments"):
+                transcript_text = fast_subs.get("markdown") or format_subtitles_to_markdown(
+                    fast_subs["segments"],
+                    source_info={
+                        "title": title,
+                        "url": target,
+                        "language": fast_subs.get("language"),
+                        "sub_type": "Subtítulos nativos (Zero-GPU)",
+                    },
+                )
+                print(
+                    f"  [OK] Transcripción extraída en <1s desde subtítulos nativos (Zero-GPU): {len(fast_subs['segments'])} segmentos"
+                )
+
+            # Prioridad 1b: Fallback secundario de subtítulos locales
+            if not transcript_text and is_local and video_file:
                 try:
                     local_subs = extract_local_captions(video_file)
                     if local_subs:
-                        transcript_text = "\n".join(
-                            s.get("text", "") for s in local_subs if s.get("text")
+                        transcript_text = format_subtitles_to_markdown(
+                            local_subs,
+                            source_info={
+                                "title": title,
+                                "url": target,
+                                "sub_type": "Subtítulos locales",
+                            },
                         )
                         print(
                             f"  [OK] Subtítulo detectado con módulo transcription: {len(local_subs)} segmentos"
@@ -491,13 +589,22 @@ def check_and_extract(
                             print(f"  [OK] Subtítulo adyacente detectado: {sub_candidate.name}")
                             break
 
-            # Prioridad 1b: Subtítulos oficiales de plataforma si es remoto
+            # Prioridad 1c: Subtítulos oficiales vía yt-dlp si es remoto
             if not transcript_text and not is_local and target.startswith("http"):
                 try:
                     platform_subs = extract_captions_from_platform(target)
-                    if platform_subs:
-                        transcript_text = "\n".join(
-                            s.get("text", "") for s in platform_subs if s.get("text")
+                    if (
+                        isinstance(platform_subs, list)
+                        and platform_subs
+                        and "text" in platform_subs[0]
+                    ):
+                        transcript_text = format_subtitles_to_markdown(
+                            platform_subs,
+                            source_info={
+                                "title": title,
+                                "url": target,
+                                "sub_type": "Subtítulos de plataforma",
+                            },
                         )
                         print("  [OK] Subtítulos oficiales obtenidos vía módulo transcription.")
                 except Exception as e:
@@ -529,11 +636,23 @@ def check_and_extract(
                             f"  [OK] Transcripción extraída desde subtítulos oficiales: {sub_file.name}"
                         )
 
-            # Prioridad 2: Whisper local mediante transcripción modular
+            # Prioridad 2: Whisper local modular (faster-whisper con cuantización int8 o fallback a openai-whisper)
             if not transcript_text and audio_file and audio_file.exists():
                 try:
+                    engine_opt = _resolve_whisper_engine()
+                    compute_opt = _resolve_whisper_compute_type()
+                    lang_opt = _resolve_transcription_language()
                     whisper_res = transcribe_with_whisper(
-                        audio_file, model_size=_resolve_whisper_model()
+                        audio_file,
+                        model_size=_resolve_whisper_model(),
+                        engine=engine_opt,
+                        compute_type=compute_opt,
+                        language=lang_opt,
+                    )
+                    engine_used = (
+                        whisper_res.get("engine", "whisper")
+                        if isinstance(whisper_res, dict)
+                        else "whisper"
                     )
                     if isinstance(whisper_res, dict):
                         transcript_text = (
@@ -542,7 +661,9 @@ def check_and_extract(
                     elif whisper_res and hasattr(whisper_res, "text") and whisper_res.text:
                         transcript_text = whisper_res.text
                     if transcript_text:
-                        print("  [OK] Transcripción completada con módulo Whisper.")
+                        print(
+                            f"  [OK] Transcripción completada con módulo Whisper ({engine_used})."
+                        )
                 except Exception as e:
                     logger.debug("transcribe_with_whisper fallback: %s", e)
 
@@ -558,12 +679,33 @@ def check_and_extract(
         if 4 in operations:
             print("[4/5] Generando contexto basado en audio...")
             if transcript_text:
-                lines = [
-                    line.strip()
-                    for line in transcript_text.splitlines()
-                    if line.strip() and not line.strip().isdigit() and "-->" not in line
-                ]
-                clean_text = " ".join(lines)
+                clean_lines = []
+                for line in transcript_text.splitlines():
+                    l_str = line.strip()
+                    if (
+                        not l_str
+                        or l_str.isdigit()
+                        or "-->" in l_str
+                        or l_str == "---"
+                        or l_str.startswith("#")
+                    ):
+                        continue
+                    if any(
+                        l_str.startswith(prefix)
+                        for prefix in (
+                            "**Fuente:",
+                            "**Canal:",
+                            "**Duración:",
+                            "**Idioma:",
+                            "**Tipo:",
+                            "**Segmentos:",
+                        )
+                    ):
+                        continue
+                    l_str = re.sub(r"^\*\*\[.*?\]\*\*\s*", "", l_str)
+                    if l_str:
+                        clean_lines.append(l_str)
+                clean_text = " ".join(clean_lines) if clean_lines else transcript_text
                 words = re.findall(r"\b\w{4,}\b", clean_text.lower())
                 freq: dict[str, int] = {}
                 for w in words:

@@ -6,6 +6,8 @@ Provides functions for parsing user menu selections from command line input.
 
 from __future__ import annotations
 
+from typing import Any
+
 
 def parse_menu_selection(selection: str | None) -> list[int] | bool:
     """
@@ -108,4 +110,20 @@ def format_menu_options(options: list[str], selected: list[int] | None = None) -
         prefix = "  "
         marker = "[x]" if i in selected_set else "[ ]"
         lines.append(f"{prefix}{i}. {marker} {opt}")
+    return "\n".join(lines)
+
+
+def format_auth_menu(detected_browsers: dict[str, Any] | None = None) -> str:
+    """Format interactive authentication menu options."""
+    lines = ["Menú de Autenticación Asistida (video-intake auth):", ""]
+    options = [
+        "Comprobar estado actual de autenticación",
+        "Detectar navegadores instalados y perfiles con cookies",
+        "Configurar cookies desde navegador detectado",
+        "Configurar ruta a archivo de cookies (Netscape)",
+        "Probar acceso autenticado a URL restringida",
+        "Desactivar autenticación (clear)",
+    ]
+    for i, opt in enumerate(options, 1):
+        lines.append(f"  {i}. {opt}")
     return "\n".join(lines)
