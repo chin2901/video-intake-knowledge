@@ -26,6 +26,26 @@ class JobAlreadyExistsError(ValueError):
     """Raised when attempting to create a job with an existing ID."""
 
 
+def resolve_jobs_db_path(db_path: str | Path | None = None) -> Path:
+    """Resuelve la ruta canónica y aislada para la BD de jobs."""
+    if db_path and str(db_path) != "jobs.db":
+        p = Path(db_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return p
+
+    import os
+
+    env_path = os.environ.get("VITK_JOBS_DB")
+    if env_path:
+        p = Path(env_path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        return p
+
+    default_dir = Path.home() / ".video-intake"
+    default_dir.mkdir(parents=True, exist_ok=True)
+    return default_dir / "jobs.db"
+
+
 class JobManager:
     """Manages video processing jobs with SQLite persistence.
 
@@ -33,7 +53,7 @@ class JobManager:
     status, or creation time. Thread-safe via threading lock.
 
     Usage:
-        manager = JobManager(db_path="jobs.db")
+        manager = JobManager()
         job = manager.create_job(source, operations=["transcript", "audio-context"])
         manager.update_progress(job.job_id, "transcript", 50)
         manager.complete_job(job.job_id)
@@ -41,13 +61,13 @@ class JobManager:
         jobs = manager.list_jobs(status="running")
     """
 
-    def __init__(self, db_path: str | Path = "jobs.db") -> None:
+    def __init__(self, db_path: str | Path | None = None) -> None:
         """Initialize the job manager with a SQLite database.
 
         Args:
             db_path: Path to the SQLite database file.
         """
-        self._db_path = Path(db_path)
+        self._db_path = resolve_jobs_db_path(db_path)
         self._lock = threading.Lock()
         self._init_db()
 
@@ -214,6 +234,8 @@ class JobManager:
                     """,
                     (job_id,),
                 ).fetchone()
+            except sqlite3.OperationalError:
+                return None
             finally:
                 conn.close()
 
@@ -730,7 +752,7 @@ _default_manager: JobManager | None = None
 _default_lock = threading.Lock()
 
 
-def get_default_manager(db_path: str | Path = "jobs.db") -> JobManager:
+def get_default_manager(db_path: str | Path | None = None) -> JobManager:
     """Get or create the default JobManager singleton.
 
     Args:
@@ -740,10 +762,11 @@ def get_default_manager(db_path: str | Path = "jobs.db") -> JobManager:
         The default JobManager instance.
     """
     global _default_manager
-    if _default_manager is None:
+    resolved = resolve_jobs_db_path(db_path)
+    if _default_manager is None or _default_manager._db_path != resolved:
         with _default_lock:
-            if _default_manager is None:
-                _default_manager = JobManager(db_path=db_path)
+            if _default_manager is None or _default_manager._db_path != resolved:
+                _default_manager = JobManager(db_path=resolved)
     return _default_manager
 
 
@@ -758,7 +781,7 @@ def create_job(
     selected_operations: list[str] | None = None,
     source: dict[str, Any] | None = None,
     operations: list[str] | None = None,
-    db_path: str | Path = "jobs.db",
+    db_path: str | Path | None = None,
     **kwargs: Any,
 ) -> Job:
     """Create a new job with the default manager.
@@ -795,7 +818,7 @@ def create_job(
     return manager.create_job(source=source, operations=operations, **kwargs)
 
 
-def start_job(job_id: str, db_path: str | Path = "jobs.db") -> Job:
+def start_job(job_id: str, db_path: str | Path | None = None) -> Job:
     """Start a job by ID using the default manager.
 
     Args:
@@ -809,7 +832,7 @@ def start_job(job_id: str, db_path: str | Path = "jobs.db") -> Job:
     return manager.start_job(job_id)
 
 
-def cancel_job(job_id: str, db_path: str | Path = "jobs.db", cancelled_by: str = "system") -> Job:
+def cancel_job(job_id: str, db_path: str | Path | None = None, cancelled_by: str = "system") -> Job:
     """Cancel a job by ID using the default manager.
 
     Args:
@@ -824,14 +847,14 @@ def cancel_job(job_id: str, db_path: str | Path = "jobs.db", cancelled_by: str =
     return manager.cancel_job(job_id, cancelled_by=cancelled_by)
 
 
-def get_job(job_id: str) -> Job:
+def get_job(job_id: str) -> Job | None:
     """Get a job by ID using the default manager.
 
     Args:
         job_id: The job ID to get.
 
     Returns:
-        The Job instance.
+        The Job instance or None.
     """
     manager = get_default_manager(_DEFAULT_DB_PATH)
     return manager.get_job(job_id)
@@ -843,7 +866,7 @@ def get_job(job_id: str) -> Job:
 
 
 # Module-level default database path
-_DEFAULT_DB_PATH = "jobs.db"
+_DEFAULT_DB_PATH: str | Path | None = None
 
 
 def create_job(source_url: str, title: str, source_type: str = "youtube") -> Job:

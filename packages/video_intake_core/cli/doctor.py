@@ -110,6 +110,117 @@ def run_doctor(args: argparse.Namespace) -> int:
         }
     )
 
+    # Motor de Transcripción (faster-whisper / openai-whisper)
+    has_faster = False
+    try:
+        import faster_whisper
+
+        has_faster = True
+        fw_ver = getattr(faster_whisper, "__version__", "instalado")
+        results.append(
+            {
+                "check": "faster-whisper",
+                "status": "pass",
+                "detail": f"v{fw_ver} (CTranslate2 acelerado)",
+            }
+        )
+    except ImportError:
+        results.append(
+            {
+                "check": "faster-whisper",
+                "status": "warn",
+                "detail": "no instalado (usando openai-whisper como fallback)",
+            }
+        )
+
+    try:
+        import whisper
+
+        whisper_ver = getattr(whisper, "__version__", "instalado")
+        results.append(
+            {
+                "check": "openai-whisper",
+                "status": "pass",
+                "detail": f"v{whisper_ver}",
+            }
+        )
+    except ImportError:
+        results.append(
+            {
+                "check": "openai-whisper",
+                "status": "pass" if has_faster else "warn",
+                "detail": "no instalado"
+                if not has_faster
+                else "no instalado (cubierto por faster-whisper)",
+            }
+        )
+
+    # Aceleración de Hardware (GPU / CUDA / MPS / CPU int8)
+    hw_status = "info"
+    hw_detail = "CPU (cuantización int8 habilitada)"
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            hw_status = "pass"
+            hw_detail = f"NVIDIA CUDA ({torch.cuda.get_device_name(0)})"
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            hw_status = "pass"
+            hw_detail = "Apple Silicon Metal (MPS)"
+    except Exception:
+        pass
+    results.append({"check": "hardware_acceleration", "status": hw_status, "detail": hw_detail})
+
+    # Librerías de Visión Computacional (OpenCV / Pillow)
+    vision_libs: list[str] = []
+    try:
+        import cv2
+
+        vision_libs.append(f"OpenCV v{cv2.__version__}")
+    except ImportError:
+        pass
+    try:
+        import PIL
+
+        vision_libs.append(f"Pillow v{getattr(PIL, '__version__', 'OK')}")
+    except ImportError:
+        pass
+    if vision_libs:
+        results.append(
+            {
+                "check": "vision_engine",
+                "status": "pass",
+                "detail": ", ".join(vision_libs),
+            }
+        )
+    else:
+        results.append(
+            {
+                "check": "vision_engine",
+                "status": "warn",
+                "detail": "OpenCV / Pillow no disponibles para análisis de fotogramas",
+            }
+        )
+
+    # Estado de Autenticación y Cookies
+    cookie_path = Path.home() / ".video-intake" / "cookies.txt"
+    if cookie_path.exists() and cookie_path.stat().st_size > 0:
+        results.append(
+            {
+                "check": "auth_cookies",
+                "status": "pass",
+                "detail": f"Activo ({cookie_path.stat().st_size} bytes en {cookie_path})",
+            }
+        )
+    else:
+        results.append(
+            {
+                "check": "auth_cookies",
+                "status": "info",
+                "detail": "No configuradas (usa 'video-intake auth detect')",
+            }
+        )
+
     all_ok = True
     for r in results:
         if r["status"] == "fail":

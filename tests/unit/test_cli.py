@@ -314,3 +314,115 @@ class TestCLIArtifacts:
 
         # Verify storage directory structure exists
         assert (storage_dir / "jobs").exists()
+
+
+class TestCLIExportAndDoctor:
+    """Tests for enriched doctor diagnostics and export multi-format support."""
+
+    def test_doctor_execution_and_checks(self, capsys):
+        """Doctor returns 0 and outputs enriched diagnostic checks."""
+        import argparse
+
+        from video_intake_core.cli.doctor import run_doctor
+
+        args = argparse.Namespace(config=None, json=False)
+        code = run_doctor(args)
+        assert code == 0
+        captured = capsys.readouterr().out
+        assert "faster-whisper" in captured
+        assert "hardware_acceleration" in captured
+        assert "vision_engine" in captured
+        assert "auth_cookies" in captured
+
+    def test_doctor_json_mode(self, capsys):
+        """Doctor supports --json output."""
+        import argparse
+        import json
+
+        from video_intake_core.cli.doctor import run_doctor
+
+        args = argparse.Namespace(config=None, json=True)
+        code = run_doctor(args)
+        assert code == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data.get("healthy") is True
+        check_names = [c["check"] for c in data.get("checks", [])]
+        assert "faster-whisper" in check_names
+        assert "hardware_acceleration" in check_names
+
+    def test_export_obsidian_and_html(self, tmp_path: Path):
+        """Export generates valid Obsidian Markdown and standalone HTML."""
+        import argparse
+        import json
+
+        from video_intake_core.cli.export import run_export
+
+        job_id = "test_export_job_123"
+        job_dir = tmp_path / "artifacts" / job_id
+        job_dir.mkdir(parents=True)
+
+        manifest = {
+            "job_id": job_id,
+            "sources": [
+                {"title": "Demo Knowledge Video", "original_input": "https://youtu.be/xyz"}
+            ],
+            "operations": [1, 3, 5],
+        }
+        (job_dir / "artifacts_manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        (job_dir / "executive_summary.md").write_text("Dossier summary content", encoding="utf-8")
+        (job_dir / "toc.md").write_text("- 00:00 Intro\n- 01:30 Demo", encoding="utf-8")
+        (job_dir / "transcript.md").write_text("Hello world transcription", encoding="utf-8")
+
+        # Mock current dir artifact search by passing output and using artifacts_dir
+        export_out = tmp_path / "exports"
+
+        # 1. Test Obsidian export
+        args_obsidian = argparse.Namespace(
+            job_id=job_id,
+            format="obsidian",
+            output=str(export_out),
+        )
+        # Point working directory or patch _find_job_directory
+        from unittest.mock import patch
+
+        with patch("video_intake_core.cli.export._find_job_directory", return_value=job_dir):
+            ret = run_export(args_obsidian)
+            assert ret == 0
+            obsidian_file = export_out / "export.md"
+            assert obsidian_file.exists()
+            content = obsidian_file.read_text(encoding="utf-8")
+            assert "---" in content
+            assert "Demo Knowledge Video" in content
+            assert "tags:" in content
+            assert "> [!SUMMARY]" in content
+
+        # 2. Test HTML export
+        args_html = argparse.Namespace(
+            job_id=job_id,
+            format="html",
+            output=str(export_out),
+        )
+        with patch("video_intake_core.cli.export._find_job_directory", return_value=job_dir):
+            ret = run_export(args_html)
+            assert ret == 0
+            html_file = export_out / "export.html"
+            assert html_file.exists()
+            html_content = html_file.read_text(encoding="utf-8")
+            assert "<!DOCTYPE html>" in html_content
+            assert "Demo Knowledge Video" in html_content
+            assert "Dossier Ejecutivo" in html_content
+
+        # 3. Test JSON export
+        args_json = argparse.Namespace(
+            job_id=job_id,
+            format="json",
+            output=str(export_out),
+        )
+        with patch("video_intake_core.cli.export._find_job_directory", return_value=job_dir):
+            ret = run_export(args_json)
+            assert ret == 0
+            json_file = export_out / "export.json"
+            assert json_file.exists()
+            json_data = json.loads(json_file.read_text(encoding="utf-8"))
+            assert "exported_artifacts" in json_data
+            assert "executive_summary" in json_data["exported_artifacts"]

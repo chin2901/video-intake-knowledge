@@ -13,10 +13,31 @@ from video_intake_core.jobs import get_job
 def run_status(args: argparse.Namespace) -> int:
     """Muestra el estado de un job."""
 
-    job = get_job(args.job_id)
+    job = None
+    try:
+        job = get_job(args.job_id)
+    except Exception:
+        job = None
+
     if not job:
-        manifest_file = Path("artifacts") / args.job_id / "artifacts_manifest.json"
-        if manifest_file.exists():
+        candidates = [
+            Path("artifacts") / args.job_id / "artifacts_manifest.json",
+            Path.cwd() / "artifacts" / args.job_id / "artifacts_manifest.json",
+        ]
+        manifest_file = None
+        for c in candidates:
+            if c.exists():
+                manifest_file = c
+                break
+
+        if not manifest_file:
+            from video_intake_core.cli.export import _find_job_directory
+
+            found_dir = _find_job_directory(args.job_id)
+            if found_dir and (found_dir / "artifacts_manifest.json").exists():
+                manifest_file = found_dir / "artifacts_manifest.json"
+
+        if manifest_file and manifest_file.exists():
             data = json.loads(manifest_file.read_text(encoding="utf-8"))
             if args.json:
                 print(json.dumps(data, indent=2, ensure_ascii=False))
