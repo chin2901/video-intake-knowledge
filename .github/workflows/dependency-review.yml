@@ -12,6 +12,7 @@ name: Dependency Review
 on:
   pull_request:
     branches:
+      - master
       - main
     paths:
       - "pyproject.toml"
@@ -37,16 +38,15 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
-          version: "0.4.0"
+          version: "latest"
 
       - name: Install dependencies
-        run: uv sync --group core
+        run: uv sync --extra core
 
       - name: Dependency review
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
-          fail-on-severity: critical
           comment-generated-review: true
 
       - name: Show dependency tree

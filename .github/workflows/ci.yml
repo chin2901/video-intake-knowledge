@@ -27,7 +27,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.11"
-  UV_VERSION: "0.4.0"
+  UV_VERSION: "latest"
 
 jobs:
   # ------------------------------------------------------------------
@@ -117,11 +117,8 @@ jobs:
         with:
           version: "${{ env.UV_VERSION }}"
 
-      - name: Install core dependencies
-        run: uv sync --group core
-
-      - name: Install dev dependencies
-        run: uv sync --group dev
+      - name: Install dependencies
+        run: uv sync --group dev --extra core
 
       - name: Run unit tests
         run: |
@@ -196,7 +193,7 @@ jobs:
           version: "${{ env.UV_VERSION }}"
 
       - name: Install build tools
-        run: uv sync --group build
+        run: uv sync --group dev
 
       - name: Build package
         run: uv build
@@ -231,7 +228,7 @@ jobs:
           version: "${{ env.UV_VERSION }}"
 
       - name: Install all dependencies
-        run: uv sync --group full
+        run: uv sync --group dev --extra full
 
       - name: Install system deps
         run: |
@@ -266,7 +263,7 @@ jobs:
           version: "${{ env.UV_VERSION }}"
 
       - name: Install doc dependencies
-        run: uv sync --group docs
+        run: uv sync --group dev
 
       - name: Check Markdown links
         run: |
@@ -314,7 +311,7 @@ jobs:
           version: "${{ env.UV_VERSION }}"
 
       - name: Install all
-        run: uv sync --group full --group dev
+        run: uv sync --group dev --extra full
 
       - name: Run full test suite
         run: |

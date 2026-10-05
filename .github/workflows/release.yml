@@ -35,10 +35,10 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
         with:
-          version: "0.4.0"
+          version: "latest"
 
       - name: Install all
-        run: uv sync --group full --group dev
+        run: uv sync --group dev --extra full
 
       - name: Run tests
         run: |
