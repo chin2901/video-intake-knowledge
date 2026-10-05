@@ -1,4 +1,5 @@
 """Artifacts command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -20,11 +21,13 @@ def show_artifacts(args: argparse.Namespace) -> int:
     if not artifacts and job_dir.exists() and job_dir.is_dir():
         for p in sorted(job_dir.rglob("*")):
             if p.is_file():
-                artifacts.append({
-                    "path": str(p),
-                    "size_mb": p.stat().st_size / (1024 * 1024),
-                    "name": p.name,
-                })
+                artifacts.append(
+                    {
+                        "path": str(p),
+                        "size_mb": p.stat().st_size / (1024 * 1024),
+                        "name": p.name,
+                    }
+                )
 
     if not artifacts:
         print(f"No hay artefactos para el job: {args.job_id}")
@@ -36,10 +39,13 @@ def show_artifacts(args: argparse.Namespace) -> int:
         print(f"Artefactos para {args.job_id}:")
         for a in artifacts:
             path_str = a.get("path") if isinstance(a, dict) else getattr(a, "path", str(a))
-            size = a.get("size_mb", 0) if isinstance(a, dict) else (getattr(a, "size_bytes", 0) / (1024 * 1024))
+            size = (
+                a.get("size_mb", 0)
+                if isinstance(a, dict)
+                else (getattr(a, "size_bytes", 0) / (1024 * 1024))
+            )
             print(f"  - {path_str} ({size:.1f} MB)")
     return 0
-
 
 
 def artifacts_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

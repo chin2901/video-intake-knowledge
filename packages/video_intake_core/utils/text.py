@@ -84,9 +84,7 @@ def parse_duration(value: str | int | float) -> float:
             return num * 3600
 
     # Handle HH:MM:SS[.mmm] or MM:SS[.mmm]
-    time_match = re.match(
-        r"^(\d{1,2}):(\d{2}):(\d{2}(?:\.\d+)?)$", value
-    )
+    time_match = re.match(r"^(\d{1,2}):(\d{2}):(\d{2}(?:\.\d+)?)$", value)
     if time_match:
         hours = int(time_match.group(1))
         minutes = int(time_match.group(2))
@@ -122,8 +120,54 @@ def detect_language_code(text: str) -> str | None:
         return None
 
     # Simple heuristic: check for common Spanish words
-    spanish_indicators = {"el", "la", "de", "que", "y", "a", "en", "un", "es", "se", "no", "te", "lo", "le", "da", "su", "por", "son", "con", "para", "una", "al", "del"}
-    english_indicators = {"the", "and", "of", "to", "a", "in", "is", "it", "you", "that", "he", "was", "for", "on", "are", "with", "as", "I", "his", "they", "be"}
+    spanish_indicators = {
+        "el",
+        "la",
+        "de",
+        "que",
+        "y",
+        "a",
+        "en",
+        "un",
+        "es",
+        "se",
+        "no",
+        "te",
+        "lo",
+        "le",
+        "da",
+        "su",
+        "por",
+        "son",
+        "con",
+        "para",
+        "una",
+        "al",
+        "del",
+    }
+    english_indicators = {
+        "the",
+        "and",
+        "of",
+        "to",
+        "a",
+        "in",
+        "is",
+        "it",
+        "you",
+        "that",
+        "he",
+        "was",
+        "for",
+        "on",
+        "are",
+        "with",
+        "as",
+        "I",
+        "his",
+        "they",
+        "be",
+    }
 
     words = set(text.lower().split())
     spanish_count = len(words & spanish_indicators)
@@ -147,6 +191,7 @@ def generate_id(prefix: str = "vitk") -> str:
         Unique ID string.
     """
     import uuid
+
     return f"{prefix}_{uuid.uuid4().hex[:12]}"
 
 
@@ -184,6 +229,7 @@ def now_utc() -> str:
         ISO format UTC timestamp string.
     """
     from datetime import datetime
+
     return datetime.now(UTC).isoformat()
 
 

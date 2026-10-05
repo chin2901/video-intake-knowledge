@@ -1,4 +1,5 @@
 """Extract command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,7 +25,9 @@ def run_extraction(args: argparse.Namespace) -> int:
     select_raw = getattr(args, "select", "6") or "6"
     operations = parse_extraction_choices(select_raw)
     config = _resolve_config(args)
-    root_out = getattr(args, "output", None) or config.get("storage", {}).get("root_dir", "./artifacts")
+    root_out = getattr(args, "output", None) or config.get("storage", {}).get(
+        "root_dir", "./artifacts"
+    )
 
     artifacts = check_and_extract(sources, operations, Path(root_out))
 
@@ -41,11 +44,18 @@ def run_extraction(args: argparse.Namespace) -> int:
     return 0
 
 
-
 def extract_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     extract_p = subparsers.add_parser("extract", help="Extrae contenido de una fuente.")
     extract_p.add_argument("source", help="URL o ruta del vídeo.")
-    extract_p.add_argument("--select", "-s", type=str, default="6", help="Selecciones: 1,2,3,4,5,6 o 'todo' (default: 6 = todo).")
-    extract_p.add_argument("--file", "-f", nargs="*", default=[], help="Archivo(s) local(es) adicionales.")
+    extract_p.add_argument(
+        "--select",
+        "-s",
+        type=str,
+        default="6",
+        help="Selecciones: 1,2,3,4,5,6 o 'todo' (default: 6 = todo).",
+    )
+    extract_p.add_argument(
+        "--file", "-f", nargs="*", default=[], help="Archivo(s) local(es) adicionales."
+    )
     extract_p.set_defaults(func=run_extraction)
     return extract_p

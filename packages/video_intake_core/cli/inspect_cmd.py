@@ -1,4 +1,5 @@
 """Inspect command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -21,7 +22,13 @@ def run_inspect(args: argparse.Namespace) -> int:
     info = (
         asdict(raw_info)
         if is_dataclass(raw_info)
-        else (raw_info.to_dict() if hasattr(raw_info, "to_dict") else raw_info if isinstance(raw_info, dict) else vars(raw_info))
+        else (
+            raw_info.to_dict()
+            if hasattr(raw_info, "to_dict")
+            else raw_info
+            if isinstance(raw_info, dict)
+            else vars(raw_info)
+        )
     )
 
     if getattr(args, "json", False):
@@ -54,6 +61,7 @@ def run_inspect(args: argparse.Namespace) -> int:
                 for c in captions:
                     print(f"  - {c.get('lang', '?')} ({c.get('name', '?')})")
     return 0
+
 
 def inspect_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     parser = subparsers.add_parser("inspect", help="Muestra metadatos de una fuente.")

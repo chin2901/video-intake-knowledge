@@ -182,14 +182,16 @@ def extract_text(
                 y = data.get("top", [0])[i]
                 w = data.get("width", [0])[i]
                 h = data.get("height", [0])[i]
-                boxes.append({
-                    "text": text,
-                    "confidence": conf,
-                    "x": int(x),
-                    "y": int(y),
-                    "w": int(w),
-                    "h": int(h),
-                })
+                boxes.append(
+                    {
+                        "text": text,
+                        "confidence": conf,
+                        "x": int(x),
+                        "y": int(y),
+                        "w": int(w),
+                        "h": int(h),
+                    }
+                )
                 confidences.append(conf)
 
         avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
@@ -229,17 +231,19 @@ def extract_text(
 
 def _preprocess_threshold(gray: np.ndarray) -> np.ndarray:
     """Apply Otsu's threshold to a grayscale image."""
-    _, thresh = cv2.threshold(
-        gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
-    )
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     return thresh
 
 
 def _preprocess_adaptive(gray: np.ndarray) -> np.ndarray:
     """Apply adaptive threshold to a grayscale image."""
     thresh = cv2.adaptiveThreshold(
-        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY, 11, 2,
+        gray,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        11,
+        2,
     )
     return thresh
 
@@ -356,12 +360,14 @@ def merge_ocr_results(results: list[dict[str, Any]]) -> dict[str, Any]:
     frame_results: list[dict[str, Any]] = []
 
     for r in results:
-        frame_results.append({
-            "frame": r.get("frame_path", ""),
-            "text": r.get("text", ""),
-            "confidence": r.get("confidence", 0),
-            "bounding_boxes": r.get("bounding_boxes", []),
-        })
+        frame_results.append(
+            {
+                "frame": r.get("frame_path", ""),
+                "text": r.get("text", ""),
+                "confidence": r.get("confidence", 0),
+                "bounding_boxes": r.get("bounding_boxes", []),
+            }
+        )
         all_boxes.extend(r.get("bounding_boxes", []))
 
     return {
@@ -426,6 +432,7 @@ from typing import Any
 @dataclass
 class OCRResult:
     """OCR result (contract API - matches test expectations)."""
+
     image_path: str = ""
     text: str = ""
     text_clean: str = ""
@@ -439,6 +446,7 @@ class OCRResult:
 @dataclass
 class OCRFrameResult:
     """OCR result for a single frame (contract API)."""
+
     frame: str = ""
     text: str = ""
     text_clean: str = ""

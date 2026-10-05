@@ -119,7 +119,7 @@ class Job:
             "failed": "failed",
             "cancelled": "cancelled",
         }
-        status_val = self._status.value if hasattr(self._status, 'value') else str(self._status)
+        status_val = self._status.value if hasattr(self._status, "value") else str(self._status)
         return status_map.get(status_val, "waiting")
 
     @property
@@ -128,7 +128,7 @@ class Job:
         if self.source:
             if isinstance(self.source, dict):
                 return self.source.get("url", "")
-            if hasattr(self.source, 'url'):
+            if hasattr(self.source, "url"):
                 return self.source.url
         return ""
 
@@ -171,7 +171,7 @@ class Job:
     @property
     def status(self) -> str:
         """Contract API: job.status"""
-        return self._status.value if hasattr(self._status, 'value') else str(self._status)
+        return self._status.value if hasattr(self._status, "value") else str(self._status)
 
     @property
     def selected_operations(self) -> list[str]:
@@ -192,7 +192,9 @@ class Job:
             self._progress = {
                 "current_operation": None,
                 "total_operations": len(self.operations) if self.operations else 0,
-                "completed_operations": int((value / 100) * len(self.operations)) if self.operations else 0,
+                "completed_operations": int((value / 100) * len(self.operations))
+                if self.operations
+                else 0,
                 "percent": min(max(float(value), 0), 100),
             }
         else:
@@ -245,7 +247,9 @@ class Job:
                     "metadata": getattr(self.source, "metadata", None),
                 }
 
-        status_val = self._status.value if isinstance(self._status, JobStatus) else str(self._status)
+        status_val = (
+            self._status.value if isinstance(self._status, JobStatus) else str(self._status)
+        )
         return {
             "job_id": self.job_id,
             "source": source_dict,

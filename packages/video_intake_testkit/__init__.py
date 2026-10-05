@@ -105,10 +105,14 @@ class TestFixtures:
         if segments is None:
             segments = [
                 TestFixtures.transcript_segment(
-                    start=0.0, end=5.0, text="Primero.",
+                    start=0.0,
+                    end=5.0,
+                    text="Primero.",
                 ),
                 TestFixtures.transcript_segment(
-                    start=5.0, end=10.0, text="Segundo.",
+                    start=5.0,
+                    end=10.0,
+                    text="Segundo.",
                 ),
             ]
         return {
@@ -192,6 +196,7 @@ class TestFixtures:
     ) -> dict[str, Any]:
         """Devuelve un dict de job de prueba."""
         from datetime import datetime, timezone
+
         return {
             "id": job_id,
             "source_url": source_url,
@@ -253,6 +258,7 @@ class TestFixtures:
     ) -> dict[str, Any]:
         """Devuelve un dict de entrada de memoria de prueba."""
         from datetime import datetime, timezone
+
         if extracted_at is None:
             extracted_at = datetime.now(timezone.utc).isoformat()
         if tags is None:
@@ -334,8 +340,7 @@ class TestHelpers:
         missing = [k for k in expected_keys if k not in data]
         if missing:
             raise AssertionError(
-                f"{label or 'Dict'} missing keys: {missing}. "
-                f"Got: {list(data.keys())}"
+                f"{label or 'Dict'} missing keys: {missing}. Got: {list(data.keys())}"
             )
 
     @staticmethod
@@ -344,9 +349,7 @@ class TestHelpers:
         try:
             return json.loads(value)
         except json.JSONDecodeError as e:
-            raise AssertionError(
-                f"{label or 'JSON'} no es válido: {e}. Value: {value[:200]}"
-            )
+            raise AssertionError(f"{label or 'JSON'} no es válido: {e}. Value: {value[:200]}")
 
     @staticmethod
     def create_temp_video_file(
@@ -366,34 +369,72 @@ class TestHelpers:
             return Path()
 
         import tempfile
+
         tmp = Path(tempfile.mktemp(suffix=".mp4"))
 
         if has_text:
             # Vídeo con texto visible en pantalla
             cmd = [
-                ffmpeg, "-f", "lavfi", "-i", "color=c=black:s=320x240:duration=10,",
-                "-vf", "drawtext=text='Texto de prueba':fontsize=24:fontcolor=white:"
+                ffmpeg,
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:s=320x240:duration=10,",
+                "-vf",
+                "drawtext=text='Texto de prueba':fontsize=24:fontcolor=white:"
                 "x=(w-text_w)/2:y=(h-text_h)/2",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-t", str(duration_secs),
-                "-y", str(tmp),
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-t",
+                str(duration_secs),
+                "-y",
+                str(tmp),
             ]
         elif has_audio:
             # Vídeo con audio (ruido blanco)
             cmd = [
-                ffmpeg, "-f", "lavfi", "-i", "color=c=black:s=320x240:duration=10,",
-                "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
-                "-c:v", "libx264", "-c:a", "aac", "-pix_fmt", "yuv420p",
-                "-t", str(duration_secs), "-y", str(tmp),
+                ffmpeg,
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:s=320x240:duration=10,",
+                "-f",
+                "lavfi",
+                "-i",
+                "anullsrc=r=44100:cl=mono",
+                "-c:v",
+                "libx264",
+                "-c:a",
+                "aac",
+                "-pix_fmt",
+                "yuv420p",
+                "-t",
+                str(duration_secs),
+                "-y",
+                str(tmp),
             ]
         else:
             # Vídeo sin audio
             cmd = [
-                ffmpeg, "-f", "lavfi", "-i", "color=c=black:s=320x240:duration=10,",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-t",
-                str(duration_secs), "-y", str(tmp),
+                ffmpeg,
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:s=320x240:duration=10,",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-t",
+                str(duration_secs),
+                "-y",
+                str(tmp),
             ]
 
         import subprocess
+
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             logger.warning(f"No se pudo crear fixture: {result.stderr[:200]}")
@@ -418,11 +459,19 @@ class TestHelpers:
         tmp = Path(tempfile.mktemp(suffix=f".{format}"))
 
         cmd = [
-            ffmpeg, "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
-            "-t", str(duration_secs), "-y", str(tmp),
+            ffmpeg,
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=44100:cl=mono",
+            "-t",
+            str(duration_secs),
+            "-y",
+            str(tmp),
         ]
 
         import subprocess
+
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             logger.warning(f"No se pudo crear fixture de audio: {result.stderr[:200]}")
@@ -448,13 +497,21 @@ class TestHelpers:
         tmp = Path(tempfile.mktemp(suffix=".png"))
 
         cmd = [
-            ffmpeg, "-f", "lavfi", "-i", f"color=c=white:s={width}x{height}:d=1,",
-            "-vf", f"drawtext=text='{text}':fontsize=36:fontcolor=black:"
-            f"x=(w-text_w)/2:y=(h-text_h)/2",
-            "-frames:v", "1", "-y", str(tmp),
+            ffmpeg,
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=c=white:s={width}x{height}:d=1,",
+            "-vf",
+            f"drawtext=text='{text}':fontsize=36:fontcolor=black:x=(w-text_w)/2:y=(h-text_h)/2",
+            "-frames:v",
+            "1",
+            "-y",
+            str(tmp),
         ]
 
         import subprocess
+
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             logger.warning(f"No se pudo crear imagen: {result.stderr[:200]}")

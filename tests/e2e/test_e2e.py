@@ -16,12 +16,15 @@ from pathlib import Path
 # Fixtures
 # =============================================================================
 
-CLI_PATH = Path(__file__).parent.parent.parent / "packages" / "video_intake_core" / "cli" / "__init__.py"
+CLI_PATH = (
+    Path(__file__).parent.parent.parent / "packages" / "video_intake_core" / "cli" / "__init__.py"
+)
 
 
 # =============================================================================
 # Tests CLI básicos
 # =============================================================================
+
 
 class TestCLIHelp:
     """Tests para la ayuda del CLI."""
@@ -36,7 +39,11 @@ class TestCLIHelp:
         )
         # El CLI es un módulo, no un script independiente
         # Verificar que al menos no falla
-        assert result.returncode == 0 or "usage" in result.stdout.lower() or "usage" in result.stderr.lower()
+        assert (
+            result.returncode == 0
+            or "usage" in result.stdout.lower()
+            or "usage" in result.stderr.lower()
+        )
 
     def test_no_args_no_crash(self):
         """Ejecutar sin argumentos no debe crashar."""
@@ -56,6 +63,7 @@ class TestCLIParse:
     def test_version_flag(self):
         """La flag --version devuelve la versión."""
         import video_intake_core
+
         # Verificar que la versión está definida
         assert hasattr(video_intake_core, "__version__")
         assert video_intake_core.__version__ is not None
@@ -66,12 +74,14 @@ class TestCLIParse:
 # Tests doctor
 # =============================================================================
 
+
 class TestDoctorCommand:
     """Tests para el comando doctor del CLI."""
 
     def test_doctor_module_exists(self):
         """El módulo doctor existe en el CLI."""
         from video_intake_core.cli.doctor import run_doctor
+
         assert callable(run_doctor)
 
     def test_create_sample_video_ffmpeg(self, tmp_path: Path):
@@ -87,6 +97,7 @@ class TestDoctorCommand:
 # Tests gestion de trabajos
 # =============================================================================
 
+
 class TestJobWorkflow:
     """Tests del flujo de gestión de trabajos."""
 
@@ -100,7 +111,9 @@ class TestJobWorkflow:
         db_path = tmp_path / "workflow_test.db"
 
         # 1. Configurar política
-        policy = resolve_policy(config_yaml=str(Path(__file__).parent.parent.parent / "config" / "default.yaml"))
+        policy = resolve_policy(
+            config_yaml=str(Path(__file__).parent.parent.parent / "config" / "default.yaml")
+        )
         assert policy is not None
 
         # 2. Detectar fuentes
@@ -134,6 +147,7 @@ class TestJobWorkflow:
 # Tests de export
 # =============================================================================
 
+
 class TestExportWorkflow:
     """Tests del flujo de exportación de contexto."""
 
@@ -160,6 +174,7 @@ class TestExportWorkflow:
 # Tests de OCR
 # =============================================================================
 
+
 class TestOCRValidation:
     """Tests de validación de OCR (simulados)."""
 
@@ -171,6 +186,7 @@ class TestOCRValidation:
             ocr_frame,
             preprocess_frame,
         )
+
         assert callable(batch_ocr)
         assert callable(ocr_frame)
         assert callable(preprocess_frame)
@@ -180,6 +196,7 @@ class TestOCRValidation:
 # =============================================================================
 # Tests de transcripción
 # =============================================================================
+
 
 class TestTranscriptionValidation:
     """Tests de validación de transcripción (simulados)."""
@@ -193,6 +210,7 @@ class TestTranscriptionValidation:
             load_whisper_model,
             transcribe_video,
         )
+
         assert callable(transcribe_video)
         assert callable(extract_captions_from_platform)
         assert callable(extract_local_captions)
@@ -203,6 +221,7 @@ class TestTranscriptionValidation:
 # =============================================================================
 # Tests de inspección
 # =============================================================================
+
 
 class TestInspectionValidation:
     """Tests de inspección de vídeo (simulados)."""
@@ -215,6 +234,7 @@ class TestInspectionValidation:
             inspect_remote_video,
             inspect_video,
         )
+
         assert callable(inspect_video)
         assert callable(inspect_local_video)
         assert callable(inspect_remote_video)
@@ -224,6 +244,7 @@ class TestInspectionValidation:
 # =============================================================================
 # Tests de audio
 # =============================================================================
+
 
 class TestAudioValidation:
     """Tests de extracción de audio (simulados)."""
@@ -236,6 +257,7 @@ class TestAudioValidation:
             extract_audio_from_file,
             extract_audio_from_url,
         )
+
         assert callable(extract_audio)
         assert callable(extract_audio_from_file)
         assert callable(extract_audio_from_url)
@@ -245,6 +267,7 @@ class TestAudioValidation:
 # =============================================================================
 # Tests JSON output
 # =============================================================================
+
 
 class TestJSONOutput:
     """Tests para la salida JSON del CLI."""
@@ -267,6 +290,7 @@ class TestJSONOutput:
 # Tests de cleanup
 # =============================================================================
 
+
 class TestCleanupCommand:
     """Tests para el comando cleanup del CLI."""
 
@@ -276,5 +300,6 @@ class TestCleanupCommand:
             cleanup_command,
             run_storage_cleanup,
         )
+
         assert callable(cleanup_command)
         assert callable(run_storage_cleanup)

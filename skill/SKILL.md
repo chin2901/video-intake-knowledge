@@ -168,13 +168,20 @@ Cada extracción se aísla en `artifacts/<job-id>/` (ignorado en Git):
 ```text
 artifacts/<job-id>/
 ├── artifacts_manifest.json    # Manifiesto estructurado del trabajo
-├── <video_title>.mp4          # Archivo de vídeo local (si se seleccionó 1)
+├── <video_title>.mp4          # Vídeo (si se seleccionó 1) — SIEMPRE H.264+AAC en MP4
 ├── <audio_title>.mp3          # Pista de audio extraída (si se seleccionó 2)
 ├── transcript.md              # Transcripción con timestamps (si se seleccionó 3)
 ├── audio_context.md           # Resumen y tópicos clave (si se seleccionó 4)
 ├── visual_context.md          # Diagramas y texto OCR (si se seleccionó 5)
 └── frames/                    # Fotogramas clave analizados
 ```
+
+**Formato de vídeo por defecto:** los vídeos descargados se normalizan SIEMPRE a
+`H.264 (AVC) + AAC` en contenedor `MP4` con `faststart`, el estándar universal de
+compatibilidad (iPhone, WhatsApp, TV, navegadores). codecs poco soportados como
+VP9-WebM quedan transcodificados automáticamente. Configurable en
+`config/default.yaml` → `acquisition.output_format` (o desactivable con
+`VITK_OUTPUT_FORMAT=none`).
 
 ---
 

@@ -37,7 +37,9 @@ def test_lazy_yt_dlp_import():
 
     import video_intake_core.inspection  # noqa: F401
 
-    assert "yt_dlp" not in sys.modules, "yt_dlp must be lazily imported, not loaded at module top level"
+    assert "yt_dlp" not in sys.modules, (
+        "yt_dlp must be lazily imported, not loaded at module top level"
+    )
 
 
 def test_local_video_inspection_sla(sample_video_path: Path):

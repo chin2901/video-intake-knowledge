@@ -55,18 +55,20 @@ __all__ = [
 # ----------------------------------------------------------------------
 
 # Hosts and IP ranges blocked for SSRF protection
-SSRF_BLOCKED_HOSTS: frozenset[str] = frozenset({
-    "localhost",
-    "127.0.0.1",
-    "::1",
-    "0.0.0.0",
-    "metadata.google.internal",
-    "metadata.google",
-    "169.254.169.254",  # AWS/GCP metadata endpoint
-    "metadata.google.com",
-    "metadata.google.internal.",
-    "vpc-internal.meta.internal",
-})
+SSRF_BLOCKED_HOSTS: frozenset[str] = frozenset(
+    {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "0.0.0.0",
+        "metadata.google.internal",
+        "metadata.google",
+        "169.254.169.254",  # AWS/GCP metadata endpoint
+        "metadata.google.com",
+        "metadata.google.internal.",
+        "vpc-internal.meta.internal",
+    }
+)
 
 # IPv4 ranges blocked
 _SSRF_BLOCKED_NETWORKS: list[IPv4Network] = [
@@ -75,10 +77,10 @@ _SSRF_BLOCKED_NETWORKS: list[IPv4Network] = [
     IPv4Network("192.168.0.0/16"),
     IPv4Network("169.254.0.0/16"),  # link-local
     IPv4Network("0.0.0.0/8"),
-    IPv4Network("100.64.0.0/10"),   # CGNAT
-    IPv4Network("127.0.0.0/8"),      # loopback
-    IPv4Network("224.0.0.0/4"),     # multicast
-    IPv4Network("240.0.0.0/4"),     # reserved
+    IPv4Network("100.64.0.0/10"),  # CGNAT
+    IPv4Network("127.0.0.0/8"),  # loopback
+    IPv4Network("224.0.0.0/4"),  # multicast
+    IPv4Network("240.0.0.0/4"),  # reserved
     IPv4Network("255.255.255.255/32"),
 ]
 
@@ -203,8 +205,7 @@ def validate_local_file(
     max_size_bytes = max_size_mb * 1024 * 1024
     if size_bytes > max_size_bytes:
         raise ValueError(
-            f"File too large: {size_bytes / (1024**3):.2f} GB exceeds limit of "
-            f"{max_size_mb} MB"
+            f"File too large: {size_bytes / (1024**3):.2f} GB exceeds limit of {max_size_mb} MB"
         )
 
     # Path traversal check — reject paths to sensitive system directories
@@ -304,7 +305,10 @@ def sanitize_for_prompt(text: str) -> str:
         (r"you\s+are\s+now\s+(a|an)\s+\w+", "[ROLE_OVERRIDE_BLOCKED]"),
         (r"forget\s+(everything|all|previous)\s+instructions?", "[INSTRUCTION_RESET_BLOCKED]"),
         (r"new\s+instructions?\s*:", "[NEW_INSTRUCTIONS_BLOCKED]"),
-        (r"ignore\s+(?:all\s+)?(?:previous\s+)?(?:above\s+)?(?:rules|instructions|policy)", "[INSTRUCTION_IGNORE_BLOCKED]"),
+        (
+            r"ignore\s+(?:all\s+)?(?:previous\s+)?(?:above\s+)?(?:rules|instructions|policy)",
+            "[INSTRUCTION_IGNORE_BLOCKED]",
+        ),
         (r"##\s*instructions\s*##", "[INSTRUCTION_BLOCK_HEADER]"),
     ]
 
@@ -362,7 +366,12 @@ def is_safe_mime(mime_type: str) -> bool:
     safe_images = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
     mime_lower = mime_type.lower()
-    return mime_lower in safe_videos or mime_lower in safe_images or "video/" in mime_lower or "image/" in mime_lower
+    return (
+        mime_lower in safe_videos
+        or mime_lower in safe_images
+        or "video/" in mime_lower
+        or "image/" in mime_lower
+    )
 
 
 # Module-level validate_url with contract API signature
@@ -423,18 +432,20 @@ class SSrfProtection:
         Args:
             blocked_hosts: Additional hosts to block beyond defaults.
         """
-        self.blocked_hosts = frozenset({
-            "localhost",
-            "127.0.0.1",
-            "::1",
-            "0.0.0.0",
-            "metadata.google.internal",
-            "metadata.google",
-            "169.254.169.254",
-            "metadata.google.com",
-            "metadata.google.internal.",
-            "vpc-internal.meta.internal",
-        })
+        self.blocked_hosts = frozenset(
+            {
+                "localhost",
+                "127.0.0.1",
+                "::1",
+                "0.0.0.0",
+                "metadata.google.internal",
+                "metadata.google",
+                "169.254.169.254",
+                "metadata.google.com",
+                "metadata.google.internal.",
+                "vpc-internal.meta.internal",
+            }
+        )
         if blocked_hosts:
             self.blocked_hosts = self.blocked_hosts | blocked_hosts
 
@@ -448,6 +459,7 @@ class SSrfProtection:
             True if safe, False otherwise.
         """
         from video_intake_core.utils.validation import is_safe_url
+
         return is_safe_url(url)
 
     def validate(self, url: str) -> str:

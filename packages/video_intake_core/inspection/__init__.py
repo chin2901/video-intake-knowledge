@@ -66,11 +66,13 @@ def inspect_video_file(path: str | Path) -> dict[str, Any]:
     # Run ffprobe
     cmd: list[str] = [
         "ffprobe",
-        "-v", "error",
+        "-v",
+        "error",
         "-show_format",
         "-show_streams",
         "-show_chapters",
-        "-of", "json",
+        "-of",
+        "json",
         str(path),
     ]
 
@@ -223,6 +225,7 @@ def inspect_download_url(url: str) -> dict[str, Any]:
 
     try:
         import yt_dlp
+
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
     except Exception as e:
@@ -235,27 +238,29 @@ def inspect_download_url(url: str) -> dict[str, Any]:
     # Build formats list
     formats: list[dict[str, Any]] = []
     for fmt in info.get("formats", []):
-        formats.append({
-            "format_id": fmt.get("format_id", ""),
-            "ext": fmt.get("ext", ""),
-            "protocol": fmt.get("protocol", ""),
-            "width": fmt.get("width", 0),
-            "height": fmt.get("height", 0),
-            "resolution": fmt.get("resolution", ""),
-            "fps": fmt.get("fps", 0),
-            "vcodec": fmt.get("vcodec", ""),
-            "acodec": fmt.get("acodec", ""),
-            "filesize": fmt.get("filesize", 0),
-            "filesize_approx": fmt.get("filesize_approx", 0),
-            "tbr": fmt.get("tbr", 0),
-            "vbr": fmt.get("vbr", 0),
-            "abr": fmt.get("abr", 0),
-            "audio_channels": fmt.get("audio_channels", 0),
-            "fps_float": fmt.get("fps_float", 0),
-            "format": fmt.get("format", ""),
-            "format_note": fmt.get("format_note", ""),
-            "preference": fmt.get("preference", 0),
-        })
+        formats.append(
+            {
+                "format_id": fmt.get("format_id", ""),
+                "ext": fmt.get("ext", ""),
+                "protocol": fmt.get("protocol", ""),
+                "width": fmt.get("width", 0),
+                "height": fmt.get("height", 0),
+                "resolution": fmt.get("resolution", ""),
+                "fps": fmt.get("fps", 0),
+                "vcodec": fmt.get("vcodec", ""),
+                "acodec": fmt.get("acodec", ""),
+                "filesize": fmt.get("filesize", 0),
+                "filesize_approx": fmt.get("filesize_approx", 0),
+                "tbr": fmt.get("tbr", 0),
+                "vbr": fmt.get("vbr", 0),
+                "abr": fmt.get("abr", 0),
+                "audio_channels": fmt.get("audio_channels", 0),
+                "fps_float": fmt.get("fps_float", 0),
+                "format": fmt.get("format", ""),
+                "format_note": fmt.get("format_note", ""),
+                "preference": fmt.get("preference", 0),
+            }
+        )
 
     # Subtitle/caption info
     subtitles = {}
@@ -280,8 +285,7 @@ def inspect_download_url(url: str) -> dict[str, Any]:
             best_video_height = h
 
     audio_available = any(
-        f.get("acodec", "") and f.get("vcodec", "none") == "none"
-        for f in formats
+        f.get("acodec", "") and f.get("vcodec", "none") == "none" for f in formats
     )
 
     # Extract upload date
@@ -367,6 +371,7 @@ def _extract_creation_time(fmt: dict[str, Any]) -> Optional[str]:
 # Batch inspection
 # ---------------------------------------------------------------------------
 
+
 def inspect_multiple(paths: list[str]) -> list[dict[str, Any]]:
     """Inspect multiple video files/URLs.
 
@@ -384,12 +389,16 @@ def inspect_multiple(paths: list[str]) -> list[dict[str, Any]]:
             else:
                 results.append(inspect_video_file(path))
         except Exception as e:
-            results.append({
-                "path": path,
-                "url": path if path.startswith(("http://", "https://")) else None,
-                "error": str(e),
-                "exists": Path(path).exists() if not path.startswith(("http://", "https://")) else None,
-            })
+            results.append(
+                {
+                    "path": path,
+                    "url": path if path.startswith(("http://", "https://")) else None,
+                    "error": str(e),
+                    "exists": Path(path).exists()
+                    if not path.startswith(("http://", "https://"))
+                    else None,
+                }
+            )
     return results
 
 
@@ -401,6 +410,7 @@ def inspect_multiple(paths: list[str]) -> list[dict[str, Any]]:
 @dataclass
 class VideoInfo:
     """Video inspection result (contract API)."""
+
     url: str = ""
     title: str = ""
     description: str = ""

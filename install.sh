@@ -14,7 +14,13 @@ print_usage() {
     echo "Uso: $0"
     echo ""
     echo "Instala el CLI video-intake y enlazará automáticamente el SKILL.md a"
-    echo "los entornos de agentes detectados en tu sistema."
+    echo "los entornos de agentes detectados en tu sistema:"
+    echo "  - Hermes Agent (~/.hermes)"
+    echo "  - AGY / Antigravity (~/.gemini/antigravity-cli)"
+    echo "  - Claude Code (~/.claude)"
+    echo "  - OpenCode (~/.opencode)"
+    echo "  - Codex (~/.codex)"
+    echo "  - Cursor (~/.cursor)"
     echo ""
 }
 

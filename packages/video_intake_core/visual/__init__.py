@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Internal implementation functions
 # ----------------------------------------------------------------------
 
+
 def _detect_scenes_impl(
     video_path: str | Path,
     method: str = "auto",
@@ -90,11 +91,13 @@ def _detect_with_scenedetect(
     # Use scenedetect CLI via subprocess
     cmd = [
         "scenedetect",
-        "-i", str(video_path),
+        "-i",
+        str(video_path),
         "detect-scenes",
         f"threshold={threshold}",
         f"min-scene-len={min_scene_len}",
-        "-o", str(tempfile.mkdtemp(prefix="vitk_scenes_")),
+        "-o",
+        str(tempfile.mkdtemp(prefix="vitk_scenes_")),
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
@@ -112,14 +115,16 @@ def _detect_with_scenedetect(
             if len(parts) >= 3:
                 try:
                     start_seconds = float(parts[1])
-                    scenes.append({
-                        "start_time": _seconds_to_time(start_seconds),
-                        "start_seconds": start_seconds,
-                        "end_seconds": start_seconds + 0.1,  # Minimal scene
-                        "duration": 0.1,
-                        "confidence": None,
-                        "method": "scenedetect",
-                    })
+                    scenes.append(
+                        {
+                            "start_time": _seconds_to_time(start_seconds),
+                            "start_seconds": start_seconds,
+                            "end_seconds": start_seconds + 0.1,  # Minimal scene
+                            "duration": 0.1,
+                            "confidence": None,
+                            "method": "scenedetect",
+                        }
+                    )
                 except (ValueError, IndexError):
                     continue
 
@@ -144,11 +149,14 @@ def _detect_with_ffmpeg(
     try:
         cmd = [
             "ffmpeg",
-            "-i", str(video_path),
+            "-i",
+            str(video_path),
             "-vf",
             f"select='gt(scene\\\\,{threshold})',metadata=print:file={tmp_path},showinfo",
-            "-vsync", "vfr",
-            "-f", "null",
+            "-vsync",
+            "vfr",
+            "-f",
+            "null",
             "-",
         ]
 
@@ -169,15 +177,17 @@ def _detect_with_ffmpeg(
                     if len(parts) >= 2:
                         pts = float(parts[1].split(",")[0].strip())
                         if pts > 0:
-                            scenes.append({
-                                "start_time": _seconds_to_time(pts),
-                                "start_seconds": pts,
-                                "end_seconds": pts,
-                                "duration": 0,
-                                "frame": frame_num,
-                                "confidence": None,
-                                "method": "ffmpeg",
-                            })
+                            scenes.append(
+                                {
+                                    "start_time": _seconds_to_time(pts),
+                                    "start_seconds": pts,
+                                    "end_seconds": pts,
+                                    "duration": 0,
+                                    "frame": frame_num,
+                                    "confidence": None,
+                                    "method": "ffmpeg",
+                                }
+                            )
                             frame_num += 1
                 except (ValueError, IndexError):
                     continue
@@ -238,11 +248,13 @@ def _extract_keyframes_impl(
     # Calculate frame positions
     if scene_changes:
         # Extract at scene changes plus evenly spaced
-        scene_times = sorted(set(
-            sc.get("start_seconds", 0) + scene_frame_offset
-            for sc in scene_changes
-            if sc.get("start_seconds", 0) + scene_frame_offset < duration
-        ))
+        scene_times = sorted(
+            set(
+                sc.get("start_seconds", 0) + scene_frame_offset
+                for sc in scene_changes
+                if sc.get("start_seconds", 0) + scene_frame_offset < duration
+            )
+        )
 
         # Add evenly spaced frames
         if len(scene_times) < max_frames:
@@ -267,14 +279,16 @@ def _extract_keyframes_impl(
 
         if frame_path.exists():
             size = _get_image_size(frame_path)
-            frames.append({
-                "timestamp": t,
-                "timestamp_str": _seconds_to_time(t),
-                "frame_path": str(frame_path),
-                "width": size.get("width", 0),
-                "height": size.get("height", 0),
-                "index": frame_idx,
-            })
+            frames.append(
+                {
+                    "timestamp": t,
+                    "timestamp_str": _seconds_to_time(t),
+                    "frame_path": str(frame_path),
+                    "width": size.get("width", 0),
+                    "height": size.get("height", 0),
+                    "index": frame_idx,
+                }
+            )
             frame_idx += 1
 
     return frames
@@ -290,10 +304,14 @@ def _extract_single_frame(
     cmd = [
         "ffmpeg",
         "-y",
-        "-ss", str(timestamp),
-        "-i", str(video_path),
-        "-vframes", "1",
-        "-f", image_format,
+        "-ss",
+        str(timestamp),
+        "-i",
+        str(video_path),
+        "-vframes",
+        "1",
+        "-f",
+        image_format,
         str(output_path),
     ]
 
@@ -306,9 +324,12 @@ def _get_video_duration(video_path: Path) -> Optional[float]:
     """Get video duration using ffprobe."""
     cmd = [
         "ffprobe",
-        "-v", "error",
-        "-show_entries", "format=duration",
-        "-of", "csv=p=0",
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "csv=p=0",
         str(video_path),
     ]
 
@@ -354,9 +375,12 @@ def _get_image_size(path: Path) -> dict[str, int]:
     # Fallback to ffprobe
     cmd = [
         "ffprobe",
-        "-v", "error",
-        "-show_entries", "stream=width,height",
-        "-of", "csv=p=0",
+        "-v",
+        "error",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "csv=p=0",
         str(path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)

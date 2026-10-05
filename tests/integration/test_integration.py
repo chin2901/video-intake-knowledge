@@ -60,6 +60,7 @@ def any_subtitle_file() -> Path | None:
 # Tests de utilidades
 # =============================================================================
 
+
 class TestComputeSHA256:
     """Pruebas para compute_sha256."""
 
@@ -73,7 +74,9 @@ class TestComputeSHA256:
         hash1 = compute_sha256(any_video_file)
         assert hash1 is not None
         assert len(hash1) == 64  # SHA-256 hex
-        assert hash1 != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"  # not empty
+        assert (
+            hash1 != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        )  # not empty
 
     def test_compute_sha256_same_file(self, any_video_file: Path | None):
         """El mismo archivo siempre da el mismo hash."""
@@ -107,6 +110,7 @@ class TestSafeFilename:
 # =============================================================================
 # Tests de adquisición
 # =============================================================================
+
 
 class TestDetectVideoSources:
     """Pruebas para detect_video_sources."""
@@ -181,6 +185,7 @@ class TestDetectVideoSources:
 # Tests de esquemas
 # =============================================================================
 
+
 class TestSchemas:
     """Pruebas para validación de esquemas."""
 
@@ -221,6 +226,7 @@ class TestSchemas:
 # =============================================================================
 # Tests de jobs
 # =============================================================================
+
 
 class TestJobManager:
     """Pruebas para JobManager con base de datos SQLite temporal."""
@@ -348,6 +354,7 @@ class TestJobManager:
 # =============================================================================
 # Tests de storage
 # =============================================================================
+
 
 class TestStorageManager:
     """Pruebas para StorageManager con directorio temporal."""

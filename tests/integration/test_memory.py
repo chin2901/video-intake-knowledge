@@ -145,7 +145,10 @@ class TestLocalMemoryProvider:
         # Buscar por "web"
         results = provider.search_entries(MemoryQuery(text="web", limit=10))
         assert len(results) >= 1
-        assert any("web" in e.content.lower() or "web" in [t.lower() for t in e.metadata.tags] for e in results)
+        assert any(
+            "web" in e.content.lower() or "web" in [t.lower() for t in e.metadata.tags]
+            for e in results
+        )
 
     def test_search_by_tags(self, tmp_path: Path):
         """Buscar entradas por etiquetas."""
@@ -263,21 +266,23 @@ class TestLocalMemoryProvider:
         db_path = tmp_path / "test_memory_close.db"
         provider = LocalMemoryProvider(str(db_path))
 
-        provider.store_entry(MemoryEntry(
-            id="test-001",
-            job_id="job-001",
-            source_url="https://example.com/video.mp4",
-            content_type="knowledge",
-            content="Test.",
-            summary="Test.",
-            metadata=MemoryEntryMetadata(
-                video_title="Vídeo",
-                language="es",
-                created_at="2024-01-01T00:00:00Z",
-                tags=[],
-                related_entries=[],
-            ),
-        ))
+        provider.store_entry(
+            MemoryEntry(
+                id="test-001",
+                job_id="job-001",
+                source_url="https://example.com/video.mp4",
+                content_type="knowledge",
+                content="Test.",
+                summary="Test.",
+                metadata=MemoryEntryMetadata(
+                    video_title="Vídeo",
+                    language="es",
+                    created_at="2024-01-01T00:00:00Z",
+                    tags=[],
+                    related_entries=[],
+                ),
+            )
+        )
 
         provider.close()
         # Después de cerrar, la operación debe fallar o ser ignorada

@@ -1,4 +1,5 @@
 """Config validate command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -17,6 +18,7 @@ def run_config_validate(args: argparse.Namespace) -> int:
 
     try:
         import yaml
+
         with open(path) as f:
             config = yaml.safe_load(f)
     except Exception as e:
@@ -64,10 +66,11 @@ def run_config_validate(args: argparse.Namespace) -> int:
     return 0 if not errors else 1
 
 
-
 def config_validate_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     config_p = subparsers.add_parser("config", help="Gestiona la configuración.")
     config_p.add_argument("subcommand", choices=["validate"], help="Subcomando.")
-    config_p.add_argument("--config", type=str, default=None, help="Ruta al archivo de configuración YAML.")
+    config_p.add_argument(
+        "--config", type=str, default=None, help="Ruta al archivo de configuración YAML."
+    )
     config_p.set_defaults(func=run_config_validate)
     return config_p

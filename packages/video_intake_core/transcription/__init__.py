@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Subtitle file parsers
 # ---------------------------------------------------------------------------
 
+
 def parse_srt(content: str) -> list[dict[str, Any]]:
     """Parse SRT subtitle content into structured segments.
 
@@ -60,17 +61,19 @@ def parse_srt(content: str) -> list[dict[str, Any]]:
         if not text:
             continue
 
-        segments.append({
-            "index": index,
-            "start": start_str,
-            "end": end_str,
-            "text": text,
-            "start_seconds": _time_to_seconds(start_str),
-            "end_seconds": _time_to_seconds(end_str),
-            "duration": _time_to_seconds(end_str) - _time_to_seconds(start_str),
-            "source": "srt",
-            "generated": False,
-        })
+        segments.append(
+            {
+                "index": index,
+                "start": start_str,
+                "end": end_str,
+                "text": text,
+                "start_seconds": _time_to_seconds(start_str),
+                "end_seconds": _time_to_seconds(end_str),
+                "duration": _time_to_seconds(end_str) - _time_to_seconds(start_str),
+                "source": "srt",
+                "generated": False,
+            }
+        )
 
     return segments
 
@@ -87,7 +90,7 @@ def parse_vtt(content: str) -> list[dict[str, Any]]:
     # Strip WEBVTT header
     idx = content.find("\n\n")
     if idx >= 0:
-        content = content[idx + 2:]
+        content = content[idx + 2 :]
 
     segments: list[dict[str, Any]] = []
     pattern = re.compile(
@@ -109,17 +112,19 @@ def parse_vtt(content: str) -> list[dict[str, Any]]:
         if not text:
             continue
 
-        segments.append({
-            "index": index,
-            "start": start_str,
-            "end": end_str,
-            "text": text,
-            "start_seconds": _time_to_seconds(start_str),
-            "end_seconds": _time_to_seconds(end_str),
-            "duration": _time_to_seconds(end_str) - _time_to_seconds(start_str),
-            "source": "vtt",
-            "generated": False,
-        })
+        segments.append(
+            {
+                "index": index,
+                "start": start_str,
+                "end": end_str,
+                "text": text,
+                "start_seconds": _time_to_seconds(start_str),
+                "end_seconds": _time_to_seconds(end_str),
+                "duration": _time_to_seconds(end_str) - _time_to_seconds(start_str),
+                "source": "vtt",
+                "generated": False,
+            }
+        )
 
     return segments
 
@@ -160,17 +165,19 @@ def parse_ass(content: str) -> list[dict[str, Any]]:
         if not text:
             continue
 
-        segments.append({
-            "index": len(segments) + 1,
-            "start": start_str,
-            "end": end_str,
-            "text": text,
-            "start_seconds": _time_to_seconds_ass(start_str),
-            "end_seconds": _time_to_seconds_ass(end_str),
-            "duration": _time_to_seconds_ass(end_str) - _time_to_seconds_ass(start_str),
-            "source": "ass",
-            "generated": False,
-        })
+        segments.append(
+            {
+                "index": len(segments) + 1,
+                "start": start_str,
+                "end": end_str,
+                "text": text,
+                "start_seconds": _time_to_seconds_ass(start_str),
+                "end_seconds": _time_to_seconds_ass(end_str),
+                "duration": _time_to_seconds_ass(end_str) - _time_to_seconds_ass(start_str),
+                "source": "ass",
+                "generated": False,
+            }
+        )
 
     match_count = len(segments)
     logger.debug(f"Parsed {match_count} ASS segments")
@@ -207,17 +214,19 @@ def parse_json3(content: str) -> list[dict[str, Any]]:
         if not text:
             continue
 
-        segments.append({
-            "index": len(segments) + 1,
-            "start": f"{start_ms / 1000:.3f}",
-            "end": f"{end_ms / 1000:.3f}",
-            "text": text,
-            "start_seconds": start_ms / 1000,
-            "end_seconds": end_ms / 1000,
-            "duration": (end_ms - start_ms) / 1000,
-            "source": "json3",
-            "generated": False,
-        })
+        segments.append(
+            {
+                "index": len(segments) + 1,
+                "start": f"{start_ms / 1000:.3f}",
+                "end": f"{end_ms / 1000:.3f}",
+                "text": text,
+                "start_seconds": start_ms / 1000,
+                "end_seconds": end_ms / 1000,
+                "duration": (end_ms - start_ms) / 1000,
+                "source": "json3",
+                "generated": False,
+            }
+        )
 
     return segments
 
@@ -255,7 +264,9 @@ def _time_to_seconds_ass(time_str: str) -> float:
     return 0.0
 
 
-def load_captions_file(file_path: str | Path, format_hint: Optional[str] = None) -> list[dict[str, Any]]:
+def load_captions_file(
+    file_path: str | Path, format_hint: Optional[str] = None
+) -> list[dict[str, Any]]:
     """Load and parse a caption/subtitle file.
 
     Args:
@@ -319,17 +330,19 @@ def _parse_json_generic(content: str) -> list[dict[str, Any]]:
             ne = float(item.get("end", item.get("endTime", 0)))
             txt = item.get("text", item.get("content", item.get("caption", "")))
 
-            normalized.append({
-                "index": len(normalized) + 1,
-                "start": f"{ns:.3f}",
-                "end": f"{ne:.3f}",
-                "text": str(txt),
-                "start_seconds": ns,
-                "end_seconds": ne,
-                "duration": ne - ns,
-                "source": "json",
-                "generated": False,
-            })
+            normalized.append(
+                {
+                    "index": len(normalized) + 1,
+                    "start": f"{ns:.3f}",
+                    "end": f"{ne:.3f}",
+                    "text": str(txt),
+                    "start_seconds": ns,
+                    "end_seconds": ne,
+                    "duration": ne - ns,
+                    "source": "json",
+                    "generated": False,
+                }
+            )
         return normalized
 
     return []
@@ -338,6 +351,7 @@ def _parse_json_generic(content: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 # Merge transcripts
 # ---------------------------------------------------------------------------
+
 
 def merge_transcripts(
     primary: list[dict[str, Any]],
@@ -375,6 +389,7 @@ def merge_transcripts(
 # Whisper-based transcription
 # ---------------------------------------------------------------------------
 
+
 def transcribe_with_whisper(
     audio_path: str | Path,
     model_size: str = "tiny",
@@ -407,11 +422,12 @@ def transcribe_with_whisper(
     logger.info(f"Transcribing: {audio_path}")
 
     import time as _time
+
     start = _time.time()
 
     result = transcribe(
-        audio_path,
-        model=model,
+        model,
+        str(audio_path),
         language=language,
         task=task,
         verbose=verbose,
@@ -424,18 +440,20 @@ def transcribe_with_whisper(
 
     segments: list[dict[str, Any]] = []
     for seg in result.get("segments", []):
-        segments.append({
-            "start": f"{seg['start']:.3f}",
-            "end": f"{seg['end']:.3f}",
-            "text": seg.get("text", "").strip(),
-            "start_seconds": seg["start"],
-            "end_seconds": seg["end"],
-            "duration": seg["end"] - seg["start"],
-            "confidence": seg.get("avg_logprob", None),
-            "no_speech_prob": seg.get("no_speech_prob", None),
-            "source": "whisper",
-            "generated": True,
-        })
+        segments.append(
+            {
+                "start": f"{seg['start']:.3f}",
+                "end": f"{seg['end']:.3f}",
+                "text": seg.get("text", "").strip(),
+                "start_seconds": seg["start"],
+                "end_seconds": seg["end"],
+                "duration": seg["end"] - seg["start"],
+                "confidence": seg.get("avg_logprob", None),
+                "no_speech_prob": seg.get("no_speech_prob", None),
+                "source": "whisper",
+                "generated": True,
+            }
+        )
 
     full_text = " ".join(s["text"] for s in segments if s.get("text"))
 
@@ -463,6 +481,7 @@ def transcribe_with_whisper(
 # Transcriber class
 # ---------------------------------------------------------------------------
 
+
 class Transcriber:
     """Orchestrates transcription using multiple strategies."""
 
@@ -471,11 +490,14 @@ class Transcriber:
         config: Optional[dict[str, Any]] = None,
     ):
         self.config = config or {}
-        self.strategy_order: list[str] = self.config.get("strategy_order", [
-            "platform_captions",
-            "local_captions",
-            "whisper",
-        ])
+        self.strategy_order: list[str] = self.config.get(
+            "strategy_order",
+            [
+                "platform_captions",
+                "local_captions",
+                "whisper",
+            ],
+        )
         self.language: Optional[str] = self.config.get("language")
         self.local_engine: str = self.config.get("local_engine", "whisper")
         self.model: str = self.config.get("model", "tiny")
@@ -533,9 +555,7 @@ class Transcriber:
                 if captions:
                     result["strategies_succeeded"].append("local_captions")
                     result["segments"] = captions
-                    result["primary_text"] = " ".join(
-                        s["text"] for s in captions if s.get("text")
-                    )
+                    result["primary_text"] = " ".join(s["text"] for s in captions if s.get("text"))
                     return self._finalize_result(result)
             except Exception as e:
                 logger.debug(f"Local captions failed: {e}")
@@ -649,11 +669,13 @@ class Transcriber:
                 "no_warnings": True,
                 "extractaudio": True,
                 "audioformat": "wav",
-                "postprocessors": [{
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "wav",
-                    "preferredquality": "192",
-                }],
+                "postprocessors": [
+                    {
+                        "key": "FFmpegExtractAudio",
+                        "preferredcodec": "wav",
+                        "preferredquality": "192",
+                    }
+                ],
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([source])
@@ -673,15 +695,11 @@ class Transcriber:
                 seen.add(t)
                 unique.append(seg)
         result["segments"] = unique
-        result["primary_text"] = " ".join(
-            s["text"] for s in unique if s.get("text")
-        )
+        result["primary_text"] = " ".join(s["text"] for s in unique if s.get("text"))
         return result
 
 
-def _parse_subtitle_content(
-    content: str, lang: str, is_auto: bool
-) -> list[dict[str, Any]]:
+def _parse_subtitle_content(content: str, lang: str, is_auto: bool) -> list[dict[str, Any]]:
     """Parse downloaded subtitle content."""
     if content.startswith("WEBVTT"):
         return parse_vtt(content)
@@ -706,6 +724,7 @@ def _parse_subtitle_content(
 # ---------------------------------------------------------------------------
 # Export functions
 # ---------------------------------------------------------------------------
+
 
 def export_transcript_markdown(
     segments: list[dict[str, Any]],
@@ -803,6 +822,7 @@ def export_vtt(segments: list[dict[str, Any]], output_path: str) -> str:
 # Detection of available transcription methods
 # ---------------------------------------------------------------------------
 
+
 def detect_available_transcribers() -> dict[str, Any]:
     """Detect which transcription methods are available."""
     result: dict[str, Any] = {
@@ -816,6 +836,7 @@ def detect_available_transcribers() -> dict[str, Any]:
 
     try:
         import whisper as _whisper  # type: ignore[import]
+
         result["whisper_installed"] = True
         result["whisper_version"] = getattr(_whisper, "__version__", "unknown")
     except ImportError:
@@ -823,6 +844,7 @@ def detect_available_transcribers() -> dict[str, Any]:
 
     try:
         import yt_dlp as _yt_dlp  # type: ignore[import]
+
         result["yt_dlp_installed"] = True
     except ImportError:
         pass
@@ -837,7 +859,8 @@ def detect_available_transcribers() -> dict[str, Any]:
         subprocess.run(
             ["scenedetect", "--help"],
             capture_output=True,
-        ).returncode == 0
+        ).returncode
+        == 0
     )
 
     return result
@@ -865,10 +888,12 @@ def transcribe_from_url(
     Returns:
         Dict with transcription results including segments, language, etc.
     """
-    transcriber = Transcriber(config={
-        "strategy_order": ["platform_captions", "local_captions", "whisper"],
-        "language": language,
-    })
+    transcriber = Transcriber(
+        config={
+            "strategy_order": ["platform_captions", "local_captions", "whisper"],
+            "language": language,
+        }
+    )
     return transcriber.transcribe(url)
 
 
@@ -887,10 +912,12 @@ def transcribe_from_file(
     Returns:
         Dict with transcription results including segments, language, etc.
     """
-    transcriber = Transcriber(config={
-        "strategy_order": ["local_captions", "whisper"],
-        "language": language,
-    })
+    transcriber = Transcriber(
+        config={
+            "strategy_order": ["local_captions", "whisper"],
+            "language": language,
+        }
+    )
     # For local files, we need to download audio first if using whisper
     return transcriber.transcribe(str(video_path))
 
@@ -923,23 +950,27 @@ def detect_subtitles(url: str) -> list[dict[str, Any]]:
     if info.get("automatic_captions"):
         for lang, sub_list in info["automatic_captions"].items():
             for sub in sub_list:
-                tracks.append({
-                    "language": lang,
-                    "format": sub.get("ext", ""),
-                    "url": sub.get("url", ""),
-                    "is_auto": True,
-                })
+                tracks.append(
+                    {
+                        "language": lang,
+                        "format": sub.get("ext", ""),
+                        "url": sub.get("url", ""),
+                        "is_auto": True,
+                    }
+                )
 
     # Check manual captions
     if info.get("captions"):
         for lang, sub_list in info["captions"].items():
             for sub in sub_list:
-                tracks.append({
-                    "language": lang,
-                    "format": sub.get("ext", ""),
-                    "url": sub.get("url", ""),
-                    "is_auto": False,
-                })
+                tracks.append(
+                    {
+                        "language": lang,
+                        "format": sub.get("ext", ""),
+                        "url": sub.get("url", ""),
+                        "is_auto": False,
+                    }
+                )
 
     return tracks
 
@@ -1004,6 +1035,7 @@ from typing import Any
 @dataclass
 class TranscriptionResult:
     """Transcription result (contract API)."""
+
     text: str = ""
     language: str = ""
     segments: list = field(default_factory=list)
@@ -1054,6 +1086,7 @@ def load_whisper_model(model_size: str = "base", device: str = "auto") -> Any:
     """
     try:
         import whisper
+
         return whisper.load_model(model_size, device=device)
     except ImportError:
         return None

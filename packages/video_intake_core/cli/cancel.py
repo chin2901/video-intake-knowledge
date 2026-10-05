@@ -1,4 +1,5 @@
 """Cancel command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,7 +9,6 @@ from video_intake_core.jobs import cancel_job
 
 
 def run_cancel(args: argparse.Namespace) -> int:
-
     """Cancela un job en ejecución."""
 
     try:
@@ -20,7 +20,6 @@ def run_cancel(args: argparse.Namespace) -> int:
         return 1
     print(f"Job cancelado: {args.job_id}")
     return 0
-
 
 
 def cancel_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

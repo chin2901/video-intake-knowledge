@@ -188,9 +188,7 @@ class TestContractAPIs:
         "module_path,expected_funcs",
         list(MODULES_WITH_EXPECTED_APIS.items()),
     )
-    def test_module_exposes_expected_functions(
-        self, module_path: str, expected_funcs: dict
-    ):
+    def test_module_exposes_expected_functions(self, module_path: str, expected_funcs: dict):
         """Each module should expose all expected public functions."""
         import importlib
 
@@ -200,17 +198,13 @@ class TestContractAPIs:
             pytest.skip(f"Module {module_path} not importable")
 
         for func_name, _spec in expected_funcs.items():
-            assert hasattr(
-                module, func_name
-            ), f"{module_path} missing function: {func_name}"
+            assert hasattr(module, func_name), f"{module_path} missing function: {func_name}"
 
     @pytest.mark.parametrize(
         "module_path,expected_funcs",
         list(MODULES_WITH_EXPECTED_APIS.items()),
     )
-    def test_functions_have_correct_param_count(
-        self, module_path: str, expected_funcs: dict
-    ):
+    def test_functions_have_correct_param_count(self, module_path: str, expected_funcs: dict):
         """Each expected function should have the documented number of params."""
         import importlib
         import inspect
@@ -228,8 +222,7 @@ class TestContractAPIs:
             actual_params = len(inspect.signature(func).parameters)
             expected_params = len(spec["params"])
             assert actual_params == expected_params, (
-                f"{module_path}.{func_name} has {actual_params} params, "
-                f"expected {expected_params}"
+                f"{module_path}.{func_name} has {actual_params} params, expected {expected_params}"
             )
 
 

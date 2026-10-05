@@ -19,8 +19,16 @@ _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
 
 VIDEO_EXTENSIONS = frozenset(
     {
-        ".mp4", ".mov", ".mkv", ".webm", ".avi",
-        ".m4v", ".mpeg", ".mpg", ".flv", ".wmv",
+        ".mp4",
+        ".mov",
+        ".mkv",
+        ".webm",
+        ".avi",
+        ".m4v",
+        ".mpeg",
+        ".mpg",
+        ".flv",
+        ".wmv",
     }
 )
 
@@ -62,9 +70,9 @@ def sanitize_filename(name: str, max_length: int = 200) -> str:
         if "." in name and name.rfind(".") > max_length - 10:
             # Extension is near the end, keep it
             ext_start = name.rfind(".")
-            name = name[:max_length - (len(name) - ext_start) - 3] + "..." + name[ext_start:]
+            name = name[: max_length - (len(name) - ext_start) - 3] + "..." + name[ext_start:]
         else:
-            name = name[:max_length - 3] + "..."
+            name = name[: max_length - 3] + "..."
     if not name:
         name = "untitled"
     return name
@@ -109,9 +117,7 @@ def sanitize_path(base: Path, user_path: str | Path) -> Path:
     try:
         combined.relative_to(base)
     except ValueError:
-        raise ValueError(
-            f"Path traversal detected: {user_path} escapes base {base}"
-        ) from None
+        raise ValueError(f"Path traversal detected: {user_path} escapes base {base}") from None
 
     return combined
 

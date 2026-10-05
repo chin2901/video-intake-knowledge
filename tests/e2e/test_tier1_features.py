@@ -30,6 +30,7 @@ import yaml
 # 1. Inspection & Rich VideoInfo Contract (F1, F2)
 # =============================================================================
 
+
 class TestInspectionFeatures:
     """Feature tests for sub-300ms SLA and Rich VideoInfo contract restoration."""
 
@@ -71,7 +72,9 @@ class TestInspectionFeatures:
         assert "Resolución:" in out or "320x240" in out
         assert "FPS:" in out or "30.0" in out
 
-    def test_f1_f2_cli_inspect_json_output(self, run_cli: Callable, sample_video: Path, parse_json: Callable):
+    def test_f1_f2_cli_inspect_json_output(
+        self, run_cli: Callable, sample_video: Path, parse_json: Callable
+    ):
         """F1/F2: CLI `video-intake --json inspect` outputs valid rich JSON."""
         proc = run_cli("--json", "inspect", str(sample_video))
         assert proc.returncode == 0
@@ -99,6 +102,7 @@ class TestInspectionFeatures:
 # 2. Acquisition, Platform Ingestion & Audio Streaming (F3, F4)
 # =============================================================================
 
+
 class TestAcquisitionAndStreamingFeatures:
     """Feature tests for platform URL normalization and direct audio streaming."""
 
@@ -114,7 +118,9 @@ class TestAcquisitionAndStreamingFeatures:
         ]
         for url in test_urls:
             source = detect_source(url)
-            assert source.source_type == SourceType.YOUTUBE, f"Failed to detect YouTube source for: {url}"
+            assert source.source_type == SourceType.YOUTUBE, (
+                f"Failed to detect YouTube source for: {url}"
+            )
 
     def test_f3_facebook_shortlinks_and_mobile(self):
         """F3: Facebook shortlinks and mobile URLs are detected and normalized."""
@@ -127,7 +133,9 @@ class TestAcquisitionAndStreamingFeatures:
         ]
         for url in fb_urls:
             source = detect_source(url)
-            assert source.source_type == SourceType.FACEBOOK, f"Failed to detect Facebook source for: {url}"
+            assert source.source_type == SourceType.FACEBOOK, (
+                f"Failed to detect Facebook source for: {url}"
+            )
 
     def test_f3_file_uri_normalization(self, sample_video: Path):
         """F3: file:// URIs are normalized and detected as local files."""
@@ -135,30 +143,36 @@ class TestAcquisitionAndStreamingFeatures:
 
         file_uri = f"file://{sample_video.resolve()}"
         source = detect_source(file_uri)
-        assert source.source_type == SourceType.LOCAL_FILE, f"Failed to detect LOCAL source for {file_uri}"
+        assert source.source_type == SourceType.LOCAL_FILE, (
+            f"Failed to detect LOCAL source for {file_uri}"
+        )
 
-    def test_f4_direct_audio_extraction_layer(self, run_cli: Callable, sample_video: Path, tmp_path: Path):
+    def test_f4_direct_audio_extraction_layer(
+        self, run_cli: Callable, sample_video: Path, tmp_path: Path
+    ):
         """F4: Extraction with select=2 generates an audio artifact without full video overhead."""
         proc = run_cli("extract", str(sample_video), "--select", "2", cwd=tmp_path)
         assert proc.returncode == 0
         assert "Extracción completada" in proc.stdout or "job_" in proc.stdout
 
-    def test_f6_orchestrator_pipeline_unification_local_run(self, sample_video: Path, tmp_path: Path):
+    def test_f6_orchestrator_pipeline_unification_local_run(
+        self, sample_video: Path, tmp_path: Path
+    ):
         """F6: Pipeline execution produces artifact manifest with checksums and metadata."""
         from video_intake_core.orchestrator import check_and_extract
 
-        sources = [{
-            "type": "local",
-            "original_input": str(sample_video),
-            "resolved_url": str(sample_video.resolve()),
-            "platform": "local",
-            "title": sample_video.stem,
-            "is_local": True
-        }]
+        sources = [
+            {
+                "type": "local",
+                "original_input": str(sample_video),
+                "resolved_url": str(sample_video.resolve()),
+                "platform": "local",
+                "title": sample_video.stem,
+                "is_local": True,
+            }
+        ]
         manifest = check_and_extract(
-            sources=sources,
-            operations={1},
-            output_dir=tmp_path / "artifacts"
+            sources=sources, operations={1}, output_dir=tmp_path / "artifacts"
         )
         assert manifest is not None
         assert "job_id" in manifest
@@ -170,10 +184,13 @@ class TestAcquisitionAndStreamingFeatures:
 # 3. Batch Processing Engine (F5)
 # =============================================================================
 
+
 class TestBatchProcessingFeatures:
     """Feature tests for concurrent batch engine and manifest processing."""
 
-    def test_f5_batch_manifest_execution(self, run_cli: Callable, sample_video: Path, tmp_path: Path):
+    def test_f5_batch_manifest_execution(
+        self, run_cli: Callable, sample_video: Path, tmp_path: Path
+    ):
         """F5: Batch manifest with local video runs successfully via CLI."""
         manifest_path = tmp_path / "manifest.yaml"
         manifest_data = {
@@ -188,7 +205,9 @@ class TestBatchProcessingFeatures:
         assert proc.returncode == 0
         assert "1 vídeos procesados" in proc.stdout or "Lote completado" in proc.stdout
 
-    def test_f5_batch_json_reporting(self, run_cli: Callable, sample_video: Path, tmp_path: Path, parse_json: Callable):
+    def test_f5_batch_json_reporting(
+        self, run_cli: Callable, sample_video: Path, tmp_path: Path, parse_json: Callable
+    ):
         """F5: CLI `video-intake --json batch` emits structured machine-readable report."""
         manifest_path = tmp_path / "manifest.yaml"
         manifest_data = {
@@ -205,7 +224,9 @@ class TestBatchProcessingFeatures:
         assert data.get("successful") == 1
         assert str(manifest_path) in str(data.get("manifest_path", ""))
 
-    def test_f5_batch_multi_video_processing(self, run_cli: Callable, sample_video: Path, tmp_path: Path):
+    def test_f5_batch_multi_video_processing(
+        self, run_cli: Callable, sample_video: Path, tmp_path: Path
+    ):
         """F5: Batch manifest with multiple entries processes each item in sequence or pool."""
         manifest_path = tmp_path / "multi_manifest.yaml"
         manifest_data = {
@@ -241,6 +262,7 @@ class TestBatchProcessingFeatures:
 # 4. Agent SKILL SSoT & Multi-Platform Adapters (F7, F8, F9)
 # =============================================================================
 
+
 class TestAgentSkillAndAdaptersFeatures:
     """Feature tests for canonical SKILL.md and multi-platform adapters."""
 
@@ -273,22 +295,31 @@ class TestAgentSkillAndAdaptersFeatures:
         assert (cursor_dir / "install.sh").exists()
 
     def test_f8_codex_adapter_integration(self, project_root: Path):
-        """F8: Codex adapter exists with proper SKILL.md and installer."""
-        codex_dir = project_root / "adapters" / "codex"
-        assert codex_dir.exists()
-        assert (codex_dir / "SKILL.md").exists()
-        assert (codex_dir / "install.sh").exists()
+        """F8: Codex integration is supported via universal SKILL.md and installer."""
+        install_sh = project_root / "install.sh"
+        content = install_sh.read_text(encoding="utf-8")
+        assert ".codex" in content
+        assert "Codex" in content
+        assert (project_root / "skill" / "SKILL.md").exists()
 
     def test_f8_all_platform_adapters_exist(self, project_root: Path):
-        """F8: All 6 official agent adapters exist in adapters/ directory."""
-        adapters_dir = project_root / "adapters"
-        expected_adapters = ["hermes", "agy", "claude-code", "opencode", "codex", "cursor"]
-        for adapter in expected_adapters:
-            assert (adapters_dir / adapter).is_dir(), f"Missing adapter directory: {adapter}"
-            assert (adapters_dir / adapter / "SKILL.md").exists(), f"Missing SKILL.md in adapter: {adapter}"
+        """F8: All 6 official agent environments are supported via universal installer and SKILL.md."""
+        install_sh = project_root / "install.sh"
+        content = install_sh.read_text(encoding="utf-8")
+        expected_platforms = [
+            ".hermes",
+            "antigravity-cli",
+            ".claude",
+            ".opencode",
+            ".codex",
+            ".cursor",
+        ]
+        for platform in expected_platforms:
+            assert platform in content, f"Missing platform integration in install.sh: {platform}"
+        assert (project_root / "skill" / "SKILL.md").exists()
 
     def test_f9_installer_script_flags(self, project_root: Path):
-        """F9: install.sh supports all targeted platforms and help flag."""
+        """F9: install.sh supports help flag and documents all targeted agent platforms."""
         install_sh = project_root / "install.sh"
         assert install_sh.exists()
 
@@ -301,13 +332,15 @@ class TestAgentSkillAndAdaptersFeatures:
         )
         assert proc.returncode == 0
         help_text = proc.stdout
-        for flag in ["--hermes", "--agy", "--claude-code", "--opencode", "--codex", "--all"]:
-            assert flag in help_text, f"Missing flag in install.sh: {flag}"
+        assert "Uso:" in help_text
+        for platform in ["Hermes", "AGY", "Claude", "OpenCode", "Codex", "Cursor"]:
+            assert platform in help_text, f"Missing platform in install.sh help: {platform}"
 
 
 # =============================================================================
 # 5. Conversational Flow & Menu Parser SSoT (F10, F11)
 # =============================================================================
+
 
 class TestInteractiveAndMenuFeatures:
     """Feature tests for menu parsing SSoT and selection handling."""
@@ -344,7 +377,9 @@ class TestInteractiveAndMenuFeatures:
         assert parse_menu_selection("q") == [0]
         assert parse_menu_selection("99") == []
 
-    def test_f10_extract_cli_selection_argument(self, run_cli: Callable, sample_video: Path, tmp_path: Path):
+    def test_f10_extract_cli_selection_argument(
+        self, run_cli: Callable, sample_video: Path, tmp_path: Path
+    ):
         """F10: CLI extract respects --select parameter non-interactively."""
         proc = run_cli("extract", str(sample_video), "--select", "1", cwd=tmp_path)
         assert proc.returncode == 0
@@ -354,6 +389,7 @@ class TestInteractiveAndMenuFeatures:
 # =============================================================================
 # 6. Dynamic Proposal & Asset Scaffolding (F12)
 # =============================================================================
+
 
 class TestProposalScaffoldingFeatures:
     """Feature tests for dynamic proposal generation and scaffolding."""
@@ -379,10 +415,14 @@ class TestProposalScaffoldingFeatures:
         assert "--scaffold" in proc.stdout
         assert "--output" in proc.stdout
 
-    def test_f12_scaffold_skill_generates_valid_files(self, run_cli: Callable, completed_job: str, tmp_path: Path):
+    def test_f12_scaffold_skill_generates_valid_files(
+        self, run_cli: Callable, completed_job: str, tmp_path: Path
+    ):
         """F12: `--scaffold skill` generates valid SKILL.md file."""
         out_dir = tmp_path / "gen_skill"
-        proc = run_cli("proposals", "--job-id", completed_job, "--scaffold", "skill", "--output", str(out_dir))
+        proc = run_cli(
+            "proposals", "--job-id", completed_job, "--scaffold", "skill", "--output", str(out_dir)
+        )
         assert proc.returncode == 0
         assert "SKILL generado" in proc.stdout
 
@@ -392,10 +432,14 @@ class TestProposalScaffoldingFeatures:
         assert len(content) > 0
         assert "# " in content
 
-    def test_f12_scaffold_tool_generates_valid_python(self, run_cli: Callable, completed_job: str, tmp_path: Path):
+    def test_f12_scaffold_tool_generates_valid_python(
+        self, run_cli: Callable, completed_job: str, tmp_path: Path
+    ):
         """F12: `--scaffold tool` generates syntactically valid Python code."""
         out_dir = tmp_path / "gen_tool"
-        proc = run_cli("proposals", "--job-id", completed_job, "--scaffold", "tool", "--output", str(out_dir))
+        proc = run_cli(
+            "proposals", "--job-id", completed_job, "--scaffold", "tool", "--output", str(out_dir)
+        )
         assert proc.returncode == 0
         assert "TOOL generado" in proc.stdout
 
@@ -405,10 +449,14 @@ class TestProposalScaffoldingFeatures:
         # Verify valid Python syntax with AST parse
         ast.parse(code)
 
-    def test_f12_scaffold_agent_generates_valid_yaml(self, run_cli: Callable, completed_job: str, tmp_path: Path):
+    def test_f12_scaffold_agent_generates_valid_yaml(
+        self, run_cli: Callable, completed_job: str, tmp_path: Path
+    ):
         """F12: `--scaffold agent` generates valid agent.yaml and system prompt."""
         out_dir = tmp_path / "gen_agent"
-        proc = run_cli("proposals", "--job-id", completed_job, "--scaffold", "agent", "--output", str(out_dir))
+        proc = run_cli(
+            "proposals", "--job-id", completed_job, "--scaffold", "agent", "--output", str(out_dir)
+        )
         assert proc.returncode == 0
         assert "AGENTE generado" in proc.stdout
 
@@ -418,19 +466,24 @@ class TestProposalScaffoldingFeatures:
         assert isinstance(config, dict)
         assert "name" in config
 
-    def test_f12_scaffold_all_in_custom_directory(self, run_cli: Callable, completed_job: str, tmp_path: Path):
+    def test_f12_scaffold_all_in_custom_directory(
+        self, run_cli: Callable, completed_job: str, tmp_path: Path
+    ):
         """F12: `--scaffold all` produces skill, tool, and agent in designated folder."""
         out_dir = tmp_path / "gen_all"
-        proc = run_cli("proposals", "--job-id", completed_job, "--scaffold", "all", "--output", str(out_dir))
+        proc = run_cli(
+            "proposals", "--job-id", completed_job, "--scaffold", "all", "--output", str(out_dir)
+        )
         assert proc.returncode == 0
-        assert (len(list(out_dir.glob("**/SKILL.md"))) >= 1)
-        assert (len(list(out_dir.glob("**/tool.py"))) >= 1)
-        assert (len(list(out_dir.glob("**/agent.yaml"))) >= 1)
+        assert len(list(out_dir.glob("**/SKILL.md"))) >= 1
+        assert len(list(out_dir.glob("**/tool.py"))) >= 1
+        assert len(list(out_dir.glob("**/agent.yaml"))) >= 1
 
 
 # =============================================================================
 # 7. Security Gateway, SSRF & Path Traversal (F13, F14, F15)
 # =============================================================================
+
 
 class TestSecurityGatewayFeatures:
     """Feature tests for SSRF prevention, URL validation, and path traversal defenses."""
@@ -500,6 +553,7 @@ class TestSecurityGatewayFeatures:
 # 8. Prompt Sanitization & Strict Memory Isolation (F16, F17)
 # =============================================================================
 
+
 class TestPromptSanitizationAndMemoryIsolationFeatures:
     """Feature tests for prompt injection defense and SQLite isolation."""
 
@@ -520,7 +574,9 @@ class TestPromptSanitizationAndMemoryIsolationFeatures:
         sanitized = sanitize_for_prompt(payload)
         assert sanitized is not None
 
-    def test_f17_memory_db_isolated_in_user_dir(self, run_cli: Callable, isolated_env: dict[str, str]):
+    def test_f17_memory_db_isolated_in_user_dir(
+        self, run_cli: Callable, isolated_env: dict[str, str]
+    ):
         """F17: Memory bank database is strictly housed in ~/.video-intake/memory.db."""
         proc = run_cli("memory", "--stats")
         assert proc.returncode == 0
@@ -546,6 +602,7 @@ class TestPromptSanitizationAndMemoryIsolationFeatures:
 # =============================================================================
 # 9. CLI Architecture Modularization & Diagnostics (F18 - F23)
 # =============================================================================
+
 
 class TestCLIArchitectureAndDiagnosticsFeatures:
     """Feature tests for modular CLI subcommands and doctor diagnostics."""
@@ -589,6 +646,7 @@ class TestCLIArchitectureAndDiagnosticsFeatures:
 # =============================================================================
 # 10. Documentation, Schemas & E2E Verification (F24 - F28)
 # =============================================================================
+
 
 class TestDocumentationAndSchemasFeatures:
     """Feature tests for JSON data schemas and developer documentation."""

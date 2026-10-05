@@ -31,6 +31,9 @@ transcription:
   # Modelo por defecto (auto, whisper, none)
   model: whisper
 
+  # Tamaño del modelo de Whisper a descargar (tiny, base, small, medium, large)
+  whisper_model: base
+
   # Permitir fallback a estrategias alternativas
   fallback_enabled: true
 
@@ -167,6 +170,44 @@ acquisition:
 
   # Habilitar caché de descargas
   cache_enabled: true
+
+  # ------------------------------------------------------------------
+  # output_format — Formato de salida por defecto de los vídeos descargados
+  # ------------------------------------------------------------------
+  # Los vídeos descargados se normalizan siempre a un contenedor/códecs
+  # universalmente compatibles (iPhone, WhatsApp, TV). Garantiza que un
+  # archivo descargado sea reproducible con imagen y sonido en cualquier
+  # dispositivo, evitando codecs poco soportados como VP9 en MP4.
+  output_format:
+    # Activar la normalización por defecto (true)
+    enabled: true
+
+    # Contenedor de salida
+    container: mp4
+
+    # Codec de vídeo (H.264 = compatibilidad universal)
+    video_codec: h264
+
+    # Codec de audio
+    audio_codec: aac
+
+    # Mover el moov atom al inicio para reproducción instantánea
+    faststart: true
+
+  # ------------------------------------------------------------------
+  # Autenticación para contenido restringido (privado / +18 / limitado)
+  # ------------------------------------------------------------------
+  # Instagram (y otras redes) no sirven contenido restringido (edad,
+  # cuenta privada, límites de audiencia) sin sesión iniciada.
+  # Activa la lectura de cookies de un navegador o de un archivo Netscape.
+  # Tambien via entorno: VITK_COOKIES_FROM_BROWSER, VITK_COOKIES,
+  # VITK_XDG_CONFIG_HOME (para re-apuntar el directorio de config del navegador).
+  auth:
+    # Navegador del que se leen las cookies: "chrome", "firefox", ...
+    cookies_from_browser: ""
+
+    # Ruta a un archivo de cookies en formato Netscape (alternativa al navegador)
+    cookies_path: ""
 
 # ------------------------------------------------------------------
 # Memory — Integración con banco de memoria independiente

@@ -5,10 +5,16 @@ import re
 import subprocess
 from pathlib import Path
 
-out = subprocess.check_output(["git", "show", "HEAD:packages/video_intake_core/cli/__init__.py"], text=True)
+out = subprocess.check_output(
+    ["git", "show", "HEAD:packages/video_intake_core/cli/__init__.py"], text=True
+)
 
 # Extract original cmd_extract
-m_ext = re.search(r"^def cmd_extract\(args: argparse\.Namespace\) -> int:\n(.*?)(?=\n^def cmd_)", out, flags=re.MULTILINE | re.DOTALL)
+m_ext = re.search(
+    r"^def cmd_extract\(args: argparse\.Namespace\) -> int:\n(.*?)(?=\n^def cmd_)",
+    out,
+    flags=re.MULTILINE | re.DOTALL,
+)
 cmd_extract_body = m_ext.group(1)
 
 extract_file = Path("packages/video_intake_core/cli/extract.py")
@@ -34,7 +40,11 @@ def extract_command(subparsers: argparse._SubParsersAction) -> argparse.Argument
 extract_file.write_text(extract_content)
 
 # Extract original cmd_config_validate
-m_cfg = re.search(r"^def cmd_config_validate\(args: argparse\.Namespace\) -> int:\n(.*?)(?=\n^def cmd_)", out, flags=re.MULTILINE | re.DOTALL)
+m_cfg = re.search(
+    r"^def cmd_config_validate\(args: argparse\.Namespace\) -> int:\n(.*?)(?=\n^def cmd_)",
+    out,
+    flags=re.MULTILINE | re.DOTALL,
+)
 cmd_config_validate_body = m_cfg.group(1)
 
 config_file = Path("packages/video_intake_core/cli/config_cmd.py")
@@ -56,4 +66,3 @@ def config_validate_command(subparsers: argparse._SubParsersAction) -> argparse.
     return config_p
 '''
 config_file.write_text(config_content)
-

@@ -23,9 +23,6 @@ from video_intake_core.batch import cmd_batch
 
 # Regex to replace the from video_intake_core.cli import (...)
 test_content = re.sub(
-    r"from video_intake_core\.cli import \([\s\S]*?\)",
-    new_imports.strip(),
-    test_content
+    r"from video_intake_core\.cli import \([\s\S]*?\)", new_imports.strip(), test_content
 )
 test_file.write_text(test_content)
-

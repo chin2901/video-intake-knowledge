@@ -79,8 +79,11 @@ class BatchRunner:
                 "error": "Missing URL or file in entry",
             }
 
-        title = entry.get("title") or Path(target.replace("file://", "")).stem or f"batch_video_{index}"
+        title = (
+            entry.get("title") or Path(target.replace("file://", "")).stem or f"batch_video_{index}"
+        )
         from video_intake_core.orchestrator import check_and_extract, parse_extraction_choices
+
         select_raw = entry.get("select") or entry.get("operations") or "6"
         operations = parse_extraction_choices(str(select_raw))
 
@@ -92,7 +95,8 @@ class BatchRunner:
             "resolved_url": source_obj.url if source_obj else target,
             "platform": source_obj.platform if source_obj else ("local" if is_local else "remote"),
             "title": title,
-            "is_local": is_local or (source_obj.source_type.value == "local_file" if source_obj else False),
+            "is_local": is_local
+            or (source_obj.source_type.value == "local_file" if source_obj else False),
         }
 
         # Create job in JobManager
@@ -104,13 +108,15 @@ class BatchRunner:
         self.job_manager.update_status(job_id, JobState.RUNNING)
 
         if self.progress_callback:
-            self.progress_callback({
-                "job_id": job_id,
-                "index": index,
-                "total": total,
-                "title": title,
-                "status": "running",
-            })
+            self.progress_callback(
+                {
+                    "job_id": job_id,
+                    "index": index,
+                    "total": total,
+                    "title": title,
+                    "status": "running",
+                }
+            )
 
         try:
             artifacts = check_and_extract(
@@ -124,13 +130,15 @@ class BatchRunner:
             self.job_manager.update_status(job_id, JobState.COMPLETED)
 
             if self.progress_callback:
-                self.progress_callback({
-                    "job_id": job_id,
-                    "index": index,
-                    "total": total,
-                    "title": title,
-                    "status": "completed",
-                })
+                self.progress_callback(
+                    {
+                        "job_id": job_id,
+                        "index": index,
+                        "total": total,
+                        "title": title,
+                        "status": "completed",
+                    }
+                )
 
             return {
                 "job_id": job_id,
@@ -144,14 +152,16 @@ class BatchRunner:
             logger.error("Error processing entry %s: %s", target, exc)
             self.job_manager.update_status(job_id, JobState.FAILED)
             if self.progress_callback:
-                self.progress_callback({
-                    "job_id": job_id,
-                    "index": index,
-                    "total": total,
-                    "title": title,
-                    "status": "failed",
-                    "error": str(exc),
-                })
+                self.progress_callback(
+                    {
+                        "job_id": job_id,
+                        "index": index,
+                        "total": total,
+                        "title": title,
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+                )
             return {
                 "job_id": job_id,
                 "index": index,
@@ -190,6 +200,7 @@ def run_batch(
     # Parse manifest
     if m_path.suffix.lower() in (".yaml", ".yml"):
         import yaml
+
         with open(m_path, encoding="utf-8") as f:
             manifest_data = yaml.safe_load(f)
     else:
@@ -197,7 +208,12 @@ def run_batch(
             manifest_data = json.load(f)
 
     if isinstance(manifest_data, dict):
-        entries = manifest_data.get("videos") or manifest_data.get("entries") or manifest_data.get("items") or []
+        entries = (
+            manifest_data.get("videos")
+            or manifest_data.get("entries")
+            or manifest_data.get("items")
+            or []
+        )
     elif isinstance(manifest_data, list):
         entries = manifest_data
     else:
@@ -250,11 +266,13 @@ def run_batch(
             except Exception as exc:
                 idx = future_to_entry[future]
                 failed += 1
-                jobs_results.append({
-                    "index": idx,
-                    "status": "failed",
-                    "error": str(exc),
-                })
+                jobs_results.append(
+                    {
+                        "index": idx,
+                        "status": "failed",
+                        "error": str(exc),
+                    }
+                )
 
     jobs_results.sort(key=lambda x: x.get("index", 0))
     duration = time.perf_counter() - start_time
@@ -282,7 +300,9 @@ def cmd_batch(args: argparse.Namespace) -> int:
 
     def _cli_progress(event: dict[str, Any]) -> None:
         if not getattr(args, "json", False):
-            print(f"  [{event.get('index')}/{event.get('total')}] {event.get('title')} -> {event.get('status').upper()}")
+            print(
+                f"  [{event.get('index')}/{event.get('total')}] {event.get('title')} -> {event.get('status').upper()}"
+            )
 
     if not getattr(args, "json", False):
         print(f"Iniciando procesamiento por lotes ({max_workers} hilos)...")
@@ -297,7 +317,9 @@ def cmd_batch(args: argparse.Namespace) -> int:
     if getattr(args, "json", False):
         print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
     else:
-        print(f"\nLote completado en {result.duration_seconds:.2f}s: {result.successful}/{result.total} procesados con éxito.")
+        print(
+            f"\nLote completado en {result.duration_seconds:.2f}s: {result.successful}/{result.total} procesados con éxito."
+        )
         if result.failed > 0:
             print(f"  ✗ {result.failed} fallo(s) detectado(s).", file=sys.stderr)
 

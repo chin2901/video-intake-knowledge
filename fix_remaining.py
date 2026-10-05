@@ -2,14 +2,26 @@ import re
 import subprocess
 from pathlib import Path
 
-out = subprocess.check_output(["git", "show", "HEAD:packages/video_intake_core/cli/__init__.py"], text=True)
+out = subprocess.check_output(
+    ["git", "show", "HEAD:packages/video_intake_core/cli/__init__.py"], text=True
+)
+
 
 def extract_func(name):
-    m = re.search(f"^def cmd_{name}\\(args: argparse\\.Namespace\\) -> int:\n(.*?)(?=\n^def cmd_|\n# ====)", out, flags=re.MULTILINE | re.DOTALL)
+    m = re.search(
+        f"^def cmd_{name}\\(args: argparse\\.Namespace\\) -> int:\n(.*?)(?=\n^def cmd_|\n# ====)",
+        out,
+        flags=re.MULTILINE | re.DOTALL,
+    )
     if not m:
         # Fallback to look until next def
-        m = re.search(f"^def cmd_{name}\\(args: argparse\\.Namespace\\) -> int:\n(.*?)(?=\n^def )", out, flags=re.MULTILINE | re.DOTALL)
+        m = re.search(
+            f"^def cmd_{name}\\(args: argparse\\.Namespace\\) -> int:\n(.*?)(?=\n^def )",
+            out,
+            flags=re.MULTILINE | re.DOTALL,
+        )
     return m.group(1) if m else ""
+
 
 # status.py
 status_body = extract_func("status")
@@ -120,4 +132,3 @@ def doctor_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentP
     return doctor_p
 '''
     Path("packages/video_intake_core/cli/doctor.py").write_text(content)
-

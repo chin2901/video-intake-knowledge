@@ -12,17 +12,20 @@ from pathlib import Path
 # CLI structure tests
 # =============================================================================
 
+
 class TestCLIStructure:
     """Test that the CLI module exists and has expected attributes."""
 
     def test_cli_module_exists(self):
         """The CLI module is importable."""
         import video_intake_core.cli
+
         assert video_intake_core.cli is not None
 
     def test_cli_version(self):
         """The CLI module has a version."""
         import video_intake_core
+
         assert hasattr(video_intake_core, "__version__")
 
     def test_cli_doctor_exists(self):
@@ -30,6 +33,7 @@ class TestCLIStructure:
         from video_intake_core.cli.doctor import (
             run_doctor,
         )
+
         assert callable(run_doctor)
 
     def test_cli_cleanup_exists(self):
@@ -37,6 +41,7 @@ class TestCLIStructure:
         from video_intake_core.cli.cleanup import (
             cleanup_command,
         )
+
         assert callable(cleanup_command)
 
     def test_cli_extract_exists(self):
@@ -44,6 +49,7 @@ class TestCLIStructure:
         from video_intake_core.cli.extract import (
             extract_command,
         )
+
         assert callable(extract_command)
 
     def test_cli_status_exists(self):
@@ -51,6 +57,7 @@ class TestCLIStructure:
         from video_intake_core.cli.status import (
             status_command,
         )
+
         assert callable(status_command)
 
     def test_cli_artifacts_exists(self):
@@ -58,6 +65,7 @@ class TestCLIStructure:
         from video_intake_core.cli.artifacts import (
             artifacts_command,
         )
+
         assert callable(artifacts_command)
 
     def test_cli_export_exists(self):
@@ -65,6 +73,7 @@ class TestCLIStructure:
         from video_intake_core.cli.export import (
             export_command,
         )
+
         assert callable(export_command)
 
     def test_cli_proposals_exists(self):
@@ -72,6 +81,7 @@ class TestCLIStructure:
         from video_intake_core.cli.proposals import (
             proposals_command,
         )
+
         assert callable(proposals_command)
 
     def test_cli_memory_exists(self):
@@ -79,6 +89,7 @@ class TestCLIStructure:
         from video_intake_core.cli.memory import (
             memory_command,
         )
+
         assert callable(memory_command)
 
     def test_cli_config_exists(self):
@@ -86,6 +97,7 @@ class TestCLIStructure:
         from video_intake_core.cli.config_cmd import (
             config_validate_command,
         )
+
         assert callable(config_validate_command)
 
     def test_cli_models_exists(self):
@@ -95,6 +107,7 @@ class TestCLIStructure:
             models_list_command,
             models_verify_command,
         )
+
         assert callable(models_list_command)
         assert callable(models_install_command)
         assert callable(models_verify_command)
@@ -184,24 +197,28 @@ class TestCLIConfig:
     def test_config_default_yaml_exists(self):
         """The default.yaml config file exists."""
         from pathlib import Path
+
         config_path = Path(__file__).parent.parent.parent / "config" / "default.yaml"
         assert config_path.exists()
 
     def test_config_offline_yaml_exists(self):
         """The offline.yaml config file exists."""
         from pathlib import Path
+
         config_path = Path(__file__).parent.parent.parent / "config" / "offline.yaml"
         assert config_path.exists()
 
     def test_config_low_cost_yaml_exists(self):
         """The low-cost.yaml config file exists."""
         from pathlib import Path
+
         config_path = Path(__file__).parent.parent.parent / "config" / "low-cost.yaml"
         assert config_path.exists()
 
     def test_config_production_yaml_exists(self):
         """The production.yaml config file exists."""
         from pathlib import Path
+
         config_path = Path(__file__).parent.parent.parent / "config" / "production.yaml"
         assert config_path.exists()
 
@@ -233,11 +250,13 @@ class TestCLIStorage:
     def test_storage_manager_exists(self):
         """The storage manager class exists."""
         from video_intake_core.storage import StorageManager
+
         assert StorageManager is not None
 
     def test_artifact_types_exist(self):
         """Artifact types are defined."""
         from video_intake_core.storage import ArtifactKind, ArtifactType
+
         assert ArtifactType.VIDEO is not None
         assert ArtifactType.AUDIO is not None
         assert ArtifactType.TRANSCRIPT is not None
@@ -256,6 +275,7 @@ class TestCLIArtifacts:
     def test_artifact_manager_exists(self):
         """The artifacts module exists."""
         from video_intake_core.artifacts import ArtifactManager
+
         assert ArtifactManager is not None
 
     def test_artifact_creation(self, tmp_path: Path):

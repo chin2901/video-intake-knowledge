@@ -1,4 +1,5 @@
 """Export command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -46,17 +47,24 @@ def run_export(args: argparse.Namespace) -> int:
         print(f"Exportado a {html_path}")
     else:
         md_path = Path(export_dir) / "export.md"
-        md_path.write_text(f"# Export job {args.job_id}\n\n## Resumen\n\nJob: {args.job_id}\nEstado: {status_val}\nTítulo: {title}\n\n")
+        md_path.write_text(
+            f"# Export job {args.job_id}\n\n## Resumen\n\nJob: {args.job_id}\nEstado: {status_val}\nTítulo: {title}\n\n"
+        )
         print(f"Exportado a {md_path}")
 
     return 0
 
 
-
 def export_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
     export_p = subparsers.add_parser("export", help="Exporta resultados de un job.")
     export_p.add_argument("job_id", help="ID del job.")
-    export_p.add_argument("--format", "-f", choices=["markdown", "json", "html"], default="markdown", help="Formato de exportación (default: markdown).")
+    export_p.add_argument(
+        "--format",
+        "-f",
+        choices=["markdown", "json", "html"],
+        default="markdown",
+        help="Formato de exportación (default: markdown).",
+    )
     export_p.add_argument("--output", "-o", type=str, default=None, help="Directorio de salida.")
     export_p.set_defaults(func=run_export)
     return export_p

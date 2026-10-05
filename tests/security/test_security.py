@@ -212,7 +212,7 @@ class TestMimeDetection:
     def test_mp4_detected(self, tmp_path: Path):
         """MP4 files should be detected as video/mp4."""
         f = tmp_path / "test.mp4"
-        f.write_bytes(b"\x00\x00\x00\x18\x66\x74\x79\x70\x69\x73\x6F\x72\x6D\x00\x00\x02\x00")
+        f.write_bytes(b"\x00\x00\x00\x18\x66\x74\x79\x70\x69\x73\x6f\x72\x6d\x00\x00\x02\x00")
         mime = detect_mime(f)
         assert mime == "video/mp4"
 
@@ -226,14 +226,14 @@ class TestMimeDetection:
     def test_mkv_detected(self, tmp_path: Path):
         """MKV files should be detected."""
         f = tmp_path / "test.mkv"
-        f.write_bytes(b"\x1A\x45\xDF\xA3")  # Matroska magic
+        f.write_bytes(b"\x1a\x45\xdf\xa3")  # Matroska magic
         mime = detect_mime(f)
         assert "video" in mime or "matroska" in mime
 
     def test_webm_detected(self, tmp_path: Path):
         """WebM files should be detected."""
         f = tmp_path / "test.webm"
-        f.write_bytes(b"\x1A\x45\xDF\xA3\x91\x42\x83\x90")  # WebM magic
+        f.write_bytes(b"\x1a\x45\xdf\xa3\x91\x42\x83\x90")  # WebM magic
         mime = detect_mime(f)
         assert "video" in mime
 
@@ -241,14 +241,14 @@ class TestMimeDetection:
         """MOV files should be detected."""
         f = tmp_path / "test.mov"
         # MOV/MP4 use ftyp box at offset 4
-        f.write_bytes(b"\x00\x00\x00\x14\x66\x74\x79\x70\x6D\x6F\x6F\x76")
+        f.write_bytes(b"\x00\x00\x00\x14\x66\x74\x79\x70\x6d\x6f\x6f\x76")
         mime = detect_mime(f)
         assert mime == "video/quicktime" or "video/mp4" in mime
 
     def test_image_detected(self, tmp_path: Path):
         """PNG images should be detected."""
         f = tmp_path / "test.png"
-        f.write_bytes(b"\x89PNG\r\n\x1A\n")
+        f.write_bytes(b"\x89PNG\r\n\x1a\n")
         mime = detect_mime(f)
         assert mime == "image/png"
 

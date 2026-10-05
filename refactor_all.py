@@ -7,7 +7,13 @@ content = init_file.read_text()
 
 # Extract functions using regex (match `def cmd_X(...) -> int:` to the end or next `def cmd_`)
 functions = {}
-matches = list(re.finditer(r"^def cmd_(\w+)\((.*?)\) -> int:\n(.*?)(?=\n^def cmd_|^def build_parser|^# ======)", content, flags=re.MULTILINE | re.DOTALL))
+matches = list(
+    re.finditer(
+        r"^def cmd_(\w+)\((.*?)\) -> int:\n(.*?)(?=\n^def cmd_|^def build_parser|^# ======)",
+        content,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+)
 for m in matches:
     name = m.group(1)
     func_code = m.group(0)
@@ -70,7 +76,7 @@ def self_test_command(subparsers: argparse._SubParsersAction) -> argparse.Argume
 ''')
 
 # Update __init__.py build_parser
-new_build_parser = '''
+new_build_parser = """
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="video-intake",
@@ -136,15 +142,19 @@ def build_parser() -> argparse.ArgumentParser:
     memory_command(sub)
 
     return parser
-'''
+"""
 
 # Delete all the old subparser additions and functions
 content = re.sub(r"def cmd_.*?(?=def build_parser)", "", content, flags=re.MULTILINE | re.DOTALL)
-content = re.sub(r"def build_parser\(\) -> argparse\.ArgumentParser:.*(?=# ============================================================================)", new_build_parser + "\n\n", content, flags=re.MULTILINE | re.DOTALL)
+content = re.sub(
+    r"def build_parser\(\) -> argparse\.ArgumentParser:.*(?=# ============================================================================)",
+    new_build_parser + "\n\n",
+    content,
+    flags=re.MULTILINE | re.DOTALL,
+)
 
 # Delete unneeded lazy imports, because the functions above are gone
 content = re.sub(r"def _get_.*?\n    return .*?\n\n\n", "", content, flags=re.MULTILINE | re.DOTALL)
 
 # Rewrite __init__.py
 init_file.write_text(content)
-

@@ -60,15 +60,26 @@ def isolated_env(tmp_path: Path) -> dict[str, str]:
     env["XDG_DATA_HOME"] = str(home / ".local" / "share")
     env["XDG_CACHE_HOME"] = str(home / ".cache")
     import site
-    env["PYTHONPATH"] = str(PROJECT_ROOT / "packages") + ":" + site.getusersitepackages() + ":" + env.get("PYTHONPATH", "")
+
+    env["PYTHONPATH"] = (
+        str(PROJECT_ROOT / "packages")
+        + ":"
+        + site.getusersitepackages()
+        + ":"
+        + env.get("PYTHONPATH", "")
+    )
     return env
 
 
 @pytest.fixture
-def run_cli(isolated_env: dict[str, str], tmp_path: Path) -> Callable[..., subprocess.CompletedProcess[str]]:
+def run_cli(
+    isolated_env: dict[str, str], tmp_path: Path
+) -> Callable[..., subprocess.CompletedProcess[str]]:
     """Factory fixture to run the video-intake CLI in an isolated subprocess."""
 
-    def _run(*args: str, input_text: str | None = None, cwd: Path | None = None, timeout: float = 30.0) -> subprocess.CompletedProcess[str]:
+    def _run(
+        *args: str, input_text: str | None = None, cwd: Path | None = None, timeout: float = 30.0
+    ) -> subprocess.CompletedProcess[str]:
         work_dir = cwd or tmp_path
         cmd = [sys.executable, "-m", "video_intake_core.cli", *args]
         return subprocess.run(
@@ -103,12 +114,12 @@ def parse_cli_json(stdout: str) -> Any:
 
     if end_dict > end_list and start_dict != -1 and end_dict > start_dict:
         try:
-            return json.loads(stdout[start_dict:end_dict+1])
+            return json.loads(stdout[start_dict : end_dict + 1])
         except json.JSONDecodeError:
             pass
     elif end_list > end_dict and start_list != -1 and end_list > start_list:
         try:
-            return json.loads(stdout[start_list:end_list+1])
+            return json.loads(stdout[start_list : end_list + 1])
         except json.JSONDecodeError:
             pass
 

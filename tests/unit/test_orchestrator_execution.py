@@ -60,14 +60,16 @@ def test_detect_video_sources_relative_and_direct(sample_video_path: str):
 
 
 def test_check_and_extract_local_video(sample_video_path: str, tmp_path: Path):
-    sources = [{
-        "type": "local",
-        "original_input": sample_video_path,
-        "resolved_url": sample_video_path,
-        "platform": "local",
-        "title": "sample",
-        "is_local": True,
-    }]
+    sources = [
+        {
+            "type": "local",
+            "original_input": sample_video_path,
+            "resolved_url": sample_video_path,
+            "platform": "local",
+            "title": "sample",
+            "is_local": True,
+        }
+    ]
     # Operaciones: 1 (video), 2 (audio), 5 (visual)
     artifacts = check_and_extract(sources, {1, 2, 5}, tmp_path)
     assert artifacts["job_id"].startswith("job_")
@@ -79,13 +81,15 @@ def test_check_and_extract_local_video(sample_video_path: str, tmp_path: Path):
 
 
 def test_route_extracted_knowledge_all_options(sample_video_path: str, tmp_path: Path):
-    sources = [{
-        "type": "local",
-        "resolved_url": sample_video_path,
-        "platform": "local",
-        "title": "sample_route",
-        "is_local": True,
-    }]
+    sources = [
+        {
+            "type": "local",
+            "resolved_url": sample_video_path,
+            "platform": "local",
+            "title": "sample_route",
+            "is_local": True,
+        }
+    ]
     artifacts = check_and_extract(sources, {1, 2}, tmp_path)
 
     # Opción 1: Mensaje a la sesión
@@ -102,7 +106,9 @@ def test_route_extracted_knowledge_all_options(sample_video_path: str, tmp_path:
     assert Path(r3["db_path"]).exists()
 
     # Opción 4: Nuevo banco de memoria
-    r4 = route_extracted_knowledge(artifacts, choice="4", interactive=False, extra_input="test_bank_custom")
+    r4 = route_extracted_knowledge(
+        artifacts, choice="4", interactive=False, extra_input="test_bank_custom"
+    )
     assert r4["bank"] == "test_bank_custom"
     assert Path(r4["db_path"]).exists()
 
@@ -144,7 +150,9 @@ def test_asset_scaffolding(tmp_path: Path):
     assert tool_files[0].name == "tool.py"
 
     # Scaffold Agent
-    agent_files = generate_asset_scaffold("AGENTE", "agente-prueba", artifacts, output_base=tmp_path)
+    agent_files = generate_asset_scaffold(
+        "AGENTE", "agente-prueba", artifacts, output_base=tmp_path
+    )
     assert len(agent_files) == 2
 
 
@@ -201,13 +209,17 @@ def test_cli_extract_and_followup(sample_video_path: str, tmp_path: Path, monkey
     assert ret_artifacts == 0
 
     # export
-    args_export = argparse.Namespace(job_id=job_id, format="markdown", output=str(tmp_path / "exports"))
+    args_export = argparse.Namespace(
+        job_id=job_id, format="markdown", output=str(tmp_path / "exports")
+    )
     ret_export = cmd_export(args_export)
     assert ret_export == 0
     assert (tmp_path / "exports" / "export.md").exists()
 
     # export json
-    args_export_json = argparse.Namespace(job_id=job_id, format="json", output=str(tmp_path / "exports"))
+    args_export_json = argparse.Namespace(
+        job_id=job_id, format="json", output=str(tmp_path / "exports")
+    )
     ret_export_json = cmd_export(args_export_json)
     assert ret_export_json == 0
     assert (tmp_path / "exports" / "export.json").exists()
@@ -241,40 +253,166 @@ def test_cli_config_validate_execution():
 
 
 def test_cli_proposals_execution(sample_video_path: str, tmp_path: Path):
-    args_empty = argparse.Namespace(job_id="nonexistent_job_123", scaffold=None, output=str(tmp_path))
+    args_empty = argparse.Namespace(
+        job_id="nonexistent_job_123", scaffold=None, output=str(tmp_path)
+    )
     assert show_proposals(args_empty) == 1
 
     # Extraer primero para tener un job válido
-    sources = [{
-        "type": "local",
-        "resolved_url": sample_video_path,
-        "platform": "local",
-        "title": "sample_prop",
-        "is_local": True,
-    }]
+    sources = [
+        {
+            "type": "local",
+            "resolved_url": sample_video_path,
+            "platform": "local",
+            "title": "sample_prop",
+            "is_local": True,
+        }
+    ]
     artifacts = check_and_extract(sources, {1}, tmp_path)
     job_id = artifacts["job_id"]
 
     # Ejecutar proposals con job_id
-    args_job = argparse.Namespace(job_id=job_id, scaffold=None, output=str(tmp_path / "gen"), artifacts_dir=str(tmp_path))
+    args_job = argparse.Namespace(
+        job_id=job_id, scaffold=None, output=str(tmp_path / "gen"), artifacts_dir=str(tmp_path)
+    )
     assert show_proposals(args_job) == 0
 
     # Ejecutar proposals con scaffold
-    args_scaffold = argparse.Namespace(job_id=job_id, scaffold="skill", output=str(tmp_path / "gen"), artifacts_dir=str(tmp_path))
+    args_scaffold = argparse.Namespace(
+        job_id=job_id, scaffold="skill", output=str(tmp_path / "gen"), artifacts_dir=str(tmp_path)
+    )
     assert show_proposals(args_scaffold) == 0
     assert (tmp_path / "gen" / "skill-sample-prop" / "SKILL.md").exists()
 
 
 def test_cli_memory_execution(tmp_path: Path):
     db_file = str(tmp_path / "test_cli_memory.db")
-    args_stats = argparse.Namespace(db_path=db_file, list=False, search=None, clear=False, stats=True, yes=False, limit=20, offset=0)
+    args_stats = argparse.Namespace(
+        db_path=db_file,
+        list=False,
+        search=None,
+        clear=False,
+        stats=True,
+        yes=False,
+        limit=20,
+        offset=0,
+    )
     assert show_memory(args_stats) == 0
 
-    args_list = argparse.Namespace(db_path=db_file, list=True, search=None, clear=False, stats=False, yes=False, limit=20, offset=0)
+    args_list = argparse.Namespace(
+        db_path=db_file,
+        list=True,
+        search=None,
+        clear=False,
+        stats=False,
+        yes=False,
+        limit=20,
+        offset=0,
+    )
     assert show_memory(args_list) == 0
 
-    args_search = argparse.Namespace(db_path=db_file, list=False, search="prueba", clear=False, stats=False, yes=False, limit=20, offset=0)
+    args_search = argparse.Namespace(
+        db_path=db_file,
+        list=False,
+        search="prueba",
+        clear=False,
+        stats=False,
+        yes=False,
+        limit=20,
+        offset=0,
+    )
     assert show_memory(args_search) == 0
 
-    args_clear = argparse.Namespace(db_path=db_file, list=False, search=None, clear=True, stats=False, yes=True, limit=20, offset=0)
+    args_clear = argparse.Namespace(
+        db_path=db_file,
+        list=False,
+        search=None,
+        clear=True,
+        stats=False,
+        yes=True,
+        limit=20,
+        offset=0,
+    )
     assert show_memory(args_clear) == 0
+
+
+def test_output_format_policy_and_env_override(monkeypatch: pytest.MonkeyPatch):
+    from video_intake_core.orchestrator import _resolve_output_format
+    from video_intake_core.policies import PolicyResolver
+
+    resolver = PolicyResolver()
+    default_fmt = resolver.get_output_format()
+    assert default_fmt["enabled"] is True
+    assert default_fmt["container"] == "mp4"
+    assert default_fmt["video_codec"] == "h264"
+    assert default_fmt["audio_codec"] == "aac"
+    assert default_fmt["faststart"] is True
+
+    # Test override via VITK_OUTPUT_FORMAT
+    monkeypatch.setenv("VITK_OUTPUT_FORMAT", "none")
+    disabled_fmt = resolver.get_output_format()
+    assert disabled_fmt["enabled"] is False
+
+    monkeypatch.delenv("VITK_OUTPUT_FORMAT", raising=False)
+    resolved = _resolve_output_format()
+    assert resolved["enabled"] is True
+
+
+def test_acquisition_auth_policy_and_args(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from video_intake_core.orchestrator import _auth_args
+    from video_intake_core.policies import PolicyResolver
+
+    resolver = PolicyResolver()
+    default_auth = resolver.get_acquisition_auth()
+    assert default_auth["cookies_from_browser"] == ""
+
+    # Test browser args
+    auth_browser = {"cookies_from_browser": "firefox", "cookies_path": ""}
+    assert _auth_args(auth_browser) == ["--cookies-from-browser", "firefox"]
+
+    # Test cookies file args
+    dummy_cookies = tmp_path / "cookies.txt"
+    dummy_cookies.write_text("# Netscape HTTP Cookie File\n", encoding="utf-8")
+    auth_file = {"cookies_from_browser": "", "cookies_path": str(dummy_cookies)}
+    assert _auth_args(auth_file) == ["--cookies", str(dummy_cookies)]
+
+    # Test non-existent cookies file is safely ignored
+    auth_missing = {"cookies_from_browser": "", "cookies_path": "/path/to/nonexistent/cookies.txt"}
+    assert _auth_args(auth_missing) == []
+
+    # Test env var override
+    monkeypatch.setenv("VITK_COOKIES_FROM_BROWSER", "chrome")
+    auth_env = resolver.get_acquisition_auth()
+    assert auth_env["cookies_from_browser"] == "chrome"
+
+
+def test_video_normalization_h264_aac_faststart(sample_video_path: str, tmp_path: Path):
+    import shutil
+
+    from video_intake_core.orchestrator import _resolve_output_format, _to_compatible_format
+
+    test_video = tmp_path / "test_norm.mp4"
+    shutil.copy(sample_video_path, test_video)
+
+    fmt = _resolve_output_format()
+    res = _to_compatible_format(test_video, fmt)
+
+    assert res.exists()
+    assert res.suffix == ".mp4"
+
+    # Verify faststart moov atom is located before mdat atom
+    data = res.read_bytes()
+    moov_pos = data.find(b"moov")
+    mdat_pos = data.find(b"mdat")
+    assert moov_pos != -1, "moov atom must be present"
+    assert mdat_pos != -1, "mdat atom must be present"
+    assert moov_pos < mdat_pos, "moov atom must precede mdat atom for faststart streaming"
+
+
+def test_whisper_model_resolution():
+    from video_intake_core.orchestrator import _resolve_whisper_model
+    from video_intake_core.policies import PolicyResolver
+
+    resolver = PolicyResolver()
+    assert resolver.get_whisper_model_size() in {"tiny", "base", "small", "medium", "large"}
+    assert _resolve_whisper_model() in {"tiny", "base", "small", "medium", "large"}

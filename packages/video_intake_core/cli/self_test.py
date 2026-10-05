@@ -1,5 +1,5 @@
-
 """Self-test command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,6 @@ from typing import Any
 
 
 def run_self_test(args: argparse.Namespace) -> int:
-
     """Ejecuta pruebas de auto-diagnóstico."""
     import shutil
 
@@ -19,9 +18,7 @@ def run_self_test(args: argparse.Namespace) -> int:
 
     # Test 1: detección de URL de YouTube
     try:
-        sources = detect_video_sources(
-            "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-        )
+        sources = detect_video_sources("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
         tests.append(
             {
                 "name": "detect_youtube_url",
@@ -115,9 +112,7 @@ def run_self_test(args: argparse.Namespace) -> int:
     )
 
     for t in tests:
-        icon = {"pass": "✓", "fail": "✗", "warn": "⚠", "skip": "⊘"}.get(
-            t["status"], "·"
-        )
+        icon = {"pass": "✓", "fail": "✗", "warn": "⚠", "skip": "⊘"}.get(t["status"], "·")
         print(f"  {icon} {t['name']}: {t['detail']}")
 
     fails = sum(1 for t in tests if t["status"] == "fail")
@@ -127,7 +122,6 @@ def run_self_test(args: argparse.Namespace) -> int:
     else:
         print(f"Self-test completado: ✗ ({fails} fallo(s))")
     return 0 if fails == 0 else 1
-
 
 
 def self_test_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

@@ -82,7 +82,7 @@ Lines 30-37 define:
 ```python
 YOUTUBE_PATTERNS = [
     re.compile(r"^https?://(www\.)?youtube\.com/watch\?v=([a-zA-Z0-9_-]+)", re.IGNORECASE),
-    ...
+    ...,
 ]
 ```
 - **Empirical Test**:
@@ -127,6 +127,7 @@ In `packages/video_intake_core/audio/__init__.py:87-104`:
 ```python
 def _download_to_temp(url: str) -> Path:
     import yt_dlp
+
     tmp = Path(tempfile.mktemp(suffix=".mp4"))
     ydl_opts = {
         "format": "bestvideo+bestaudio/best",
@@ -190,23 +191,25 @@ Notice:
 ### 4.1 Mock Batch Processing (`cmd_batch`)
 In `packages/video_intake_core/cli/__init__.py:488-507`:
 ```python
-    for entry in entries:
-        url = entry.get("url") or entry.get("file")
-        if not url:
-            continue
-        sources = _detect_sources([url] if url.startswith("http") else [], [url] if not url.startswith("http") else [])
-        if not sources:
-            print(f"  ✗ No procesable: {url}")
-            continue
-        s = sources[0]
-        mode = entry.get("mode", "individual")
-        select = entry.get("select", "6")
+for entry in entries:
+    url = entry.get("url") or entry.get("file")
+    if not url:
+        continue
+    sources = _detect_sources(
+        [url] if url.startswith("http") else [], [url] if not url.startswith("http") else []
+    )
+    if not sources:
+        print(f"  ✗ No procesable: {url}")
+        continue
+    s = sources[0]
+    mode = entry.get("mode", "individual")
+    select = entry.get("select", "6")
 
-        print(f"  · {s.get('title', url)} [{select}]")
-        if args.json:
-            print(json.dumps({"source": url, "mode": mode, "select": select}))
+    print(f"  · {s.get('title', url)} [{select}]")
+    if args.json:
+        print(json.dumps({"source": url, "mode": mode, "select": select}))
 
-    print(f"\nLote completado: {len(entries)} vídeos procesados.")
+print(f"\nLote completado: {len(entries)} vídeos procesados.")
 ```
 **Ground Truth Finding**: `cmd_batch` performs no processing whatsoever. It merely prints lines from the YAML manifest and declares the batch completed. No worker threads, no queues, no sub-processes are spawned.
 

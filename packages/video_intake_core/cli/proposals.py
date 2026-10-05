@@ -178,8 +178,8 @@ version: 1.0.0
 # SKILL: {title}
 
 > Habilidad generada dinámicamente por `video-intake-knowledge`.
-> **Fuente:** {src.get('resolved_url', 'N/A')}
-> **Generado:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}
+> **Fuente:** {src.get("resolved_url", "N/A")}
+> **Generado:** {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")}
 
 ---
 
@@ -194,12 +194,12 @@ version: 1.0.0
 ---
 
 ## 3. Conocimiento de Audio Extraído
-{audio_ctx if audio_ctx.strip() else 'No se extrajo contexto de audio adicional.'}
+{audio_ctx if audio_ctx.strip() else "No se extrajo contexto de audio adicional."}
 
 ---
 
 ## 4. Contexto Visual y Diagramas (OCR)
-{vis_ctx if vis_ctx.strip() else 'No se detectaron diagramas ni texto visual OCR adicional.'}
+{vis_ctx if vis_ctx.strip() else "No se detectaron diagramas ni texto visual OCR adicional."}
 """
         skill_file.write_text(content, encoding="utf-8")
         created_files.append(skill_file)
@@ -213,14 +213,16 @@ version: 1.0.0
         steps_funcs = []
         calls = []
         for i, s in enumerate(dynamic_steps[:5], 1):
-            fn_name = f"step_{i}_{re.sub(r'[^a-zA-Z0-9]+', '_', s['title'][:20]).lower().strip('_')}"
+            fn_name = (
+                f"step_{i}_{re.sub(r'[^a-zA-Z0-9]+', '_', s['title'][:20]).lower().strip('_')}"
+            )
             steps_funcs.append(
                 f"def {fn_name}(target: str, verbose: bool = False) -> bool:\n"
                 f'    """Ejecuta {s["title"]}."""\n'
-                f'    if verbose:\n'
+                f"    if verbose:\n"
                 f'        print(f"[*] Ejecutando: {s["title"]}...")\n'
-                f'    # Lógica derivada del vídeo\n'
-                f'    return True\n'
+                f"    # Lógica derivada del vídeo\n"
+                f"    return True\n"
             )
             calls.append(f"    {fn_name}(args.target, args.verbose)")
 
@@ -231,8 +233,8 @@ version: 1.0.0
 \"\"\"
 tool.py — Herramienta ejecutable generada dinámicamente por video-intake-knowledge
 Origen: {title}
-Fuente: {src.get('resolved_url', 'N/A')}
-Generado: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}
+Fuente: {src.get("resolved_url", "N/A")}
+Generado: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")}
 \"\"\"
 
 from __future__ import annotations
@@ -312,7 +314,7 @@ capabilities:
 
 Eres un agente de IA experto y autónomo especializado en la metodología de:
 **{title}**
-Fuente de referencia: `{src.get('resolved_url', 'N/A')}`
+Fuente de referencia: `{src.get("resolved_url", "N/A")}`
 
 ## 1. Tu Misión
 Guiar al usuario y ejecutar deterministamente los procedimientos y flujos descritos en el material audiovisual:
@@ -327,7 +329,7 @@ Guiar al usuario y ejecutar deterministamente los procedimientos y flujos descri
 - Valida los resultados en cada etapa antes de proseguir a la siguiente fase.
 
 ## 4. Contexto del Dominio
-{audio_ctx[:1000] if audio_ctx else 'Contexto operativo obtenido del análisis del vídeo.'}
+{audio_ctx[:1000] if audio_ctx else "Contexto operativo obtenido del análisis del vídeo."}
 """
         sys_prompt.write_text(prompt_content, encoding="utf-8")
         created_files.append(sys_prompt)
@@ -473,7 +475,8 @@ def proposals_command(subparsers: argparse._SubParsersAction) -> argparse.Argume
         help="Genera directamente los archivos de la propuesta seleccionada",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="./generated",
         help="Directorio de destino para los activos generados (default: ./generated)",
     )
@@ -496,12 +499,14 @@ def proposals_command(subparsers: argparse._SubParsersAction) -> argparse.Argume
         help="URL o ruta del vídeo a procesar",
     )
     interactive_parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="./artifacts",
         help="Directorio para guardar artefactos locales (default: ./artifacts)",
     )
     interactive_parser.add_argument(
-        "--select", "-s",
+        "--select",
+        "-s",
         help="Preselección de operaciones (ej: '1,3,5' o '6')",
     )
     interactive_parser.set_defaults(func=run_interactive_cli)
@@ -511,7 +516,8 @@ def proposals_command(subparsers: argparse._SubParsersAction) -> argparse.Argume
     if extract_parser:
         with contextlib.suppress(argparse.ArgumentError):
             extract_parser.add_argument(
-                "--interactive", "-i",
+                "--interactive",
+                "-i",
                 action="store_true",
                 help="Ejecutar en modo interactivo en 2 fases",
             )

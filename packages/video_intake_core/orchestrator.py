@@ -10,8 +10,10 @@ Implementa la experiencia nuclear en 2 fases:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -43,7 +45,219 @@ logger = logging.getLogger(__name__)
 def parse_extraction_choices(raw: str) -> set[int]:
     """Parsea elecciones como '1, 3', '1 2 4', '6', 'todo', 'all'. Delega al SSoT."""
     from video_intake_core.cli.menu import parse_selection_to_set
+
     return parse_selection_to_set(raw)
+
+
+def _resolve_output_format() -> dict[str, Any]:
+    """Resuelve el formato de salida por defecto (SSoT: config/*.yaml).
+
+    Orden de resolución: variable VITK_CONFIG -> config/default.yaml del CWD
+    -> config/default.yaml del repositorio -> defaults universales.
+    """
+    candidates: list[Path] = []
+    env_cfg = os.environ.get("VITK_CONFIG")
+    if env_cfg:
+        candidates.append(Path(env_cfg).expanduser())
+    cwd_cfg = Path("config/default.yaml")
+    if cwd_cfg.exists():
+        candidates.append(cwd_cfg)
+    repo_cfg = Path(__file__).resolve().parents[2] / "config" / "default.yaml"
+    for cand in candidates + [repo_cfg]:
+        if cand.exists():
+            try:
+                from video_intake_core.policies import PolicyResolver
+
+                return PolicyResolver(config_path=str(cand)).get_output_format()
+            except Exception as e:
+                logger.debug("No se pudo cargar output_format desde %s: %s", cand, e)
+    return {
+        "enabled": True,
+        "container": "mp4",
+        "video_codec": "h264",
+        "audio_codec": "aac",
+        "faststart": True,
+    }
+
+
+def _to_compatible_format(path: Path, fmt: dict[str, Any]) -> Path:
+    """Normaliza un vídeo descargado al contenedor/códecs universales.
+
+    Si el archivo ya es compatible (p.ej. h264+aac en mp4) solo se garantiza
+    faststart mediante remux sin recodificar (sin pérdida y casi instantáneo).
+    En caso contrario se transcodifica con ffmpeg (libx264/aac).
+    """
+    if not fmt.get("enabled", True):
+        return path
+    target_container = str(fmt.get("container", "mp4") or "mp4").lower()
+    vcodec_want = str(fmt.get("video_codec", "h264") or "h264").lower()
+    acodec_want = str(fmt.get("audio_codec", "aac") or "aac").lower()
+    faststart = bool(fmt.get("faststart", True))
+
+    if not path.exists() or not path.is_file():
+        return path
+    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
+        logger.warning("ffmpeg/ffprobe no disponibles; no se normaliza el vídeo: %s", path)
+        return path
+
+    probe = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "stream=codec_type,codec_name",
+            "-show_entries",
+            "format=format_name",
+            "-of",
+            "json",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0:
+        return path
+    try:
+        meta = json.loads(probe.stdout or "{}")
+    except ValueError:
+        return path
+
+    vcodec: str | None = None
+    acodec: str | None = None
+    for st in meta.get("streams", []):
+        ctype = st.get("codec_type")
+        cname = str(st.get("codec_name") or "").lower()
+        if ctype == "video" and vcodec is None:
+            vcodec = cname
+        elif ctype == "audio" and acodec is None:
+            acodec = cname
+
+    vcodec_norm = "h264" if vcodec in ("h264", "avc1") else vcodec
+    acodec_norm = "aac" if acodec in ("aac", "mp4a") else acodec
+
+    already_compatible = vcodec_norm == vcodec_want and (
+        acodec_norm == acodec_want or acodec is None
+    )
+
+    tmp_path = path.with_name(f".{path.stem}_compat.{target_container}")
+    try:
+        if already_compatible and not faststart and path.suffix.lower() == f".{target_container}":
+            return path
+        if already_compatible:
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(path),
+                "-c",
+                "copy",
+                "-movflags",
+                "+faststart",
+                str(tmp_path),
+            ]
+        else:
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(path),
+                "-c:v",
+                "libx264",
+                "-profile:v",
+                "high",
+                "-pix_fmt",
+                "yuv420p",
+                "-crf",
+                "23",
+                "-preset",
+                "medium",
+                "-c:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-movflags",
+                "+faststart",
+                str(tmp_path),
+            ]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        if res.returncode == 0 and tmp_path.exists():
+            final_path = path.with_suffix(f".{target_container}")
+            if final_path != path and path.exists():
+                with contextlib.suppress(OSError):
+                    path.unlink()
+            tmp_path.replace(final_path)
+            logger.info(
+                "Vídeo normalizado a %s/%s (compatible universal): %s",
+                target_container,
+                vcodec_want,
+                final_path.name,
+            )
+            return final_path
+        logger.debug("Normalización a %s fallida: %s", target_container, res.stderr[:300])
+    except Exception as e:
+        logger.debug("Normalización a códecs compatibles fallida: %s", e)
+    finally:
+        with contextlib.suppress(OSError):
+            tmp_path.unlink()
+    return path
+
+
+def _resolve_acquisition_auth() -> dict[str, Any]:
+    """Resuelve las opciones de autenticación para contenido restringido."""
+    auth: dict[str, Any] = {"cookies_from_browser": "", "cookies_path": ""}
+    for cand in (
+        Path("config/default.yaml"),
+        Path(__file__).resolve().parents[2] / "config" / "default.yaml",
+    ):
+        if cand.exists():
+            try:
+                from video_intake_core.policies import PolicyResolver
+
+                auth = PolicyResolver(config_path=str(cand)).get_acquisition_auth()
+                break
+            except Exception as e:
+                logger.debug("No se pudo cargar auth desde %s: %s", cand, e)
+    return auth
+
+
+def _auth_args(auth: dict[str, Any]) -> list[str]:
+    """Convierte la config de auth en argumentos para yt-dlp."""
+    args: list[str] = []
+    browser = str(auth.get("cookies_from_browser") or "").strip()
+    cookies_path = str(auth.get("cookies_path") or "").strip()
+    if browser:
+        args += ["--cookies-from-browser", browser]
+    elif cookies_path and Path(cookies_path).expanduser().exists():
+        args += ["--cookies", str(Path(cookies_path).expanduser())]
+    return args
+
+
+def _resolve_whisper_model() -> str:
+    """Resuelve el tamaño del modelo de Whisper desde la config (SSoT)."""
+    for cand in (
+        Path("config/default.yaml"),
+        Path(__file__).resolve().parents[2] / "config" / "default.yaml",
+    ):
+        if cand.exists():
+            try:
+                from video_intake_core.policies import PolicyResolver
+
+                return PolicyResolver(config_path=str(cand)).get_whisper_model_size()
+            except Exception as e:
+                logger.debug("No se pudo cargar whisper_model desde %s: %s", cand, e)
+    return "base"
+
+
+def _proc_env() -> dict[str, str]:
+    """Entorno para subprocesos. Corrige XDG_CONFIG_HOME (HOME/XDG remapeados
+    por entornos de ejecución tipo HERMES) cuando se usan cookies de navegador.
+    """
+    env = os.environ.copy()
+    xdg_override = os.environ.get("VITK_XDG_CONFIG_HOME")
+    if xdg_override:
+        env["XDG_CONFIG_HOME"] = xdg_override
+    return env
 
 
 def check_and_extract(
@@ -95,6 +309,7 @@ def check_and_extract(
         is_local = bool(src.get("is_local", False))
 
         from video_intake_core.security import validate_local_file, validate_video_url
+
         if is_local or target.startswith("file://") or Path(target).exists():
             try:
                 validate_local_file(target.replace("file://", ""))
@@ -115,6 +330,9 @@ def check_and_extract(
 
         print(f"\n--- Procesando fuente {idx}/{len(sources)}: {title} ---")
 
+        fmt = _resolve_output_format()
+        auth = _resolve_acquisition_auth()
+
         video_file: Path | None = None
         audio_file: Path | None = None
 
@@ -134,7 +352,9 @@ def check_and_extract(
         # 1. Descarga o resolución de vídeo local
         if 1 in operations or (video_file is None and (2 in operations or 5 in operations)):
             if is_local and video_file:
-                print(f"[1/5] Archivo local detectado: {video_file.name} ({video_file.stat().st_size / (1024*1024):.1f} MB)")
+                print(
+                    f"[1/5] Archivo local detectado: {video_file.name} ({video_file.stat().st_size / (1024 * 1024):.1f} MB)"
+                )
                 if 1 in operations:
                     dest_video = job_dir / video_file.name
                     if dest_video != video_file and not dest_video.exists():
@@ -150,12 +370,17 @@ def check_and_extract(
                 out_tmpl = str(job_dir / f"{title}_%(id)s.%(ext)s")
                 cmd = [
                     "yt-dlp",
-                    "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                    "-f",
+                    "bestvideo[vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                    "--merge-output-format",
+                    "mp4",
                     "--no-playlist",
-                    "-o", out_tmpl,
+                    "-o",
+                    out_tmpl,
+                    *(_auth_args(auth)),
                     target,
                 ]
-                res = subprocess.run(cmd, capture_output=True, text=True)
+                res = subprocess.run(cmd, capture_output=True, text=True, env=_proc_env())
                 if res.returncode == 0:
                     found = (
                         list(job_dir.glob("*.mp4"))
@@ -163,12 +388,15 @@ def check_and_extract(
                         or list(job_dir.glob("*.webm"))
                     )
                     if found:
-                        video_file = found[0]
+                        video_file = _to_compatible_format(found[0], fmt)
                         print(f"  [OK] Vídeo descargado: {video_file.name}")
                         if 1 in operations:
                             artifacts["files"]["video"] = str(video_file)
                 else:
-                    print(f"  [AVISO] Descarga directa de vídeo no completada: {res.stderr[:200]}", file=sys.stderr)
+                    print(
+                        f"  [AVISO] Descarga directa de vídeo no completada: {res.stderr[:200]}",
+                        file=sys.stderr,
+                    )
 
         # 2. Descarga o extracción de audio local (.mp3) mediante audio module
         if 2 in operations or 3 in operations or 4 in operations:
@@ -189,8 +417,15 @@ def check_and_extract(
                 except Exception as e:
                     logger.debug("Modular audio extraction fallback to ffmpeg: %s", e)
                     cmd = [
-                        "ffmpeg", "-y", "-i", str(video_file),
-                        "-vn", "-acodec", "libmp3lame", "-q:a", "2",
+                        "ffmpeg",
+                        "-y",
+                        "-i",
+                        str(video_file),
+                        "-vn",
+                        "-acodec",
+                        "libmp3lame",
+                        "-q:a",
+                        "2",
                         str(audio_target),
                     ]
                     res = subprocess.run(cmd, capture_output=True, text=True)
@@ -199,14 +434,26 @@ def check_and_extract(
                         print(f"  [OK] Audio extraído con ffmpeg: {audio_file.name}")
             elif not is_local and target.startswith("http"):
                 try:
-                    audio_res = download_audio_only(target, output_path=str(audio_target))
+                    audio_res = download_audio_only(
+                        target, output_path=str(audio_target), auth=auth
+                    )
                     audio_file = Path(audio_res["path"])
                     print(f"  [OK] Audio descargado con módulo audio: {audio_file.name}")
                 except Exception as e:
                     logger.debug("download_audio_only fallback to yt-dlp: %s", e)
                     out_tmpl = str(job_dir / f"{title}_%(id)s.%(ext)s")
-                    cmd = ["yt-dlp", "--no-playlist", "-x", "--audio-format", "mp3", "-o", out_tmpl, target]
-                    res = subprocess.run(cmd, capture_output=True, text=True)
+                    cmd = [
+                        "yt-dlp",
+                        "--no-playlist",
+                        "-x",
+                        "--audio-format",
+                        "mp3",
+                        "-o",
+                        out_tmpl,
+                        *(_auth_args(auth)),
+                        target,
+                    ]
+                    res = subprocess.run(cmd, capture_output=True, text=True, env=_proc_env())
                     if res.returncode == 0:
                         found_mp3 = list(job_dir.glob("*.mp3"))
                         if found_mp3:
@@ -225,8 +472,12 @@ def check_and_extract(
                 try:
                     local_subs = extract_local_captions(video_file)
                     if local_subs:
-                        transcript_text = "\n".join(s.get("text", "") for s in local_subs if s.get("text"))
-                        print(f"  [OK] Subtítulo detectado con módulo transcription: {len(local_subs)} segmentos")
+                        transcript_text = "\n".join(
+                            s.get("text", "") for s in local_subs if s.get("text")
+                        )
+                        print(
+                            f"  [OK] Subtítulo detectado con módulo transcription: {len(local_subs)} segmentos"
+                        )
                 except Exception as e:
                     logger.debug("extract_local_captions fallback: %s", e)
 
@@ -234,7 +485,9 @@ def check_and_extract(
                     for ext in [".srt", ".vtt", ".sub"]:
                         sub_candidate = video_file.with_suffix(ext)
                         if sub_candidate.exists():
-                            transcript_text = sub_candidate.read_text(encoding="utf-8", errors="ignore")
+                            transcript_text = sub_candidate.read_text(
+                                encoding="utf-8", errors="ignore"
+                            )
                             print(f"  [OK] Subtítulo adyacente detectado: {sub_candidate.name}")
                             break
 
@@ -243,7 +496,9 @@ def check_and_extract(
                 try:
                     platform_subs = extract_captions_from_platform(target)
                     if platform_subs:
-                        transcript_text = "\n".join(s.get("text", "") for s in platform_subs if s.get("text"))
+                        transcript_text = "\n".join(
+                            s.get("text", "") for s in platform_subs if s.get("text")
+                        )
                         print("  [OK] Subtítulos oficiales obtenidos vía módulo transcription.")
                 except Exception as e:
                     logger.debug("extract_captions_from_platform fallback: %s", e)
@@ -251,27 +506,42 @@ def check_and_extract(
                 if not transcript_text:
                     sub_tmpl = str(job_dir / "subtitles_%(id)s")
                     cmd = [
-                        "yt-dlp", "--skip-download", "--write-subs", "--write-auto-subs",
-                        "--sub-lang", "es,en", "--sub-format", "srt/vtt",
+                        "yt-dlp",
+                        "--skip-download",
+                        "--write-subs",
+                        "--write-auto-subs",
+                        "--sub-lang",
+                        "es,en",
+                        "--sub-format",
+                        "srt/vtt",
                         "--no-playlist",
-                        "-o", sub_tmpl, target,
+                        "-o",
+                        sub_tmpl,
+                        *(_auth_args(auth)),
+                        target,
                     ]
-                    subprocess.run(cmd, capture_output=True, text=True)
+                    subprocess.run(cmd, capture_output=True, text=True, env=_proc_env())
                     subs = list(job_dir.glob("*.srt")) + list(job_dir.glob("*.vtt"))
                     if subs:
                         sub_file = subs[0]
                         transcript_text = sub_file.read_text(encoding="utf-8", errors="ignore")
-                        print(f"  [OK] Transcripción extraída desde subtítulos oficiales: {sub_file.name}")
+                        print(
+                            f"  [OK] Transcripción extraída desde subtítulos oficiales: {sub_file.name}"
+                        )
 
             # Prioridad 2: Whisper local mediante transcripción modular
             if not transcript_text and audio_file and audio_file.exists():
                 try:
-                    whisper_res = transcribe_with_whisper(audio_file)
-                    if whisper_res and hasattr(whisper_res, "text") and whisper_res.text:
+                    whisper_res = transcribe_with_whisper(
+                        audio_file, model_size=_resolve_whisper_model()
+                    )
+                    if isinstance(whisper_res, dict):
+                        transcript_text = (
+                            whisper_res.get("full_text") or whisper_res.get("text") or ""
+                        )
+                    elif whisper_res and hasattr(whisper_res, "text") and whisper_res.text:
                         transcript_text = whisper_res.text
-                        print("  [OK] Transcripción completada con módulo Whisper.")
-                    elif isinstance(whisper_res, dict) and whisper_res.get("text"):
-                        transcript_text = whisper_res["text"]
+                    if transcript_text:
                         print("  [OK] Transcripción completada con módulo Whisper.")
                 except Exception as e:
                     logger.debug("transcribe_with_whisper fallback: %s", e)
@@ -302,9 +572,9 @@ def check_and_extract(
 
                 context_content = f"""# Contexto de Audio: {title}
 - Fuente: {target}
-- Fecha: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}
+- Fecha: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")}
 - Longitud del texto transcrito: {len(clean_text)} caracteres
-- Palabras clave destacadas: {', '.join(f'{k} ({v})' for k, v in top_keywords)}
+- Palabras clave destacadas: {", ".join(f"{k} ({v})" for k, v in top_keywords)}
 
 ## Resumen Ejecutivo
 {clean_text[:600]}...
@@ -331,9 +601,14 @@ def check_and_extract(
             frames = sorted(frames_dir.glob("*.png")) + sorted(frames_dir.glob("*.jpg"))
             if not frames:
                 cmd = [
-                    "ffmpeg", "-y", "-i", str(video_file),
-                    "-vf", "fps=1/5,scale=1280:-1",
-                    "-q:v", "2",
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    str(video_file),
+                    "-vf",
+                    "fps=1/5,scale=1280:-1",
+                    "-q:v",
+                    "2",
                     str(frames_dir / "frame_%04d.jpg"),
                 ]
                 subprocess.run(cmd, capture_output=True, text=True)
@@ -370,7 +645,7 @@ def check_and_extract(
             vis_content = f"""# Contexto Visual: {title}
 - Fotogramas analizados: {len(frames)}
 - Texto detectado en pantalla / diagramas:
-{chr(10).join(ocr_text) if ocr_text else 'No se detectó texto relevante en los fotogramas clave analizados.'}
+{chr(10).join(ocr_text) if ocr_text else "No se detectó texto relevante en los fotogramas clave analizados."}
 """
             vis_path = job_dir / "visual_context.md"
             vis_path.write_text(vis_content, encoding="utf-8")
@@ -448,8 +723,8 @@ version: 1.0.0
 # SKILL: {title}
 
 > Generado automáticamente por video-intake-knowledge a partir de:
-> Fuente: {src.get('resolved_url', 'N/A')}
-> Fecha: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}
+> Fuente: {src.get("resolved_url", "N/A")}
+> Fecha: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")}
 
 ## Resumen del Procedimiento
 {summary}
@@ -476,7 +751,7 @@ version: 1.0.0
         content = f"""#!/usr/bin/env python3
 \"\"\"
 tool.py — Herramienta ejecutable generada por video-intake-knowledge
-Origen: {title} ({src.get('resolved_url', 'N/A')})
+Origen: {title} ({src.get("resolved_url", "N/A")})
 \"\"\"
 
 import argparse
@@ -519,7 +794,7 @@ capabilities:
         prompt_content = f"""# Prompt del Agente Especialista: {title}
 
 Eres un agente de IA especializado en la metodología extraída de:
-{src.get('resolved_url', 'N/A')}
+{src.get("resolved_url", "N/A")}
 
 ## Tu Misión
 Guiar al usuario en la ejecución precisa de los flujos de trabajo explicados en el vídeo:
@@ -547,20 +822,11 @@ def route_extracted_knowledge(
     user_mem_dir = Path.home() / ".video-intake" / "memory"
     user_mem_dir.mkdir(parents=True, exist_ok=True)
 
-    summary_text = (
-        artifacts.get("audio_context")
-        or (artifacts["transcripts"][0][:800] if artifacts.get("transcripts") else "Vídeo procesado.")
+    summary_text = artifacts.get("audio_context") or (
+        artifacts["transcripts"][0][:800] if artifacts.get("transcripts") else "Vídeo procesado."
     )
-    title = (
-        artifacts["sources"][0].get("title", "Video")
-        if artifacts.get("sources")
-        else "Video"
-    )
-    source_url = (
-        artifacts["sources"][0].get("resolved_url", "")
-        if artifacts.get("sources")
-        else ""
-    )
+    title = artifacts["sources"][0].get("title", "Video") if artifacts.get("sources") else "Video"
+    source_url = artifacts["sources"][0].get("resolved_url", "") if artifacts.get("sources") else ""
 
     if interactive and choice is None:
         print("\n" + "=" * 70)

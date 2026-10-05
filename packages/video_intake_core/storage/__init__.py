@@ -21,21 +21,23 @@ from ..utils import compute_sha256, sizeof_fmt, sanitize_filename
 
 logger = logging.getLogger(__name__)
 
-ARTIFACT_TYPES = frozenset({
-    "manifest.json",
-    "source.json",
-    "provenance.md",
-    "transcript_raw",
-    "transcript_timestamped.md",
-    "audio_context.md",
-    "visual_context.md",
-    "extracted_knowledge.md",
-    "ocr.json",
-    "metadata.json",
-    "export.md",
-    "export.json",
-    "export.html",
-})
+ARTIFACT_TYPES = frozenset(
+    {
+        "manifest.json",
+        "source.json",
+        "provenance.md",
+        "transcript_raw",
+        "transcript_timestamped.md",
+        "audio_context.md",
+        "visual_context.md",
+        "extracted_knowledge.md",
+        "ocr.json",
+        "metadata.json",
+        "export.md",
+        "export.json",
+        "export.html",
+    }
+)
 
 
 class ArtifactType(str):
@@ -56,7 +58,9 @@ class ArtifactType(str):
     def validate(cls, value: str) -> "ArtifactType":
         """Validate and return an ArtifactType."""
         if value not in ARTIFACT_TYPES:
-            raise ValueError(f"Unknown artifact type: {value}. Valid types: {sorted(ARTIFACT_TYPES)}")
+            raise ValueError(
+                f"Unknown artifact type: {value}. Valid types: {sorted(ARTIFACT_TYPES)}"
+            )
         return cls(value)
 
 
@@ -166,15 +170,15 @@ class StorageManager:
         index_path = self._metadata_dir / "dedup_index.json"
         if index_path.exists():
             import json
+
             with open(index_path, "r", encoding="utf-8") as f:
                 raw = json.load(f)
-                self._dedup_index = {
-                    k: Path(v) for k, v in raw.items()
-                }
+                self._dedup_index = {k: Path(v) for k, v in raw.items()}
 
     def _save_dedup_index(self) -> None:
         """Persist the deduplication index to disk."""
         import json
+
         index_path = self._metadata_dir / "dedup_index.json"
         data = {k: str(v) for k, v in self._dedup_index.items()}
         with open(index_path, "w", encoding="utf-8") as f:
@@ -190,6 +194,7 @@ class StorageManager:
             Path to the job's artifact directory (created if needed).
         """
         from ..utils import sanitize_path
+
         job_dir = sanitize_path(self._jobs_dir, job_id)
         job_dir.mkdir(parents=True, exist_ok=True)
         return job_dir
@@ -218,9 +223,7 @@ class StorageManager:
         if artifact_type not in ARTIFACT_TYPES and not artifact_type.endswith(
             ("md", "json", "html", "txt", "srt", "vtt", "png", "jpg", "jpeg", "webp")
         ):
-            logger.warning(
-                f"Unknown artifact type: {artifact_type}. Saving anyway."
-            )
+            logger.warning(f"Unknown artifact type: {artifact_type}. Saving anyway.")
 
         job_dir = self.get_job_dir(job_id)
 
@@ -228,10 +231,16 @@ class StorageManager:
             filename = artifact_type
 
         from ..utils import sanitize_path
+
         # Ensure subdirectory for grouped artifacts
         if "/" in artifact_type or artifact_type in {
-            "transcript_raw", "video", "audio", "frames",
-            "logs", "exports", "metadata",
+            "transcript_raw",
+            "video",
+            "audio",
+            "frames",
+            "logs",
+            "exports",
+            "metadata",
         }:
             sub_dir = sanitize_path(job_dir, artifact_type)
             sub_dir.mkdir(parents=True, exist_ok=True)
@@ -271,16 +280,18 @@ class StorageManager:
             if item.is_file() and item != job_dir:
                 rel = item.relative_to(job_dir)
                 size = item.stat().st_size
-                artifacts.append({
-                    "path": str(item),
-                    "relative_path": str(rel),
-                    "type": item.suffix.lstrip(".") or "directory",
-                    "size_bytes": size,
-                    "size_human": sizeof_fmt(size),
-                    "modified": datetime.fromtimestamp(
-                        item.stat().st_mtime, tz=timezone.utc
-                    ).isoformat(),
-                })
+                artifacts.append(
+                    {
+                        "path": str(item),
+                        "relative_path": str(rel),
+                        "type": item.suffix.lstrip(".") or "directory",
+                        "size_bytes": size,
+                        "size_human": sizeof_fmt(size),
+                        "modified": datetime.fromtimestamp(
+                            item.stat().st_mtime, tz=timezone.utc
+                        ).isoformat(),
+                    }
+                )
         return artifacts
 
     def get_total_size(self, job_id: str) -> int:
@@ -323,8 +334,7 @@ class StorageManager:
             "total_human": sizeof_fmt(total),
             "artifact_count": len(artifacts),
             "by_type": {
-                t: {"bytes": b, "human": sizeof_fmt(b)}
-                for t, b in sorted(by_type.items())
+                t: {"bytes": b, "human": sizeof_fmt(b)} for t, b in sorted(by_type.items())
             },
         }
 
@@ -401,11 +411,13 @@ class StorageManager:
                         if item.is_file():
                             job_size += item.stat().st_size
                     total_bytes += job_size
-                    jobs_info.append({
-                        "job_id": job_dir.name,
-                        "size_bytes": job_size,
-                        "size_human": sizeof_fmt(job_size),
-                    })
+                    jobs_info.append(
+                        {
+                            "job_id": job_dir.name,
+                            "size_bytes": job_size,
+                            "size_human": sizeof_fmt(job_size),
+                        }
+                    )
 
         total_bytes += cache_size
         jobs_info.sort(key=lambda x: x["size_bytes"], reverse=True)
@@ -482,16 +494,18 @@ class StorageManager:
         for job_dir in to_remove:
             if dry_run:
                 size = self.get_total_size(job_dir.name)
-                removed_jobs.append({
-                    "job_id": job_dir.name,
-                    "size_bytes": size,
-                    "size_human": sizeof_fmt(size),
-                    "age_days": round(
-                        (datetime.now(timezone.utc).timestamp() - job_dir.stat().st_mtime)
-                        / 86400,
-                        1,
-                    ),
-                })
+                removed_jobs.append(
+                    {
+                        "job_id": job_dir.name,
+                        "size_bytes": size,
+                        "size_human": sizeof_fmt(size),
+                        "age_days": round(
+                            (datetime.now(timezone.utc).timestamp() - job_dir.stat().st_mtime)
+                            / 86400,
+                            1,
+                        ),
+                    }
+                )
                 continue
 
             size = self.get_total_size(job_dir.name)
@@ -500,9 +514,7 @@ class StorageManager:
             freed_bytes += size
             logger.info(f"Cleaned up job {job_dir.name}: {sizeof_fmt(size)}")
 
-        remaining = [
-            d.name for d in self._jobs_dir.iterdir() if d.is_dir()
-        ]
+        remaining = [d.name for d in self._jobs_dir.iterdir() if d.is_dir()]
 
         return {
             "removed_count": len(removed_jobs),
@@ -525,9 +537,7 @@ class StorageManager:
             Dict with cleanup stats.
         """
         if not confirm:
-            raise ValueError(
-                "clear_all requires confirm=True. This will delete all artifacts."
-            )
+            raise ValueError("clear_all requires confirm=True. This will delete all artifacts.")
 
         cache_size = 0
         jobs_size = 0
@@ -578,7 +588,16 @@ class StorageManager:
         """
         job_dir = self.get_job_dir(job_id)
         # Create standard subdirectories
-        for subdir in ["video", "audio", "frames", "transcript_raw", "logs", "exports", "metadata", "ocr"]:
+        for subdir in [
+            "video",
+            "audio",
+            "frames",
+            "transcript_raw",
+            "logs",
+            "exports",
+            "metadata",
+            "ocr",
+        ]:
             (job_dir / subdir).mkdir(parents=True, exist_ok=True)
         return job_dir
 

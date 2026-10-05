@@ -80,5 +80,15 @@ def validate_against_schema(data: Any, schema_name: str) -> ValidationResult:
 from .source import Source, SourceType, ResolvedURL
 from .job import Job, JobStatus
 
-__all__ = ["get_schema", "get_all_schemas", "validate", "validate_against_schema",
-           "Source", "SourceType", "ResolvedURL", "Job", "JobStatus", "ValidationResult"]
+__all__ = [
+    "get_schema",
+    "get_all_schemas",
+    "validate",
+    "validate_against_schema",
+    "Source",
+    "SourceType",
+    "ResolvedURL",
+    "Job",
+    "JobStatus",
+    "ValidationResult",
+]

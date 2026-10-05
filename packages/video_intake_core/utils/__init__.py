@@ -103,11 +103,7 @@ def merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]
     """
     result = dict(base)
     for key, value in override.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = merge_dict(result[key], value)
         else:
             result[key] = value

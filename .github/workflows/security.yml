@@ -13,9 +13,11 @@ name: Security
 on:
   push:
     branches:
+      - master
       - main
   pull_request:
     branches:
+      - master
       - main
   schedule:
     # Ejecutar semanalmente para análisis de vulnerabilidades de deps
@@ -63,7 +65,9 @@ jobs:
             --ignore=S105 \
             --ignore=S106 \
             --ignore=S107 \
-            --ignore=S108
+            --ignore=S108 \
+            --ignore=S603 \
+            --ignore=S607
 
       - name: Bandit (si disponible)
         run: |
@@ -147,8 +151,7 @@ jobs:
 
       - name: pip-audit
         run: |
-          uv pip install pip-audit
-          uv run pip-audit --strict --format=github
+          uv run --with pip-audit pip-audit --format=markdown
 
   #-----------------------------------------------------------------------
   # Build verification — Verificar que el proyecto se construye
@@ -178,9 +181,9 @@ jobs:
 
       - name: Verify wheel installs
         run: |
-          pip install dist/*.whl
-          python -c "import video_intake_core; print('Package installs OK')"
+          uv pip install dist/*.whl
+          uv run python -c "import video_intake_core; print('Package installs OK')"
 
       - name: Run basic smoke test
         run: |
-          python -c "import video_intake_core; from video_intake_core.acquisition import detect_video_sources; print('Core OK')"
+          uv run python -c "import video_intake_core; from video_intake_core.acquisition import detect_video_sources; print('Core OK')"

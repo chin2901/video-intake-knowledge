@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # Internal implementation functions
 # ----------------------------------------------------------------------
 
+
 def _extract_audio_impl(
     source: str,
     output_path: Optional[str] = None,
@@ -59,9 +60,7 @@ def _extract_audio_impl(
     output_path = Path(output_path)
 
     codec = _codec_for_format(output_format)
-    cmd = _build_ffmpeg_cmd(
-        video_path, output_path, codec, output_format, audio_stream_index
-    )
+    cmd = _build_ffmpeg_cmd(video_path, output_path, codec, output_format, audio_stream_index)
 
     _run_ffmpeg(cmd, "audio extraction")
 
@@ -105,6 +104,16 @@ def _download_to_temp(url: str) -> Path:
     return tmp
 
 
+def _inject_auth(ydl_opts: dict[str, Any], auth: dict[str, Any]) -> None:
+    """Inyecta las opciones de cookies de yt-dlp desde el dict de auth."""
+    browser = str(auth.get("cookies_from_browser") or "").strip()
+    cookies_path = str(auth.get("cookies_path") or "").strip()
+    if browser:
+        ydl_opts["cookiesfrombrowser"] = (browser, None)
+    elif cookies_path and Path(cookies_path).expanduser().exists():
+        ydl_opts["cookiefile"] = str(Path(cookies_path).expanduser())
+
+
 def _codec_for_format(fmt: str) -> str:
     return {
         "wav": "pcm_s16le",
@@ -126,12 +135,18 @@ def _build_ffmpeg_cmd(
     cmd = [
         "ffmpeg",
         "-y",
-        "-i", str(video_path),
-        "-map", audio_map,
-        "-acodec", codec,
-        "-ar", "44100",
-        "-ac", "2",
-        "-f", fmt,
+        "-i",
+        str(video_path),
+        "-map",
+        audio_map,
+        "-acodec",
+        codec,
+        "-ar",
+        "44100",
+        "-ac",
+        "2",
+        "-f",
+        fmt,
         str(output_path),
     ]
 
@@ -168,11 +183,14 @@ def _get_audio_info(path: Path) -> dict[str, Any]:
     """Get audio stream info using ffprobe."""
     cmd: list[str] = [
         "ffprobe",
-        "-v", "error",
-        "-select_streams", "a:0",
+        "-v",
+        "error",
+        "-select_streams",
+        "a:0",
         "-show_entries",
         "stream=codec_name,sample_rate,channels,duration,bit_rate",
-        "-of", "json",
+        "-of",
+        "json",
         str(path),
     ]
 
@@ -264,6 +282,7 @@ def extract_audio_from_url(url: str, output_dir: str | Path) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     # Use a hash of URL for filename to avoid issues
     import hashlib
+
     url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
     output_path = output_dir / f"audio_{url_hash}.wav"
     return _extract_audio_impl(
@@ -321,11 +340,16 @@ def normalize_audio(
     cmd = [
         "ffmpeg",
         "-y",
-        "-i", str(path),
-        "-af", f"loudnorm=I={target_lufs}:TP=-1.5:LRA=11",
-        "-acodec", codec,
-        "-ar", "44100",
-        "-ac", "2",
+        "-i",
+        str(path),
+        "-af",
+        f"loudnorm=I={target_lufs}:TP=-1.5:LRA=11",
+        "-acodec",
+        codec,
+        "-ar",
+        "44100",
+        "-ac",
+        "2",
         str(out_path),
     ]
 
@@ -401,11 +425,16 @@ def split_audio(
         cmd = [
             "ffmpeg",
             "-y",
-            "-i", str(path),
-            "-ss", str(start),
-            "-t", str(end - start),
-            "-acodec", "copy",
-            "-map", "0:a",
+            "-i",
+            str(path),
+            "-ss",
+            str(start),
+            "-t",
+            str(end - start),
+            "-acodec",
+            "copy",
+            "-map",
+            "0:a",
             str(segment_path),
         ]
 
@@ -435,6 +464,7 @@ def download_audio_only(
     url: str,
     output_path: Optional[str] = None,
     audio_quality: str = "best",
+    auth: Optional[dict[str, Any]] = None,
 ) -> dict[str, Any]:
     """Download audio only from a URL (using yt-dlp).
 
@@ -442,6 +472,8 @@ def download_audio_only(
         url: URL of the video.
         output_path: Optional output path.
         audio_quality: Audio quality preference.
+        auth: Optional auth dict for restricted content
+            ({"cookies_from_browser": str, "cookies_path": str}).
 
     Returns:
         dict with path, source, format, size_bytes, duration, title, uploader.
@@ -460,6 +492,7 @@ def download_audio_only(
         "audioformat": "m4a",
         "audioquality": audio_quality,
     }
+    _inject_auth(ydl_opts, auth or {})
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)
@@ -490,6 +523,7 @@ from typing import Any
 @dataclass
 class AudioResult:
     """Audio extraction result (contract API)."""
+
     path: str = ""
     format: str = ""
     codec: str = ""

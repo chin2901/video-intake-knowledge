@@ -21,53 +21,55 @@ from ipaddress import IPv4Address, IPv4Network, IPv6Address, IPv6Network
 
 # IPv4 blocked networks (RFC 1122, RFC 1918, RFC 3927, RFC 6598, etc.)
 _SSRF_BLOCKED_NETWORKS_V4: tuple[IPv4Network, ...] = (
-    IPv4Network("0.0.0.0/8"),          # Current network (only valid as source)
-    IPv4Network("10.0.0.0/8"),         # Private RFC 1918
-    IPv4Network("100.64.0.0/10"),      # Carrier-grade NAT (CGNAT) RFC 6598
-    IPv4Network("127.0.0.0/8"),        # Loopback
-    IPv4Network("169.254.0.0/16"),     # Link-local / Cloud Metadata
-    IPv4Network("172.16.0.0/12"),      # Private RFC 1918
-    IPv4Network("192.0.0.0/24"),       # IETF Protocol Assignments
-    IPv4Network("192.0.2.0/24"),       # Documentation (TEST-NET-1)
-    IPv4Network("192.88.99.0/24"),     # 6to4 Relay Anycast
-    IPv4Network("192.168.0.0/16"),     # Private RFC 1918
-    IPv4Network("198.18.0.0/15"),      # Benchmarking
-    IPv4Network("198.51.100.0/24"),    # Documentation (TEST-NET-2)
-    IPv4Network("203.0.113.0/24"),     # Documentation (TEST-NET-3)
-    IPv4Network("224.0.0.0/4"),        # Multicast
-    IPv4Network("240.0.0.0/4"),        # Reserved / future use
-    IPv4Network("255.255.255.255/32"), # Limited broadcast
+    IPv4Network("0.0.0.0/8"),  # Current network (only valid as source)
+    IPv4Network("10.0.0.0/8"),  # Private RFC 1918
+    IPv4Network("100.64.0.0/10"),  # Carrier-grade NAT (CGNAT) RFC 6598
+    IPv4Network("127.0.0.0/8"),  # Loopback
+    IPv4Network("169.254.0.0/16"),  # Link-local / Cloud Metadata
+    IPv4Network("172.16.0.0/12"),  # Private RFC 1918
+    IPv4Network("192.0.0.0/24"),  # IETF Protocol Assignments
+    IPv4Network("192.0.2.0/24"),  # Documentation (TEST-NET-1)
+    IPv4Network("192.88.99.0/24"),  # 6to4 Relay Anycast
+    IPv4Network("192.168.0.0/16"),  # Private RFC 1918
+    IPv4Network("198.18.0.0/15"),  # Benchmarking
+    IPv4Network("198.51.100.0/24"),  # Documentation (TEST-NET-2)
+    IPv4Network("203.0.113.0/24"),  # Documentation (TEST-NET-3)
+    IPv4Network("224.0.0.0/4"),  # Multicast
+    IPv4Network("240.0.0.0/4"),  # Reserved / future use
+    IPv4Network("255.255.255.255/32"),  # Limited broadcast
 )
 
 # IPv6 blocked networks (RFC 4291, RFC 4193, RFC 6666, etc.)
 _SSRF_BLOCKED_NETWORKS_V6: tuple[IPv6Network, ...] = (
-    IPv6Network("::/128"),             # Unspecified
-    IPv6Network("::1/128"),            # Loopback
-    IPv6Network("::ffff:0:0/96"),      # IPv4-mapped IPv6
-    IPv6Network("100::/64"),           # Discard prefix
-    IPv6Network("64:ff9b::/96"),       # IPv4/IPv6 translation
-    IPv6Network("2001:db8::/32"),      # Documentation
-    IPv6Network("fc00::/7"),           # Unique local address (ULA / private)
-    IPv6Network("fe80::/10"),          # Link-local
-    IPv6Network("ff00::/8"),           # Multicast
+    IPv6Network("::/128"),  # Unspecified
+    IPv6Network("::1/128"),  # Loopback
+    IPv6Network("::ffff:0:0/96"),  # IPv4-mapped IPv6
+    IPv6Network("100::/64"),  # Discard prefix
+    IPv6Network("64:ff9b::/96"),  # IPv4/IPv6 translation
+    IPv6Network("2001:db8::/32"),  # Documentation
+    IPv6Network("fc00::/7"),  # Unique local address (ULA / private)
+    IPv6Network("fe80::/10"),  # Link-local
+    IPv6Network("ff00::/8"),  # Multicast
 )
 
 # Known dangerous / internal hosts and cloud metadata endpoints
-SSRF_BLOCKED_HOSTS: frozenset[str] = frozenset({
-    "localhost",
-    "127.0.0.1",
-    "::1",
-    "0.0.0.0",
-    "0",
-    "metadata.google.internal",
-    "metadata.google",
-    "metadata.google.com",
-    "metadata.google.internal.",
-    "169.254.169.254",
-    "169.254.170.2",
-    "instance-data",
-    "vpc-internal.meta.internal",
-})
+SSRF_BLOCKED_HOSTS: frozenset[str] = frozenset(
+    {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "0.0.0.0",
+        "0",
+        "metadata.google.internal",
+        "metadata.google",
+        "metadata.google.com",
+        "metadata.google.internal.",
+        "169.254.169.254",
+        "169.254.170.2",
+        "instance-data",
+        "vpc-internal.meta.internal",
+    }
+)
 
 
 def _is_blocked_ip(host: str) -> bool:
@@ -153,7 +155,9 @@ def resolve_and_validate_host(
         ".lvh.me",
         ".sslip.io",
     )
-    if any(clean_host == s.lstrip(".") or clean_host.endswith(s) for s in rebinding_suffixes) and any(
+    if any(
+        clean_host == s.lstrip(".") or clean_host.endswith(s) for s in rebinding_suffixes
+    ) and any(
         token in clean_host
         for token in ("127.", "10.", "172.", "192.168.", "169.254.", "0.", "::1")
     ):
@@ -196,7 +200,11 @@ def resolve_and_validate_host(
     # Verify candidate IPs
     for ip in candidate_ips:
         if is_ssrf_blocked_ip(ip):
-            return False, f"SSRF blocked: resolved IP '{ip}' is in private/blocked range", candidate_ips
+            return (
+                False,
+                f"SSRF blocked: resolved IP '{ip}' is in private/blocked range",
+                candidate_ips,
+            )
 
     # 5. Socket-level DNS resolution via socket.getaddrinfo
     resolved_ips: list[IPv4Address | IPv6Address] = []
@@ -263,9 +271,7 @@ class ValidationResult(str):
 # ----------------------------------------------------------------------
 
 
-def validate_url(
-    url: str, allowed_domains: list[str] | None = None
-) -> ValidationResult:
+def validate_url(url: str, allowed_domains: list[str] | None = None) -> ValidationResult:
     """Validate and normalize a URL with deterministic SSRF protection.
 
     Checks:
@@ -299,9 +305,7 @@ def validate_url(
         )
 
     if not parsed.hostname:
-        return ValidationResult(
-            is_valid=False, normalized="", error=f"URL has no hostname: {url}"
-        )
+        return ValidationResult(is_valid=False, normalized="", error=f"URL has no hostname: {url}")
 
     host = parsed.hostname.lower()
 
@@ -311,7 +315,9 @@ def validate_url(
         return ValidationResult(is_valid=False, normalized="", error=err_msg)
 
     # Allowed domains check
-    if allowed_domains and not any(host == d.lower() or host.endswith("." + d.lower()) for d in allowed_domains):
+    if allowed_domains and not any(
+        host == d.lower() or host.endswith("." + d.lower()) for d in allowed_domains
+    ):
         return ValidationResult(
             is_valid=False,
             normalized="",
@@ -388,15 +394,27 @@ def sanitize_for_prompt(text: str) -> str:
 
     # Neutralize common instruction-injection patterns
     injection_patterns: list[tuple[str, str, int]] = [
-        (r"ignore\s+(previous|all|above|below)\s+(instructions?|commands?|rules)", "[INSTRUCTION_BLOCKED]", re.IGNORECASE),
+        (
+            r"ignore\s+(previous|all|above|below)\s+(instructions?|commands?|rules)",
+            "[INSTRUCTION_BLOCKED]",
+            re.IGNORECASE,
+        ),
         (r"ignore\s+las\s+instrucciones\s+anteriores", "[INSTRUCTION_BLOCKED]", re.IGNORECASE),
-        (r"disregard\s+(previous|all|above|below)\s+(rules|instructions|programming)?", "[INSTRUCTION_BLOCKED]", re.IGNORECASE),
+        (
+            r"disregard\s+(previous|all|above|below)\s+(rules|instructions|programming)?",
+            "[INSTRUCTION_BLOCKED]",
+            re.IGNORECASE,
+        ),
         (r"disregard\s+your\s+programming", "[INSTRUCTION_BLOCKED]", re.IGNORECASE),
         (r"you\s+are\s+now\s+(a|an)\s+\w+", "[ROLE_OVERRIDE_BLOCKED]", re.IGNORECASE),
         (r"act\s+as\s+a\s+\w+", "[ROLE_OVERRIDE_BLOCKED]", re.IGNORECASE),
         (r"system\s*:\s*.*", "[SYSTEM_OVERRIDE_BLOCKED]", re.IGNORECASE),
         (r"system\s+prompt\s*:.*", "[SYSTEM_INSTRUCTION_BLOCKED]", re.IGNORECASE),
-        (r"forget\s+(everything|all|previous)\s+instructions?", "[INSTRUCTION_RESET_BLOCKED]", re.IGNORECASE),
+        (
+            r"forget\s+(everything|all|previous)\s+instructions?",
+            "[INSTRUCTION_RESET_BLOCKED]",
+            re.IGNORECASE,
+        ),
         (r"new\s+instructions?\s*:", "[NEW_INSTRUCTIONS_BLOCKED]", re.IGNORECASE),
         (r"<\s*script.*?>.*?<\s*/\s*script\s*>", "[SCRIPT_BLOCKED]", re.IGNORECASE | re.DOTALL),
         (r"```.*?ignore.*```", "[CODE_INJECTION_BLOCKED]", re.IGNORECASE | re.DOTALL),
@@ -454,7 +472,10 @@ def redact_sensitive_data(text: str, patterns: list[str] | None = None) -> str:
 
     default_patterns = [
         (r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", "[EMAIL_REDACTED]"),
-        (r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}[-.\s]?\d{1,9}\b", "[PHONE_REDACTED]"),
+        (
+            r"\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}[-.\s]?\d{1,9}\b",
+            "[PHONE_REDACTED]",
+        ),
         (r"\b(?:\d{4}[-\s]?){3}\d{4}\b", "[CARD_REDACTED]"),
         (r"\b[A-Z]{2,}[0-9]{6,}[A-Z0-9]?\b", "[ID_REDACTED]"),
         (r"\b(?:\d{1,3}\.){3}\d{1,3}\b", "[IP_REDACTED]"),

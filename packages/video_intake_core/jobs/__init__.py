@@ -132,6 +132,7 @@ class JobManager:
             source = {"url": "", "type": "local"}
         if job_id is None:
             import uuid
+
             job_id = f"vitk_{uuid.uuid4().hex[:12]}_{int(time.time())}"
 
         now_utc = datetime.now(timezone.utc).isoformat()
@@ -159,9 +160,7 @@ class JobManager:
             conn = sqlite3.connect(str(self._db_path))
             try:
                 # Check if job exists
-                existing = conn.execute(
-                    "SELECT 1 FROM jobs WHERE job_id = ?", (job_id,)
-                ).fetchone()
+                existing = conn.execute("SELECT 1 FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
                 if existing:
                     raise JobAlreadyExistsError(f"Job already exists: {job_id}")
 
@@ -255,7 +254,9 @@ class JobManager:
             progress_dict = {
                 "current_operation": current_phase,
                 "total_operations": len(job.operations) if job.operations else 0,
-                "completed_operations": int((progress_value / 100) * len(job.operations)) if job.operations else 0,
+                "completed_operations": int((progress_value / 100) * len(job.operations))
+                if job.operations
+                else 0,
                 "percent": min(max(progress_value, 0), 100),
             }
             if current_phase:
@@ -280,7 +281,7 @@ class JobManager:
                 progress_dict["message"] = message
 
             # Update job's internal progress dict
-            if hasattr(job, '_progress') and isinstance(job._progress, dict):
+            if hasattr(job, "_progress") and isinstance(job._progress, dict):
                 job._progress.update(progress_dict)
             else:
                 job._progress = progress_dict
@@ -352,13 +353,17 @@ class JobManager:
                     (
                         completed_at,
                         str(result_path) if result_path else None,
-                        json.dumps({
-                            "percent": 100,
-                            "completed_operations": len(job.operations),
-                            "current_operation": "complete",
-                            "total_operations": len(job.operations),
-                            "message": "; ".join(warnings) if warnings else "Completed successfully",
-                        }),
+                        json.dumps(
+                            {
+                                "percent": 100,
+                                "completed_operations": len(job.operations),
+                                "current_operation": "complete",
+                                "total_operations": len(job.operations),
+                                "message": "; ".join(warnings)
+                                if warnings
+                                else "Completed successfully",
+                            }
+                        ),
                         job_id,
                     ),
                 )
@@ -423,7 +428,7 @@ class JobManager:
             progress = job.progress.copy()
         else:
             progress = {
-                "current_operation": getattr(job, 'current_phase', None),
+                "current_operation": getattr(job, "current_phase", None),
                 "total_operations": len(job.operations) if job.operations else 0,
                 "completed_operations": 0,
                 "percent": float(job.progress) if job.progress else 0.0,
@@ -523,7 +528,9 @@ class JobManager:
     # Legacy API methods (for test compatibility)
     # ------------------------------------------------------------------
 
-    def update_progress(self, job_id: str, progress: float, current_phase: str | None = None) -> None:
+    def update_progress(
+        self, job_id: str, progress: float, current_phase: str | None = None
+    ) -> None:
         """Update job progress (legacy API).
 
         Args:
@@ -544,7 +551,9 @@ class JobManager:
         progress_dict = {
             "current_operation": current_phase,
             "total_operations": len(job.operations) if job.operations else 0,
-            "completed_operations": int((progress / 100) * len(job.operations)) if job.operations else 0,
+            "completed_operations": int((progress / 100) * len(job.operations))
+            if job.operations
+            else 0,
             "percent": min(max(float(progress), 0), 100),
         }
         if current_phase:
@@ -588,7 +597,7 @@ class JobManager:
         internal_status = state_map.get(state, state)
 
         # Convert datetime to ISO string if it's a datetime object (to avoid deprecation warning)
-        if completed_at is not None and hasattr(completed_at, 'isoformat'):
+        if completed_at is not None and hasattr(completed_at, "isoformat"):
             completed_at = completed_at.isoformat()
 
         with self._lock:

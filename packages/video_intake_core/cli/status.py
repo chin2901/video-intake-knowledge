@@ -1,4 +1,5 @@
 """Status command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -44,7 +45,6 @@ def run_status(args: argparse.Namespace) -> int:
         if job.result_metadata:
             print(f"Resultado: {job.result_metadata}")
     return 0
-
 
 
 def status_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

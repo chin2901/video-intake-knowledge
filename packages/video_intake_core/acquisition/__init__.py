@@ -37,7 +37,9 @@ YOUTUBE_PATTERNS = [
     re.compile(r"^https?://(www\.)?youtube\.com/embed/([a-zA-Z0-9_-]+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?youtube\.com/live/([a-zA-Z0-9_-]+)", re.IGNORECASE),
     re.compile(r"^https?://m\.youtube\.com/watch\?v=([a-zA-Z0-9_-]+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.|m\.)?youtube\.com/watch\?.*[?&]v=([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(
+        r"^https?://(www\.|m\.)?youtube\.com/watch\?.*[?&]v=([a-zA-Z0-9_-]+)", re.IGNORECASE
+    ),
 ]
 
 FACEBOOK_PATTERNS = [
@@ -57,7 +59,9 @@ INSTAGRAM_PATTERNS = [
     re.compile(r"^https?://(www\.)?instagram\.com/p/([a-zA-Z0-9_-]+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?instagram\.com/tv/([a-zA-Z0-9_-]+)", re.IGNORECASE),
     re.compile(r"^https?://(www\.)?instagram\.com/reels/([a-zA-Z0-9_-]+)", re.IGNORECASE),
-    re.compile(r"^https?://(www\.)?instagram\.com/([a-zA-Z0-9_.]+)/reel/([a-zA-Z0-9_-]+)", re.IGNORECASE),
+    re.compile(
+        r"^https?://(www\.)?instagram\.com/([a-zA-Z0-9_.]+)/reel/([a-zA-Z0-9_-]+)", re.IGNORECASE
+    ),
 ]
 
 TIKTOK_PATTERNS = [
@@ -102,7 +106,10 @@ def detect_source_type(url: str) -> Optional[SourceType]:
             qs = parse_qs(parsed.query)
             if "v" in qs and qs["v"]:
                 return SourceType.YOUTUBE
-            if any(parsed.path.startswith(prefix) for prefix in ("/shorts/", "/embed/", "/live/", "/v/")):
+            if any(
+                parsed.path.startswith(prefix)
+                for prefix in ("/shorts/", "/embed/", "/live/", "/v/")
+            ):
                 return SourceType.YOUTUBE
             if parsed.path.rstrip("/") in ("/watch", "/watch_videos"):
                 return SourceType.YOUTUBE
@@ -207,21 +214,39 @@ def resolve_url(url: str, follow_redirects: bool = True) -> ResolvedURL:
     if follow_redirects and curr_url.startswith(("http://", "https://")):
         try:
             parsed_host = urlparse(curr_url).netloc.lower()
-            is_shortened = any(sh in parsed_host for sh in (
-                "vm.tiktok.com", "va.tiktok.com", "vt.tiktok.com",
-                "fb.watch", "youtu.be", "bit.ly", "tinyurl.com", "t.co"
-            ))
+            is_shortened = any(
+                sh in parsed_host
+                for sh in (
+                    "vm.tiktok.com",
+                    "va.tiktok.com",
+                    "vt.tiktok.com",
+                    "fb.watch",
+                    "youtu.be",
+                    "bit.ly",
+                    "tinyurl.com",
+                    "t.co",
+                )
+            )
             if is_shortened:
                 from ..security import validate_video_url
+
                 try:
                     validate_video_url(curr_url)
                 except ValueError as ve:
                     logger.warning("SSRF blocked during redirect resolution: %s", ve)
-                    return ResolvedURL(url=curr_url, canonical_id=None, source_type=source_type, normalized_url=curr_url, redirect_chain=redirect_chain)
-                
+                    return ResolvedURL(
+                        url=curr_url,
+                        canonical_id=None,
+                        source_type=source_type,
+                        normalized_url=curr_url,
+                        redirect_chain=redirect_chain,
+                    )
+
                 req = urllib.request.Request(
                     curr_url,
-                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                    },
                     method="HEAD",
                 )
                 with urllib.request.urlopen(req, timeout=4.0) as resp:
@@ -247,7 +272,9 @@ def resolve_url(url: str, follow_redirects: bool = True) -> ResolvedURL:
             path_parts = [p for p in parsed_target.path.split("/") if p]
             if path_parts:
                 canonical_id = path_parts[0]
-        elif any(parsed_target.path.startswith(p) for p in ("/shorts/", "/embed/", "/live/", "/v/")):
+        elif any(
+            parsed_target.path.startswith(p) for p in ("/shorts/", "/embed/", "/live/", "/v/")
+        ):
             path_parts = [p for p in parsed_target.path.split("/") if p]
             if len(path_parts) >= 2:
                 canonical_id = path_parts[1]
@@ -344,7 +371,6 @@ def resolve_url(url: str, follow_redirects: bool = True) -> ResolvedURL:
     )
 
 
-
 def extract_video_id(url: str) -> Optional[str]:
     """Extract the canonical video ID from a URL.
 
@@ -415,7 +441,13 @@ def extract_all_video_urls(text: str) -> list[str]:
     matches = url_pattern.findall(text)
     urls = []
     for match in matches:
-        url = match if isinstance(match, str) else match.group(0) if hasattr(match, "group") else str(match)
+        url = (
+            match
+            if isinstance(match, str)
+            else match.group(0)
+            if hasattr(match, "group")
+            else str(match)
+        )
         if url and url not in urls:
             urls.append(url)
     return urls

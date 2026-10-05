@@ -62,7 +62,9 @@ def prompt_selection(prompt_text: str, valid_options: set[str], default: str = "
             return default
         if choice in valid_options:
             return choice
-        print(f"Opción no válida ('{choice}'). Opciones disponibles: {', '.join(sorted(valid_options))}")
+        print(
+            f"Opción no válida ('{choice}'). Opciones disponibles: {', '.join(sorted(valid_options))}"
+        )
 
 
 def run_interactive_flow(
@@ -97,36 +99,43 @@ def run_interactive_flow(
             continue
         p = Path(item)
         if p.exists() and p.is_file():
-            sources.append({
-                "type": "local",
-                "original_input": str(p),
-                "resolved_url": str(p.resolve()),
-                "platform": "local",
-                "title": p.stem,
-                "is_local": True,
-            })
+            sources.append(
+                {
+                    "type": "local",
+                    "original_input": str(p),
+                    "resolved_url": str(p.resolve()),
+                    "platform": "local",
+                    "title": p.stem,
+                    "is_local": True,
+                }
+            )
         else:
             detected = detect_video_sources(item)
             if detected:
                 for s in detected:
                     stype = getattr(s, "source_type", "url")
-                    sources.append({
-                        "type": stype,
-                        "original_input": item,
-                        "resolved_url": getattr(s, "resolved_path", None) or getattr(s, "url", item),
-                        "platform": str(stype),
-                        "title": getattr(s, "title", None) or Path(item).stem,
-                        "is_local": stype == "local",
-                    })
+                    sources.append(
+                        {
+                            "type": stype,
+                            "original_input": item,
+                            "resolved_url": getattr(s, "resolved_path", None)
+                            or getattr(s, "url", item),
+                            "platform": str(stype),
+                            "title": getattr(s, "title", None) or Path(item).stem,
+                            "is_local": stype == "local",
+                        }
+                    )
             else:
-                sources.append({
-                    "type": "url",
-                    "original_input": item,
-                    "resolved_url": item,
-                    "platform": "generic",
-                    "title": "video",
-                    "is_local": False,
-                })
+                sources.append(
+                    {
+                        "type": "url",
+                        "original_input": item,
+                        "resolved_url": item,
+                        "platform": "generic",
+                        "title": "video",
+                        "is_local": False,
+                    }
+                )
 
     print(f"\n[+] Se detectaron {len(sources)} vídeo(s):")
     for idx, s in enumerate(sources, 1):
@@ -175,7 +184,8 @@ def main(argv: list[str] | None = None) -> int:
         help="URLs de vídeo (YouTube, FB, IG, TikTok) o rutas a archivos locales",
     )
     parser.add_argument(
-        "-o", "--output-dir",
+        "-o",
+        "--output-dir",
         default="./artifacts",
         help="Directorio para guardar artefactos locales (por defecto: ./artifacts)",
     )

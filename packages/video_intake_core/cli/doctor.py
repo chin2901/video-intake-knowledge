@@ -1,4 +1,5 @@
 """Doctor command for video-intake-knowledge."""
+
 from __future__ import annotations
 
 import argparse
@@ -26,6 +27,7 @@ def run_doctor(args: argparse.Namespace) -> int:
 
     # ffmpeg / ffprobe
     import shutil
+
     ffmpeg = shutil.which("ffmpeg")
     ffprobe = shutil.which("ffprobe")
     results.append(
@@ -66,6 +68,7 @@ def run_doctor(args: argparse.Namespace) -> int:
     # Espacio de disco
     try:
         import shutil
+
         total, used, free = shutil.disk_usage("/")
         free_gb = free / (1024**3)
         results.append(
@@ -76,22 +79,16 @@ def run_doctor(args: argparse.Namespace) -> int:
             }
         )
     except Exception as e:
-        results.append(
-            {"check": "disk_space", "status": "warn", "detail": str(e)}
-        )
+        results.append({"check": "disk_space", "status": "warn", "detail": str(e)})
 
     # Escritura
     test_path = Path("./.vitk_test_write")
     try:
         test_path.write_text("test")
         test_path.unlink()
-        results.append(
-            {"check": "write_permission", "status": "pass", "detail": "OK"}
-        )
+        results.append({"check": "write_permission", "status": "pass", "detail": "OK"})
     except Exception as e:
-        results.append(
-            {"check": "write_permission", "status": "fail", "detail": str(e)}
-        )
+        results.append({"check": "write_permission", "status": "fail", "detail": str(e)})
 
     # Config
     config = _resolve_config(args)
@@ -119,13 +116,16 @@ def run_doctor(args: argparse.Namespace) -> int:
             all_ok = False
 
     if args.json:
-        print(json.dumps({"checks": results, "healthy": all_ok, "python": sys.version.split()[0]}, ensure_ascii=False))
+        print(
+            json.dumps(
+                {"checks": results, "healthy": all_ok, "python": sys.version.split()[0]},
+                ensure_ascii=False,
+            )
+        )
     else:
         print("=== video-intake doctor ===\n")
         for r in results:
-            icon = {"pass": "✓", "fail": "✗", "warn": "⚠", "info": "·"}.get(
-                r["status"], "·"
-            )
+            icon = {"pass": "✓", "fail": "✗", "warn": "⚠", "info": "·"}.get(r["status"], "·")
             print(f"  {icon} {r['check']}: {r['detail']}")
         print()
         if all_ok:
@@ -133,7 +133,6 @@ def run_doctor(args: argparse.Namespace) -> int:
         else:
             print("Estado: ✗ Con problemas")
     return 0 if all_ok else 1
-
 
 
 def doctor_command(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

@@ -83,6 +83,7 @@ def validate(data: Any, schema_name: str) -> bool:
 
     try:
         import jsonschema
+
         jsonschema.validate(instance=data, schema=schema)
         return True
     except ImportError:

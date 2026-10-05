@@ -22,12 +22,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Extrae contenido de un vídeo de forma directa.")
     parser.add_argument("source", help="URL o archivo local de vídeo")
     parser.add_argument(
-        "-s", "--select",
+        "-s",
+        "--select",
         default="6",
         help="Operaciones a realizar (1=video, 2=audio, 3=transcript, 4=context, 5=visual, 6=todo). Def: 6",
     )
     parser.add_argument(
-        "-o", "--output-dir",
+        "-o",
+        "--output-dir",
         default="./artifacts",
         help="Directorio de artefactos",
     )
@@ -42,34 +44,41 @@ def main() -> None:
     p = Path(source_val)
 
     if p.exists() and p.is_file():
-        sources = [{
-            "type": "local",
-            "original_input": str(p),
-            "resolved_url": str(p.resolve()),
-            "platform": "local",
-            "title": p.stem,
-            "is_local": True,
-        }]
+        sources = [
+            {
+                "type": "local",
+                "original_input": str(p),
+                "resolved_url": str(p.resolve()),
+                "platform": "local",
+                "title": p.stem,
+                "is_local": True,
+            }
+        ]
     else:
         detected = detect_video_sources(source_val)
         if detected:
-            sources = [{
-                "type": getattr(s, "source_type", "url"),
-                "original_input": source_val,
-                "resolved_url": getattr(s, "url", source_val),
-                "platform": getattr(s, "source_type", "web"),
-                "title": getattr(s, "title", None) or p.stem,
-                "is_local": False,
-            } for s in detected]
+            sources = [
+                {
+                    "type": getattr(s, "source_type", "url"),
+                    "original_input": source_val,
+                    "resolved_url": getattr(s, "url", source_val),
+                    "platform": getattr(s, "source_type", "web"),
+                    "title": getattr(s, "title", None) or p.stem,
+                    "is_local": False,
+                }
+                for s in detected
+            ]
         else:
-            sources = [{
-                "type": "url",
-                "original_input": source_val,
-                "resolved_url": source_val,
-                "platform": "generic",
-                "title": "video",
-                "is_local": False,
-            }]
+            sources = [
+                {
+                    "type": "url",
+                    "original_input": source_val,
+                    "resolved_url": source_val,
+                    "platform": "generic",
+                    "title": "video",
+                    "is_local": False,
+                }
+            ]
 
     ops = parse_extraction_choices(args.select)
     artifacts = check_and_extract(sources, ops, Path(args.output_dir))

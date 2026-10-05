@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 # Audio context generation
 # ---------------------------------------------------------------------------
 
+
 def generate_audio_context(
     transcript_segments: list[dict[str, Any]],
     full_text: str,
@@ -53,9 +54,10 @@ def generate_audio_context(
     """
     text = full_text.strip()
     from ..utils.validation import sanitize_for_prompt, wrap_for_llm
+
     if text:
         text = wrap_for_llm("video_transcript", sanitize_for_prompt(text))
-        
+
     if not text:
         return _empty_audio_context(source_info)
 
@@ -114,10 +116,24 @@ def generate_audio_context(
         "facts": facts,
         "inferences": inferences,
         "confidence_by_section": _confidence_by_section(
-            summary, chapters, topics, concepts, tools,
-            procedures, decisions, requirements, constraints,
-            risks, warnings, recommendations, entities,
-            tasks, open_questions, quotes, facts, inferences,
+            summary,
+            chapters,
+            topics,
+            concepts,
+            tools,
+            procedures,
+            decisions,
+            requirements,
+            constraints,
+            risks,
+            warnings,
+            recommendations,
+            entities,
+            tasks,
+            open_questions,
+            quotes,
+            facts,
+            inferences,
         ),
         "warnings_flags": _generate_warnings_flags(
             requirements, constraints, risks, warnings, open_questions
@@ -211,9 +227,7 @@ def _extract_table_of_contents(
         return chapters
 
     # Group segments into ~5-10 chapters based on time
-    duration = video_duration or (
-        max(s.get("end_seconds", 0) for s in segments) or 60
-    )
+    duration = video_duration or (max(s.get("end_seconds", 0) for s in segments) or 60)
     num_chapters = min(max(5, duration // 60), 15)
 
     # Calculate chapter boundaries based on time
@@ -230,16 +244,18 @@ def _extract_table_of_contents(
             # Generate chapter title from first meaningful sentence
             sentences = _split_sentences(chapter_text)
             title = _generate_chapter_title(sentences[0] if sentences else chapter_text)
-            chapters.append({
-                "chapter_number": i + 1,
-                "start_time": _seconds_to_time(start_sec),
-                "end_time": _seconds_to_time(end_sec),
-                "start_seconds": start_sec,
-                "end_seconds": end_sec,
-                "title": title,
-                "summary": chapter_text[:300] + ("..." if len(chapter_text) > 300 else ""),
-                "key_points": _extract_key_points(chapter_text),
-            })
+            chapters.append(
+                {
+                    "chapter_number": i + 1,
+                    "start_time": _seconds_to_time(start_sec),
+                    "end_time": _seconds_to_time(end_sec),
+                    "start_seconds": start_sec,
+                    "end_seconds": end_sec,
+                    "title": title,
+                    "summary": chapter_text[:300] + ("..." if len(chapter_text) > 300 else ""),
+                    "key_points": _extract_key_points(chapter_text),
+                }
+            )
 
     return chapters
 
@@ -272,8 +288,27 @@ def _generate_chapter_title(text: str) -> str:
     first = sentences[0] if sentences else text
 
     # Remove leading filler words
-    filler = ("este", "la", "lo", "un", "una", "los", "las", "en", "el", "la",
-              "del", "al", "con", "que", "para", "por", "se", "su", "sus")
+    filler = (
+        "este",
+        "la",
+        "lo",
+        "un",
+        "una",
+        "los",
+        "las",
+        "en",
+        "el",
+        "la",
+        "del",
+        "al",
+        "con",
+        "que",
+        "para",
+        "por",
+        "se",
+        "su",
+        "sus",
+    )
     words = first.split()
     meaningful = [w for w in words if w.lower().strip(",.;:!?¿¡") not in filler]
     if meaningful:
@@ -306,11 +341,11 @@ def _extract_topics(text: str, segments: list[dict[str, Any]]) -> list[dict[str,
     trigrams: dict[str, int] = {}
 
     for i in range(len(filtered) - 1):
-        bg = f"{filtered[i]} {filtered[i+1]}"
+        bg = f"{filtered[i]} {filtered[i + 1]}"
         bigrams[bg] = bigrams.get(bg, 0) + 1
 
     for i in range(len(filtered) - 2):
-        tg = f"{filtered[i]} {filtered[i+1]} {filtered[i+2]}"
+        tg = f"{filtered[i]} {filtered[i + 1]} {filtered[i + 2]}"
         trigrams[tg] = trigrams.get(tg, 0) + 1
 
     # Combine and rank
@@ -331,13 +366,15 @@ def _extract_topics(text: str, segments: list[dict[str, Any]]) -> list[dict[str,
             seen_titles.add(title.lower())
             # Find timestamps for this topic
             timestamps = _find_phrase_timestamps(phrase, segments)
-            topics.append({
-                "title": title,
-                "relevance": min(count / max(1, len(filtered)), 1.0),
-                "mentions": count,
-                "timestamps": timestamps,
-                "description": f"Mencionado {count} veces en la transcripción.",
-            })
+            topics.append(
+                {
+                    "title": title,
+                    "relevance": min(count / max(1, len(filtered)), 1.0),
+                    "mentions": count,
+                    "timestamps": timestamps,
+                    "description": f"Mencionado {count} veces en la transcripción.",
+                }
+            )
 
     return topics[:10]
 
@@ -345,6 +382,7 @@ def _extract_topics(text: str, segments: list[dict[str, Any]]) -> list[dict[str,
 def _extract_words(text: str) -> list[str]:
     """Extract alphabetic words from text, lowercased."""
     import re
+
     words = re.findall(r"[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]+", text.lower())
     return [w for w in words if len(w) > 2]
 
@@ -352,34 +390,201 @@ def _extract_words(text: str) -> list[str]:
 def _get_stopwords() -> set[str]:
     """Basic Spanish/English stopwords set."""
     return {
-        "el", "la", "los", "las", "de", "del", "al", "en", "un", "una", "unos",
-        "unas", "y", "o", "e", "pero", "sin", "para", "por", "con", "sobre",
-        "entre", "después", "antes", "durante", "bajo", "según", "que", "se",
-        "su", "sus", "este", "esta", "estos", "estas", "aquel", "aquella",
-        "es", "son", "era", "eran", "ser", "haber", "ha", "han", "he", "has",
-        "se", "le", "les", "te", "me", "nos", "os", "lo", "la", "se", "me",
-        "muy", "más", "menos", "tanto", "mucho", "poco", "hasta", "desde",
-        "hace", "tener", "tengo", "tiene", "tenemos", "saber", "sé", "sabe",
-        "poder", "puedo", "puede", "querer", "quiero", "quiere", "ir", "voy",
-        "va", "vamos", "decir", "digo", "dice", "hacer", "hago", "hace",
-        "dar", "doy", "da", "ver", "veo", "ve", "poner", "pongo", "pone",
-        "pensar", "pienso", "piensa", "volver", "vuelvo", "vuelve",
-        "pasar", "paso", "pasa", "llamar", "llamo", "llama",
-        "and", "the", "a", "an", "is", "are", "was", "were", "be", "been",
-        "being", "have", "has", "had", "do", "does", "did", "will", "would",
-        "could", "should", "may", "might", "can", "this", "that", "these",
-        "those", "i", "you", "he", "she", "it", "we", "they", "me", "him",
-        "her", "us", "them", "my", "your", "his", "its", "our", "their",
-        "what", "which", "who", "whom", "when", "where", "why", "how",
-        "all", "each", "every", "both", "few", "more", "most", "other",
-        "some", "such", "no", "nor", "not", "only", "own", "same", "so",
-        "than", "too", "very", "s", "t", "just", "don", "now", "here",
+        "el",
+        "la",
+        "los",
+        "las",
+        "de",
+        "del",
+        "al",
+        "en",
+        "un",
+        "una",
+        "unos",
+        "unas",
+        "y",
+        "o",
+        "e",
+        "pero",
+        "sin",
+        "para",
+        "por",
+        "con",
+        "sobre",
+        "entre",
+        "después",
+        "antes",
+        "durante",
+        "bajo",
+        "según",
+        "que",
+        "se",
+        "su",
+        "sus",
+        "este",
+        "esta",
+        "estos",
+        "estas",
+        "aquel",
+        "aquella",
+        "es",
+        "son",
+        "era",
+        "eran",
+        "ser",
+        "haber",
+        "ha",
+        "han",
+        "he",
+        "has",
+        "se",
+        "le",
+        "les",
+        "te",
+        "me",
+        "nos",
+        "os",
+        "lo",
+        "la",
+        "se",
+        "me",
+        "muy",
+        "más",
+        "menos",
+        "tanto",
+        "mucho",
+        "poco",
+        "hasta",
+        "desde",
+        "hace",
+        "tener",
+        "tengo",
+        "tiene",
+        "tenemos",
+        "saber",
+        "sé",
+        "sabe",
+        "poder",
+        "puedo",
+        "puede",
+        "querer",
+        "quiero",
+        "quiere",
+        "ir",
+        "voy",
+        "va",
+        "vamos",
+        "decir",
+        "digo",
+        "dice",
+        "hacer",
+        "hago",
+        "hace",
+        "dar",
+        "doy",
+        "da",
+        "ver",
+        "veo",
+        "ve",
+        "poner",
+        "pongo",
+        "pone",
+        "pensar",
+        "pienso",
+        "piensa",
+        "volver",
+        "vuelvo",
+        "vuelve",
+        "pasar",
+        "paso",
+        "pasa",
+        "llamar",
+        "llamo",
+        "llama",
+        "and",
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "this",
+        "that",
+        "these",
+        "those",
+        "i",
+        "you",
+        "he",
+        "she",
+        "it",
+        "we",
+        "they",
+        "me",
+        "him",
+        "her",
+        "us",
+        "them",
+        "my",
+        "your",
+        "his",
+        "its",
+        "our",
+        "their",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "every",
+        "both",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "s",
+        "t",
+        "just",
+        "don",
+        "now",
+        "here",
     }
 
 
-def _find_phrase_timestamps(
-    phrase: str, segments: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def _find_phrase_timestamps(phrase: str, segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Find timestamps where a phrase appears in transcript."""
     phrase_lower = phrase.lower()
     timestamps: list[dict[str, Any]] = []
@@ -387,12 +592,14 @@ def _find_phrase_timestamps(
     for seg in segments:
         seg_text = seg.get("text", "").lower()
         if phrase_lower in seg_text:
-            timestamps.append({
-                "start": seg.get("start", ""),
-                "end": seg.get("end", ""),
-                "start_seconds": seg.get("start_seconds", 0),
-                "end_seconds": seg.get("end_seconds", 0),
-            })
+            timestamps.append(
+                {
+                    "start": seg.get("start", ""),
+                    "end": seg.get("end", ""),
+                    "start_seconds": seg.get("start_seconds", 0),
+                    "end_seconds": seg.get("end_seconds", 0),
+                }
+            )
 
     return timestamps[:5]
 
@@ -454,12 +661,14 @@ def _extract_technical_concepts(text: str) -> list[dict[str, Any]]:
             found.add(concept_name)
             # Find mentions
             mentions = [s for s in sentences if re.search(pattern, s.lower())]
-            concepts.append({
-                "concept": concept_name,
-                "mentions": len(mentions),
-                "description": _get_first_mention_description(mentions[:3]),
-                "context_sentences": mentions[:2],
-            })
+            concepts.append(
+                {
+                    "concept": concept_name,
+                    "mentions": len(mentions),
+                    "description": _get_first_mention_description(mentions[:3]),
+                    "context_sentences": mentions[:2],
+                }
+            )
 
     return sorted(concepts, key=lambda c: -c["mentions"])
 
@@ -528,7 +737,11 @@ def _extract_tools_mentioned(text: str) -> list[dict[str, Any]]:
         (r"\b(shell| bash| zsh| fish)\b", "Shell", "Terminal"),
         (r"\b(vim| neovim| emacs| nano| sublime)\b", "Editor de texto", "Editor de texto"),
         (r"\b(slack| teams| discord)\b", "Comunicación", "Herramienta de comunicación"),
-        (r"\b(jira| trello| asana| linear| notion)\b", "Gestión de proyectos", "Herramienta de gestión"),
+        (
+            r"\b(jira| trello| asana| linear| notion)\b",
+            "Gestión de proyectos",
+            "Herramienta de gestión",
+        ),
         (r"\b(aws |amazon |azure |gcp |google cloud )\b", "Cloud", "Proveedor cloud"),
         (r"\b(pytorch| tensorflow| keras| scikit)\b", "PyTorch/TensorFlow", "Machine Learning"),
         (r"\b(pandas| numpy| matplotlib| seaborn)\b", "Pandas/NumPy", "Análisis de datos Python"),
@@ -538,7 +751,11 @@ def _extract_tools_mentioned(text: str) -> list[dict[str, Any]]:
         (r"\b(letsencrypt| certbot| ssl|tls|https)\b", "TLS/Let's Encrypt", "Certificados SSL"),
         (r"\b(feedback| metric| analytics)\b", "Analytics", "Analítica"),
         (r"\b(robot| automation| automatización)\b", "Automatización", "Automatización"),
-        (r"\b(open source| open-source| licencia| MIT| GPL)\b", "Open Source", "Software open source"),
+        (
+            r"\b(open source| open-source| licencia| MIT| GPL)\b",
+            "Open Source",
+            "Software open source",
+        ),
         (r"\b(linux| unix| bsd)\b", "Linux/Unix", "Sistema operativo"),
     ]
 
@@ -548,13 +765,15 @@ def _extract_tools_mentioned(text: str) -> list[dict[str, Any]]:
             if tool_name not in found_tools:
                 found_tools.add(tool_name)
                 mentions = [s for s in sentences if re.search(pattern, s.lower())]
-                tools.append({
-                    "tool": tool_name,
-                    "description": description,
-                    "category": _categorize_tool(tool_name),
-                    "mentions": len(mentions),
-                    "context_sentences": mentions[:2],
-                })
+                tools.append(
+                    {
+                        "tool": tool_name,
+                        "description": description,
+                        "category": _categorize_tool(tool_name),
+                        "mentions": len(mentions),
+                        "context_sentences": mentions[:2],
+                    }
+                )
 
     return sorted(tools, key=lambda t: -t["mentions"])
 
@@ -672,12 +891,14 @@ def _extract_procedures(text: str, segments: list[dict[str, Any]]) -> list[dict[
             if current_procedure and not in_procedure:
                 # New procedure found
                 if current_steps:
-                    procedures.append({
-                        "title": "Procedimiento",
-                        "steps": current_steps,
-                        "context_sentences": current_procedure[:5],
-                        "estimated_complexity": _estimate_procedure_complexity(current_steps),
-                    })
+                    procedures.append(
+                        {
+                            "title": "Procedimiento",
+                            "steps": current_steps,
+                            "context_sentences": current_procedure[:5],
+                            "estimated_complexity": _estimate_procedure_complexity(current_steps),
+                        }
+                    )
                 current_steps = []
                 current_procedure = []
 
@@ -705,12 +926,14 @@ def _extract_procedures(text: str, segments: list[dict[str, Any]]) -> list[dict[
 
     # Last procedure
     if current_steps:
-        procedures.append({
-            "title": "Procedimiento",
-            "steps": current_steps,
-            "context_sentences": current_procedure[:5],
-            "estimated_complexity": _estimate_procedure_complexity(current_steps),
-        })
+        procedures.append(
+            {
+                "title": "Procedimiento",
+                "steps": current_steps,
+                "context_sentences": current_procedure[:5],
+                "estimated_complexity": _estimate_procedure_complexity(current_steps),
+            }
+        )
 
     return procedures
 
@@ -761,39 +984,51 @@ def _extract_decisions(text: str) -> list[dict[str, Any]]:
         is_decision = any(re.search(p, s_lower) for p in decision_patterns)
 
         if is_decision:
-            decisions.append({
-                "text": sentence.strip(),
-                "rationale": _extract_rationale(sentences, i),
-                "implication": _extract_implication(sentences, i),
-                "context_index": i,
-            })
+            decisions.append(
+                {
+                    "text": sentence.strip(),
+                    "rationale": _extract_rationale(sentences, i),
+                    "implication": _extract_implication(sentences, i),
+                    "context_index": i,
+                }
+            )
 
     return decisions[:10]
 
 
 def _extract_rationale(sentences: list[str], index: int) -> str:
     """Extract rationale from surrounding sentences."""
-    context = sentences[max(0, index - 2):min(len(sentences), index + 3)]
-    rationale_sents = [s for s in context if any(
-        re.search(p, s.lower()) for p in [
-            r"\b(porque|because|since|given that|due to)\b",
-            r"\b(razón|reason|rationale)\b",
-            r"\b(por esto|that's why|this is why)\b",
-        ]
-    )]
+    context = sentences[max(0, index - 2) : min(len(sentences), index + 3)]
+    rationale_sents = [
+        s
+        for s in context
+        if any(
+            re.search(p, s.lower())
+            for p in [
+                r"\b(porque|because|since|given that|due to)\b",
+                r"\b(razón|reason|rationale)\b",
+                r"\b(por esto|that's why|this is why)\b",
+            ]
+        )
+    ]
     return " ".join(rationale_sents[:2]) if rationale_sents else ""
 
 
 def _extract_implication(sentences: list[str], index: int) -> str:
     """Extract implication/consequence from following sentences."""
-    context = sentences[index:min(len(sentences), index + 5)]
-    implication_sents = [s for s in context if any(
-        re.search(p, s.lower()) for p in [
-            r"\b(por eso|therefore|so|as a result|consequently)\b",
-            r"\b(lo que significa|which means|meaning)\b",
-            r"\b(impacto|impact|consecuencia|consequence)\b",
-        ]
-    )]
+    context = sentences[index : min(len(sentences), index + 5)]
+    implication_sents = [
+        s
+        for s in context
+        if any(
+            re.search(p, s.lower())
+            for p in [
+                r"\b(por eso|therefore|so|as a result|consequently)\b",
+                r"\b(lo que significa|which means|meaning)\b",
+                r"\b(impacto|impact|consecuencia|consequence)\b",
+            ]
+        )
+    ]
     return " ".join(implication_sents[:2]) if implication_sents else ""
 
 
@@ -825,12 +1060,14 @@ def _extract_requirements(text: str) -> list[dict[str, Any]]:
             # Extract the requirement type
             req_type = _classify_requirement(s_lower)
 
-            requirements.append({
-                "text": sentence.strip(),
-                "type": req_type,
-                "context_index": i,
-                "description": sentence.strip()[:200],
-            })
+            requirements.append(
+                {
+                    "text": sentence.strip(),
+                    "type": req_type,
+                    "context_index": i,
+                    "description": sentence.strip()[:200],
+                }
+            )
 
     return requirements[:10]
 
@@ -896,12 +1133,14 @@ def _extract_constraints(text: str) -> list[dict[str, Any]]:
         is_constraint = any(re.search(p, s_lower) for p in constraint_patterns)
 
         if is_constraint:
-            constraints.append({
-                "text": sentence.strip(),
-                "type": _classify_constraint(s_lower),
-                "severity": _classify_constraint_severity(s_lower),
-                "context_index": i,
-            })
+            constraints.append(
+                {
+                    "text": sentence.strip(),
+                    "type": _classify_constraint(s_lower),
+                    "severity": _classify_constraint_severity(s_lower),
+                    "context_index": i,
+                }
+            )
 
     return constraints[:10]
 
@@ -978,18 +1217,22 @@ def _extract_risks(text: str) -> list[dict[str, Any]]:
 
         if is_risk:
             severity = "Medio"
-            if re.search(r"\b(danger|peligro|security|ataque|data loss|crash|fallo|failed)", s_lower):
+            if re.search(
+                r"\b(danger|peligro|security|ataque|data loss|crash|fallo|failed)", s_lower
+            ):
                 severity = "Alto"
             elif re.search(r"\b(experimental|untested|uncertainty|caution)", s_lower):
                 severity = "Bajo"
 
-            risks.append({
-                "text": sentence.strip(),
-                "type": _classify_risk(s_lower),
-                "severity": severity,
-                "context_index": i,
-                "mitigation": _extract_mitigation(sentences, i),
-            })
+            risks.append(
+                {
+                    "text": sentence.strip(),
+                    "type": _classify_risk(s_lower),
+                    "severity": severity,
+                    "context_index": i,
+                    "mitigation": _extract_mitigation(sentences, i),
+                }
+            )
 
     return risks[:10]
 
@@ -1020,17 +1263,22 @@ def _classify_risk(text: str) -> str:
 
 def _extract_mitigation(sentences: list[str], index: int) -> str:
     """Extract potential mitigation from following sentences."""
-    context = sentences[index:min(len(sentences), index + 4)]
-    mitigation_sents = [s for s in context if any(
-        re.search(p, s.lower()) for p in [
-            r"\b(backup| copia| restore| restaurar)\b",
-            r"\b(workaround| solución alternativa)\b",
-            r"\b(avoid|evitar)\b",
-            r"\b(test|probar|testing)\b",
-            r"\b(monitor|monitoreo)\b",
-            r"\b(prepare|preparar)\b",
-        ]
-    )]
+    context = sentences[index : min(len(sentences), index + 4)]
+    mitigation_sents = [
+        s
+        for s in context
+        if any(
+            re.search(p, s.lower())
+            for p in [
+                r"\b(backup| copia| restore| restaurar)\b",
+                r"\b(workaround| solución alternativa)\b",
+                r"\b(avoid|evitar)\b",
+                r"\b(test|probar|testing)\b",
+                r"\b(monitor|monitoreo)\b",
+                r"\b(prepare|preparar)\b",
+            ]
+        )
+    ]
     return " ".join(mitigation_sents[:2]) if mitigation_sents else ""
 
 
@@ -1072,12 +1320,14 @@ def _extract_warnings(text: str) -> list[dict[str, Any]]:
             elif re.search(r"\b(note|nota|notice|avisar)", s_lower):
                 severity = "Bajo"
 
-            warnings_list.append({
-                "text": sentence.strip(),
-                "type": _classify_warning_type(s_lower),
-                "severity": severity,
-                "context_index": i,
-            })
+            warnings_list.append(
+                {
+                    "text": sentence.strip(),
+                    "type": _classify_warning_type(s_lower),
+                    "severity": severity,
+                    "context_index": i,
+                }
+            )
 
     return warnings_list[:10]
 
@@ -1135,17 +1385,21 @@ def _extract_recommendations(text: str) -> list[dict[str, Any]]:
             strength = "Sugerencia"
             if re.search(r"\b(should|debería|deberia|need|necesita|must|debe|has to)", s_lower):
                 strength = "Recomendación"
-            elif re.search(r"\b(good practice|best practice|buena practica|mejor practica)", s_lower):
+            elif re.search(
+                r"\b(good practice|best practice|buena practica|mejor practica)", s_lower
+            ):
                 strength = "Best Practice"
             elif re.search(r"\b(importante| critical| crítico)", s_lower):
                 strength = "Importante"
 
-            recommendations.append({
-                "text": sentence.strip(),
-                "type": _classify_recommendation_type(s_lower),
-                "strength": strength,
-                "context_index": i,
-            })
+            recommendations.append(
+                {
+                    "text": sentence.strip(),
+                    "type": _classify_recommendation_type(s_lower),
+                    "strength": strength,
+                    "context_index": i,
+                }
+            )
 
     return recommendations[:10]
 
@@ -1208,31 +1462,37 @@ def _extract_entities(text: str) -> list[dict[str, Any]]:
         for match in re.finditer(pattern, text_lower):
             entity = match.group(0).strip()
             if entity and len(entity) > 4:
-                entities.append({
-                    "entity": entity,
-                    "type": "Persona/Rol",
-                    "context": _get_context_sentence(text, match),
-                })
+                entities.append(
+                    {
+                        "entity": entity,
+                        "type": "Persona/Rol",
+                        "context": _get_context_sentence(text, match),
+                    }
+                )
 
     for pattern in org_patterns:
         for match in re.finditer(pattern, text_lower):
             entity = match.group(0).strip()
             if entity and len(entity) > 3:
-                entities.append({
-                    "entity": entity,
-                    "type": "Organización",
-                    "context": _get_context_sentence(text, match),
-                })
+                entities.append(
+                    {
+                        "entity": entity,
+                        "type": "Organización",
+                        "context": _get_context_sentence(text, match),
+                    }
+                )
 
     for pattern in product_patterns:
         for match in re.finditer(pattern, text_lower):
             entity = match.group(0).strip()
             if entity and len(entity) > 3:
-                entities.append({
-                    "entity": entity,
-                    "type": "Producto/Proyecto",
-                    "context": _get_context_sentence(text, match),
-                })
+                entities.append(
+                    {
+                        "entity": entity,
+                        "type": "Producto/Proyecto",
+                        "context": _get_context_sentence(text, match),
+                    }
+                )
 
     # Deduplicate
     seen: set = set()
@@ -1301,14 +1561,16 @@ def _extract_potential_tasks(text: str, segments: list[dict[str, Any]]) -> list[
 
         is_task = any(re.search(p, s_lower) for p in task_patterns)
         if is_task:
-            tasks.append({
-                "text": s_text,
-                "type": _classify_task_type(s_lower),
-                "priority": _classify_task_priority(s_lower),
-                "timestamp": sentence.get("start", ""),
-                "start_seconds": sentence.get("start_seconds", 0),
-                "index": i,
-            })
+            tasks.append(
+                {
+                    "text": s_text,
+                    "type": _classify_task_type(s_lower),
+                    "priority": _classify_task_priority(s_lower),
+                    "timestamp": sentence.get("start", ""),
+                    "start_seconds": sentence.get("start_seconds", 0),
+                    "index": i,
+                }
+            )
 
     return tasks[:10]
 
@@ -1372,26 +1634,27 @@ def _extract_open_questions(text: str) -> list[dict[str, Any]]:
         s_lower = sentence.lower()
         has_question_mark = sentence.strip().endswith("?")
 
-        is_open = has_question_mark or any(
-            re.search(p, s_lower) for p in question_patterns
-        )
+        is_open = has_question_mark or any(re.search(p, s_lower) for p in question_patterns)
 
         if is_open:
             # Determine if genuinely open or rhetorical
             is_rhetorical = any(
-                re.search(p, s_lower) for p in [
+                re.search(p, s_lower)
+                for p in [
                     r"\b(por supuesto| of course| obviously| clearly)\b",
                     r"\b(por supuesto que|of course that)\b",
                 ]
             )
 
             if not is_rhetorical:
-                questions.append({
-                    "text": sentence.strip(),
-                    "type": _classify_question_type(s_lower),
-                    "confidence_open": _assess_question_openness(s_lower),
-                    "context_index": i,
-                })
+                questions.append(
+                    {
+                        "text": sentence.strip(),
+                        "type": _classify_question_type(s_lower),
+                        "confidence_open": _assess_question_openness(s_lower),
+                        "context_index": i,
+                    }
+                )
 
     return questions[:10]
 
@@ -1419,7 +1682,9 @@ def _assess_question_openness(text: str) -> float:
     text = text.lower()
     score = 0.5  # Default neutral
 
-    if re.search(r"\b(qué|what| cuál|which)\b", text) and not re.search(r"\b(sí|no|yes|no|verdad|true)", text):
+    if re.search(r"\b(qué|what| cuál|which)\b", text) and not re.search(
+        r"\b(sí|no|yes|no|verdad|true)", text
+    ):
         score = 0.8
     if re.search(r"\b(cómo|how|como|por qué|why)\b", text):
         score = 0.9
@@ -1444,25 +1709,52 @@ def _extract_quotes(
         text = seg["text"]
 
         # Quotes that are notable (opinions, key statements, conclusions)
-        if any(keyword in text.lower() for keyword in [
-            "creo que", "pienso que", "en mi opinión", "a mi parecer",
-            "la clave", "lo importante", "el problema", "la solución",
-            "lo mejor", "lo peor", " lo difícil", "lo fácil",
-            "conclusión", "resumen", "en resumen", "en conclusión",
-            "principalmente", "principal", "fundamental",
-            "es importante", "es crucial", "es clave",
-            "note", "notice", "important", "key", "critical",
-            "warning", "warning", "advertencia",
-        ]):
-            quotes.append({
-                "text": text,
-                "start": seg.get("start", ""),
-                "end": seg.get("end", ""),
-                "start_seconds": seg.get("start_seconds", 0),
-                "end_seconds": seg.get("end_seconds", 0),
-                "type": _classify_quote_type(text),
-                "significance": _assess_quote_significance(text),
-            })
+        if any(
+            keyword in text.lower()
+            for keyword in [
+                "creo que",
+                "pienso que",
+                "en mi opinión",
+                "a mi parecer",
+                "la clave",
+                "lo importante",
+                "el problema",
+                "la solución",
+                "lo mejor",
+                "lo peor",
+                " lo difícil",
+                "lo fácil",
+                "conclusión",
+                "resumen",
+                "en resumen",
+                "en conclusión",
+                "principalmente",
+                "principal",
+                "fundamental",
+                "es importante",
+                "es crucial",
+                "es clave",
+                "note",
+                "notice",
+                "important",
+                "key",
+                "critical",
+                "warning",
+                "warning",
+                "advertencia",
+            ]
+        ):
+            quotes.append(
+                {
+                    "text": text,
+                    "start": seg.get("start", ""),
+                    "end": seg.get("end", ""),
+                    "start_seconds": seg.get("start_seconds", 0),
+                    "end_seconds": seg.get("end_seconds", 0),
+                    "type": _classify_quote_type(text),
+                    "significance": _assess_quote_significance(text),
+                }
+            )
 
     # Sort by significance
     quotes.sort(key=lambda q: -q["significance"])
@@ -1475,7 +1767,9 @@ def _classify_quote_type(text: str) -> str:
     text_lower = text.lower()
     if re.search(r"\b(creo que|pienso que|en mi opinión|a mi parecer)", text_lower):
         return "Opinión"
-    if re.search(r"\b(la clave|lo importante|el problema|la solución|conclusión|resumen)", text_lower):
+    if re.search(
+        r"\b(la clave|lo importante|el problema|la solución|conclusión|resumen)", text_lower
+    ):
         return "Concepto clave"
     if re.search(r"\b(es importante|es crucial|es clave|fundamental|principal)", text_lower):
         return "Enfoque"
@@ -1493,7 +1787,9 @@ def _assess_quote_significance(text: str) -> float:
         score += 0.2
     if re.search(r"\b(creo que|pienso que|en mi opinión|en mi experiencia)", text_lower):
         score += 0.2
-    if re.search(r"\b(conclusión|resumen|en resumen|en conclusión|to sum up|in conclusion)", text_lower):
+    if re.search(
+        r"\b(conclusión|resumen|en resumen|en conclusión|to sum up|in conclusion)", text_lower
+    ):
         score += 0.2
     if re.search(r"\b(es importante|es crucial|es fundamental|es clave)", text_lower):
         score += 0.15
@@ -1552,13 +1848,15 @@ def _extract_facts(
         has_numbers = bool(re.search(r"\d+(\.\d+)?", sentence))
 
         if is_fact and len(sentence.strip()) > 15:
-            facts_list.append({
-                "text": sentence.strip(),
-                "type": _classify_fact_type(s_lower),
-                "has_quantitative_data": has_numbers,
-                "confidence": 0.7 if has_numbers else 0.5,
-                "context_index": i,
-            })
+            facts_list.append(
+                {
+                    "text": sentence.strip(),
+                    "type": _classify_fact_type(s_lower),
+                    "has_quantitative_data": has_numbers,
+                    "confidence": 0.7 if has_numbers else 0.5,
+                    "context_index": i,
+                }
+            )
 
     return facts_list[:20]
 
@@ -1568,15 +1866,29 @@ def _classify_fact_type(text: str) -> str:
     text = text.lower()
     if re.search(r"\b(version|versión|v\s*\d)", text):
         return "Versión"
-    if re.search(r"\b( número| cantidad| cantidad|date|fecha| año|año| mes| mes| día|día| tiempo|time| duración| duracion| segundos| seconds| minutos|minutes)", text):
+    if re.search(
+        r"\b( número| cantidad| cantidad|date|fecha| año|año| mes| mes| día|día| tiempo|time| duración| duracion| segundos| seconds| minutos|minutes)",
+        text,
+    ):
         return "datos numéricos"
-    if re.search(r"\b(nombre|name| nombre|el nombre|la URL|la url|el enlace|el link| la dirección| la direccion)", text):
+    if re.search(
+        r"\b(nombre|name| nombre|el nombre|la URL|la url|el enlace|el link| la dirección| la direccion)",
+        text,
+    ):
         return "Identificador"
-    if re.search(r"\b(descripción| descripción| descripción| descripción| descripción| descripción| lo que hace| lo que es| lo que es| lo que es| lo que es)", text):
+    if re.search(
+        r"\b(descripción| descripción| descripción| descripción| descripción| descripción| lo que hace| lo que es| lo que es| lo que es| lo que es)",
+        text,
+    ):
         return "Descripción"
-    if re.search(r"\b(problema| problema| problema| problema| problema| problema| limitación|limitación| limitación| limitación| limitación| limitación)", text):
+    if re.search(
+        r"\b(problema| problema| problema| problema| problema| problema| limitación|limitación| limitación| limitación| limitación| limitación)",
+        text,
+    ):
         return "Limitación"
-    if re.search(r"\b(solución| solución| solución| solución| solución| solución| solución| solución)", text):
+    if re.search(
+        r"\b(solución| solución| solución| solución| solución| solución| solución| solución)", text
+    ):
         return "Solución"
     return "General"
 
@@ -1623,14 +1935,16 @@ def _extract_inferences(
                 if overlap > 0.2:
                     supporting_facts.append(fact)
 
-            inferences_list.append({
-                "text": sentence.strip(),
-                "type": _classify_inference_type(s_lower),
-                "confidence": 0.6 if supporting_facts else 0.4,
-                "supporting_facts_count": len(supporting_facts),
-                "context_index": i,
-                "is_system_inference": True,  # Explicit label
-            })
+            inferences_list.append(
+                {
+                    "text": sentence.strip(),
+                    "type": _classify_inference_type(s_lower),
+                    "confidence": 0.6 if supporting_facts else 0.4,
+                    "supporting_facts_count": len(supporting_facts),
+                    "context_index": i,
+                    "is_system_inference": True,  # Explicit label
+                }
+            )
 
     # Also generate some inferences from facts
     for fact in facts[:5]:
@@ -1650,7 +1964,9 @@ def _classify_inference_type(text: str) -> str:
         return "Implicación"
     if re.search(r"\b(deducir|deducido|inferir|inferred|suponer|assume)", text):
         return "Deducción"
-    if re.search(r"\b(alternativa|alternative| en cambio|instead|por otro lado|on the other hand)", text):
+    if re.search(
+        r"\b(alternativa|alternative| en cambio|instead|por otro lado|on the other hand)", text
+    ):
         return "Alternativa"
     return "General"
 
@@ -1789,23 +2105,12 @@ def _generate_warnings_flags(
 ) -> dict[str, Any]:
     """Generate high-level warning flags from extracted knowledge."""
     flags: dict[str, Any] = {
-        "has_high_severity_risks": any(
-            r.get("severity") == "Alto" for r in risks
-        ),
-        "has_high_severity_constraints": any(
-            c.get("severity") == "Alto" for c in constraints
-        ),
-        "has_deprecated_items": any(
-            "deprecated" in r.get("text", "").lower()
-            for r in warnings
-        ),
+        "has_high_severity_risks": any(r.get("severity") == "Alto" for r in risks),
+        "has_high_severity_constraints": any(c.get("severity") == "Alto" for c in constraints),
+        "has_deprecated_items": any("deprecated" in r.get("text", "").lower() for r in warnings),
         "has_open_questions": len(open_questions) > 0,
-        "has_missing_information": any(
-            r.get("type") == "General" for r in requirements
-        ),
-        "high_risk_count": sum(
-            1 for r in risks if r.get("severity") == "Alto"
-        ),
+        "has_missing_information": any(r.get("type") == "General" for r in requirements),
+        "high_risk_count": sum(1 for r in risks if r.get("severity") == "Alto"),
         "total_warnings": len(warnings),
         "total_risks": len(risks),
         "total_open_questions": len(open_questions),
@@ -1847,6 +2152,7 @@ def _extract_key_points(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # Visual context generation
 # ---------------------------------------------------------------------------
+
 
 def generate_visual_context(
     video_info: dict[str, Any],
@@ -1900,9 +2206,7 @@ def generate_visual_context(
         "visual_summary": visual_summary,
         "relationships_detected": relationships,
         "uncertainties_and_gaps": uncertainties,
-        "evidence": _build_evidence_map(
-            scene_changes, keyframes_metadata, ocr_results
-        ),
+        "evidence": _build_evidence_map(scene_changes, keyframes_metadata, ocr_results),
     }
 
 
@@ -1916,16 +2220,16 @@ def _summarize_scenes(
 
     return {
         "total_scenes": num_scenes,
-        "average_scene_duration": (
-            duration / num_scenes if num_scenes > 0 and duration > 0 else 0
-        ),
+        "average_scene_duration": (duration / num_scenes if num_scenes > 0 and duration > 0 else 0),
         "shortest_scene_seconds": (
             min((s.get("end_seconds", 0) - s.get("start_seconds", 0)) for s in scenes)
-            if scenes else 0
+            if scenes
+            else 0
         ),
         "longest_scene_seconds": (
             max((s.get("end_seconds", 0) - s.get("start_seconds", 0)) for s in scenes)
-            if scenes else 0
+            if scenes
+            else 0
         ),
     }
 
@@ -1938,31 +2242,77 @@ def _detect_diagrams(
     diagrams: list[dict[str, Any]] = []
 
     diagram_indicators = [
-        "diagram", " Diagrama", " esquema", "arquitectura", "flujo",
-        "flow", "process", "proceso", "sequence", "secuencia",
-        "component", "componente", "module", "módulo", "system",
-        "sistema", "structure", "estructura", "design", "diseño",
-        "drawing", "dibujo", "illustration", "ilustración",
-        "graph", "gráfico", "chart", "gráfica", "infographic",
-        "plan", "map", "mapa", "network", "red", "connection",
-        "conexión", "relationship", "relación", "dependency",
-        "dependencia", "inheritance", "herencia", "interface",
-        "interfaz", "class", "clase", "object", "objeto",
-        "database", "base de datos", "table", "tabla",
-        "endpoint", "puerto", "route", "ruta",
+        "diagram",
+        " Diagrama",
+        " esquema",
+        "arquitectura",
+        "flujo",
+        "flow",
+        "process",
+        "proceso",
+        "sequence",
+        "secuencia",
+        "component",
+        "componente",
+        "module",
+        "módulo",
+        "system",
+        "sistema",
+        "structure",
+        "estructura",
+        "design",
+        "diseño",
+        "drawing",
+        "dibujo",
+        "illustration",
+        "ilustración",
+        "graph",
+        "gráfico",
+        "chart",
+        "gráfica",
+        "infographic",
+        "plan",
+        "map",
+        "mapa",
+        "network",
+        "red",
+        "connection",
+        "conexión",
+        "relationship",
+        "relación",
+        "dependency",
+        "dependencia",
+        "inheritance",
+        "herencia",
+        "interface",
+        "interfaz",
+        "class",
+        "clase",
+        "object",
+        "objeto",
+        "database",
+        "base de datos",
+        "table",
+        "tabla",
+        "endpoint",
+        "puerto",
+        "route",
+        "ruta",
     ]
 
     for result in ocr_results:
         text = result.get("text", "")
         for indicator in diagram_indicators:
             if indicator.lower() in text.lower():
-                diagrams.append({
-                    "type": "Posible diagrama",
-                    "evidence": text[:200],
-                    "frame": result.get("frame_path", ""),
-                    "confidence": 0.5,
-                    "keywords": [indicator],
-                })
+                diagrams.append(
+                    {
+                        "type": "Posible diagrama",
+                        "evidence": text[:200],
+                        "frame": result.get("frame_path", ""),
+                        "confidence": 0.5,
+                        "keywords": [indicator],
+                    }
+                )
                 break
 
     return diagrams[:10]
@@ -1976,26 +2326,62 @@ def _detect_flows(
     flows: list[dict[str, Any]] = []
 
     flow_indicators = [
-        "paso", "step", "flujo", "flow", "proceso", "proceso",
-        "workflow", "pipeline", "ciclo", "cycle", "etapa", "stage",
-        "fase", "phase", "secuencia", "sequence", "orden", "order",
-        "primero", "first", "segundo", "second", "tercero", "third",
-        "finalmente", "finally", "inicialmente", "initially",
-        "entrada", "input", "salida", "output", "resultado", "result",
-        "ejecución", "execution", "procesamiento", "processing",
-        "validación", "validation", "transformación", "transformation",
+        "paso",
+        "step",
+        "flujo",
+        "flow",
+        "proceso",
+        "proceso",
+        "workflow",
+        "pipeline",
+        "ciclo",
+        "cycle",
+        "etapa",
+        "stage",
+        "fase",
+        "phase",
+        "secuencia",
+        "sequence",
+        "orden",
+        "order",
+        "primero",
+        "first",
+        "segundo",
+        "second",
+        "tercero",
+        "third",
+        "finalmente",
+        "finally",
+        "inicialmente",
+        "initially",
+        "entrada",
+        "input",
+        "salida",
+        "output",
+        "resultado",
+        "result",
+        "ejecución",
+        "execution",
+        "procesamiento",
+        "processing",
+        "validación",
+        "validation",
+        "transformación",
+        "transformation",
     ]
 
     for i, result in enumerate(ocr_results):
         text = result.get("text", "")
         for j, indicator in enumerate(flow_indicators):
             if indicator.lower() in text.lower():
-                flows.append({
-                    "step": j + 1,
-                    "evidence": text[:200],
-                    "frame_index": i,
-                    "confidence": 0.5 if j < 5 else 0.3,
-                })
+                flows.append(
+                    {
+                        "step": j + 1,
+                        "evidence": text[:200],
+                        "frame_index": i,
+                        "confidence": 0.5 if j < 5 else 0.3,
+                    }
+                )
                 break
 
     return flows[:15]
@@ -2038,13 +2424,15 @@ def _detect_architectures(
         text = result.get("text", "")
         for pattern, name, arch_type in arch_patterns:
             if pattern in text.lower():
-                architectures.append({
-                    "architecture_type": arch_type,
-                    "name": name,
-                    "evidence": text[:200],
-                    "confidence": 0.6,
-                    "components_mentioned": _extract_components_from_text(text),
-                })
+                architectures.append(
+                    {
+                        "architecture_type": arch_type,
+                        "name": name,
+                        "evidence": text[:200],
+                        "confidence": 0.6,
+                        "components_mentioned": _extract_components_from_text(text),
+                    }
+                )
                 break
 
     return architectures[:10]
@@ -2056,19 +2444,69 @@ def _extract_components_from_text(text: str) -> list[str]:
     components: list[str] = []
 
     tech_words = [
-        "API", "Web", "Server", "Client", "Database", "Cache",
-        "Queue", "Service", "Module", "Component", "Interface",
-        "Controller", "Repository", "Factory", "Singleton",
-        "Observer", "Strategy", "Adapter", "Facade", "Decorator",
-        "Middleware", "Gateway", "Proxy", "Broker", "Bus",
-        "Microservice", "Monolith", "Lambda", "Function",
-        "Container", "Pod", "Node", "Cluster", "Volume",
-        "Config", "Secret", "Token", "Key", "Certificate",
-        "Load Balancer", "DNS", "CDN", "Firewall", "WAF",
-        "Route", "Endpoint", "Port", "Socket", "Stream",
-        "Topic", "Subscription", "Event", "Message",
-        "Job", "Task", "Worker", "Scheduler", "Cron",
-        "Log", "Metric", "Dashboard", "Alert", "Monitor",
+        "API",
+        "Web",
+        "Server",
+        "Client",
+        "Database",
+        "Cache",
+        "Queue",
+        "Service",
+        "Module",
+        "Component",
+        "Interface",
+        "Controller",
+        "Repository",
+        "Factory",
+        "Singleton",
+        "Observer",
+        "Strategy",
+        "Adapter",
+        "Facade",
+        "Decorator",
+        "Middleware",
+        "Gateway",
+        "Proxy",
+        "Broker",
+        "Bus",
+        "Microservice",
+        "Monolith",
+        "Lambda",
+        "Function",
+        "Container",
+        "Pod",
+        "Node",
+        "Cluster",
+        "Volume",
+        "Config",
+        "Secret",
+        "Token",
+        "Key",
+        "Certificate",
+        "Load Balancer",
+        "DNS",
+        "CDN",
+        "Firewall",
+        "WAF",
+        "Route",
+        "Endpoint",
+        "Port",
+        "Socket",
+        "Stream",
+        "Topic",
+        "Subscription",
+        "Event",
+        "Message",
+        "Job",
+        "Task",
+        "Worker",
+        "Scheduler",
+        "Cron",
+        "Log",
+        "Metric",
+        "Dashboard",
+        "Alert",
+        "Monitor",
     ]
 
     for word in words:
@@ -2087,31 +2525,86 @@ def _catalog_interfaces(
     interfaces: list[dict[str, Any]] = []
 
     ui_indicators = [
-        "login", "sign in", "register", "sign up", "logout",
-        "dashboard", "panel", "admin", "settings", "configuración",
-        "menu", "nav", "navigation", "sidebar", "header", "footer",
-        "form", "button", "input", "search", "filter", "table",
-        "list", "grid", "card", "modal", "popup", "dialog", "alert",
-        "toast", "notification", "profile", "user", "account",
-        "home", "about", "contact", "help", "support",
-        "page", "view", "screen", "screen load", "loading",
-        "loader", "spinner", "progress", "progress bar",
-        "graph", "chart", "statistic", "metric", "kpi",
-        "button", "cta", "call to action", "link", "href",
-        "responsive", "mobile", "tablet", "desktop",
-        "dark mode", "theme", "language", "locale",
+        "login",
+        "sign in",
+        "register",
+        "sign up",
+        "logout",
+        "dashboard",
+        "panel",
+        "admin",
+        "settings",
+        "configuración",
+        "menu",
+        "nav",
+        "navigation",
+        "sidebar",
+        "header",
+        "footer",
+        "form",
+        "button",
+        "input",
+        "search",
+        "filter",
+        "table",
+        "list",
+        "grid",
+        "card",
+        "modal",
+        "popup",
+        "dialog",
+        "alert",
+        "toast",
+        "notification",
+        "profile",
+        "user",
+        "account",
+        "home",
+        "about",
+        "contact",
+        "help",
+        "support",
+        "page",
+        "view",
+        "screen",
+        "screen load",
+        "loading",
+        "loader",
+        "spinner",
+        "progress",
+        "progress bar",
+        "graph",
+        "chart",
+        "statistic",
+        "metric",
+        "kpi",
+        "button",
+        "cta",
+        "call to action",
+        "link",
+        "href",
+        "responsive",
+        "mobile",
+        "tablet",
+        "desktop",
+        "dark mode",
+        "theme",
+        "language",
+        "locale",
     ]
 
     for result in ocr_results:
         text = result.get("text", "")
         for indicator in ui_indicators:
             if indicator.lower() in text.lower():
-                interfaces.append({
-                    "interface_type": indicator.title(),
-                    "evidence": text[:200],
-                    "frame_index": result.get("frame_path", ""),
-                    "confidence": 0.5,
-                })
+                interfaces.append(
+                    {
+                        "interface_type": indicator.title(),
+                        "evidence": text[:200],
+                        "frame_index": result.get("frame_path", ""),
+                        "confidence": 0.5,
+                    }
+                )
                 break
 
     return interfaces[:10]
@@ -2132,25 +2625,34 @@ def _extract_visual_text(ocr_results: list[dict[str, Any]]) -> dict[str, Any]:
             count += 1
 
         for box in result.get("bounding_boxes", []):
-            all_boxes.append({
-                "text": box.get("text", ""),
-                "confidence": box.get("confidence", 0),
-                "x": box.get("x", 0),
-                "y": box.get("y", 0),
-                "w": box.get("w", 0),
-                "h": box.get("h", 0),
-                "frame": result.get("frame_path", ""),
-            })
+            all_boxes.append(
+                {
+                    "text": box.get("text", ""),
+                    "confidence": box.get("confidence", 0),
+                    "x": box.get("x", 0),
+                    "y": box.get("y", 0),
+                    "w": box.get("w", 0),
+                    "h": box.get("h", 0),
+                    "frame": result.get("frame_path", ""),
+                }
+            )
 
     from ..utils.validation import sanitize_for_prompt, wrap_for_llm
+
     full_ocr_text = " ".join(all_text)
     full_ocr_text_safe = wrap_for_llm("ocr_extracted_content", sanitize_for_prompt(full_ocr_text))
 
     return {
         "full_text": full_ocr_text_safe,
         "text_by_frame": [
-            {"frame": r.get("frame_path", ""), "text": wrap_for_llm("ocr_extracted_content", sanitize_for_prompt(r.get("text", "")))}
-            for r in ocr_results if r.get("text")
+            {
+                "frame": r.get("frame_path", ""),
+                "text": wrap_for_llm(
+                    "ocr_extracted_content", sanitize_for_prompt(r.get("text", ""))
+                ),
+            }
+            for r in ocr_results
+            if r.get("text")
         ],
         "total_blocks": count,
         "average_confidence": total_confidence / max(count, 1),
@@ -2179,20 +2681,14 @@ def _generate_visual_summary(
     )
 
     if num_frames > 0:
-        parts.append(
-            f"Se extrajeron {num_frames} fotogramas representativos."
-        )
+        parts.append(f"Se extrajeron {num_frames} fotogramas representativos.")
 
     if num_ocr_blocks > 0:
-        parts.append(
-            f"Se detectaron {num_ocr_blocks} bloques de texto mediante OCR."
-        )
+        parts.append(f"Se detectaron {num_ocr_blocks} bloques de texto mediante OCR.")
 
     if num_scenes > 0:
         avg_scene = duration / num_scenes if duration > 0 else 0
-        parts.append(
-            f"La duración promedio de escena es de {avg_scene:.1f} segundos."
-        )
+        parts.append(f"La duración promedio de escena es de {avg_scene:.1f} segundos.")
 
     return " ".join(parts)
 
@@ -2229,12 +2725,14 @@ def _detect_relationships(
         text = result.get("text", "")
         for rel_type, rel_action_es, rel_action_en, rel_action_plural in relationship_indicators:
             if rel_action_es in text.lower() or rel_action_en in text.lower():
-                relationships.append({
-                    "relationship_type": rel_type,
-                    "action": rel_action_es,
-                    "evidence": text[:200],
-                    "confidence": 0.6,
-                })
+                relationships.append(
+                    {
+                        "relationship_type": rel_type,
+                        "action": rel_action_es,
+                        "evidence": text[:200],
+                        "confidence": 0.6,
+                    }
+                )
                 break
 
     return relationships[:10]
@@ -2249,28 +2747,34 @@ def _detect_uncertainties(
     uncertainties: list[dict[str, Any]] = []
 
     if len(scenes) == 0:
-        uncertainties.append({
-            "type": "Detección de escenas",
-            "issue": "No se detectaron cambios de escena. Posiblemente el vídeo es una toma fija o el umbral es muy alto.",
-            "confidence": 0.8,
-            "suggestion": "Ajustar umbral de detección o usar método alternativo.",
-        })
+        uncertainties.append(
+            {
+                "type": "Detección de escenas",
+                "issue": "No se detectaron cambios de escena. Posiblemente el vídeo es una toma fija o el umbral es muy alto.",
+                "confidence": 0.8,
+                "suggestion": "Ajustar umbral de detección o usar método alternativo.",
+            }
+        )
 
     if len(ocr_results) == 0:
-        uncertainties.append({
-            "type": "OCR",
-            "issue": "No se detectó texto en los fotogramas analizados. Posiblemente el vídeo es predominantemente visual/audio sin texto en pantalla.",
-            "confidence": 0.9,
-            "suggestion": "Incrementar número de fotogramas o analizar fotogramas específicos.",
-        })
+        uncertainties.append(
+            {
+                "type": "OCR",
+                "issue": "No se detectó texto en los fotogramas analizados. Posiblemente el vídeo es predominantemente visual/audio sin texto en pantalla.",
+                "confidence": 0.9,
+                "suggestion": "Incrementar número de fotogramas o analizar fotogramas específicos.",
+            }
+        )
 
     if video_info.get("duration", 0) > 600:
-        uncertainties.append({
-            "type": "Duración",
-            "issue": f"Vídeo de larga duración ({video_info['duration']:.0f}s). El análisis visual puede ser incompleto.",
-            "confidence": 0.7,
-            "suggestion": "Considerar análisis por segmentos o aumentar recursos de procesamiento.",
-        })
+        uncertainties.append(
+            {
+                "type": "Duración",
+                "issue": f"Vídeo de larga duración ({video_info['duration']:.0f}s). El análisis visual puede ser incompleto.",
+                "confidence": 0.7,
+                "suggestion": "Considerar análisis por segmentos o aumentar recursos de procesamiento.",
+            }
+        )
 
     return uncertainties
 
@@ -2337,6 +2841,7 @@ def _compute_visual_confidence(
 # Extracted knowledge (consolidated)
 # ---------------------------------------------------------------------------
 
+
 def generate_extracted_knowledge(
     audio_context: dict[str, Any],
     visual_context: dict[str, Any],
@@ -2376,26 +2881,32 @@ def _generate_warnings_summary(
 
     audio_flags = audio_context.get("warnings_flags", {})
     if audio_flags.get("has_high_severity_risks"):
-        warnings_list.append({
-            "type": "Riesgo",
-            "severity": "Alto",
-            "message": "Se detectaron riesgos de alta severidad en la transcripción.",
-        })
+        warnings_list.append(
+            {
+                "type": "Riesgo",
+                "severity": "Alto",
+                "message": "Se detectaron riesgos de alta severidad en la transcripción.",
+            }
+        )
 
     if audio_flags.get("has_deprecated_items"):
-        warnings_list.append({
-            "type": "Obsolescencia",
-            "severity": "Medio",
-            "message": "Se mencionaron elementos obsoletos o deprecated en el contenido.",
-        })
+        warnings_list.append(
+            {
+                "type": "Obsolescencia",
+                "severity": "Medio",
+                "message": "Se mencionaron elementos obsoletos o deprecated en el contenido.",
+            }
+        )
 
     visual_uncertainties = visual_context.get("uncertainties_and_gaps", [])
     for unc in visual_uncertainties[:3]:
-        warnings_list.append({
-            "type": "Análisis visual",
-            "severity": "Bajo",
-            "message": unc.get("issue", ""),
-        })
+        warnings_list.append(
+            {
+                "type": "Análisis visual",
+                "severity": "Bajo",
+                "message": unc.get("issue", ""),
+            }
+        )
 
     return warnings_list
 
@@ -2403,6 +2914,7 @@ def _generate_warnings_summary(
 # ---------------------------------------------------------------------------
 # Export functions for context documents
 # ---------------------------------------------------------------------------
+
 
 def export_audio_context_markdown(
     context: dict[str, Any],
@@ -2456,9 +2968,7 @@ def export_audio_context_markdown(
         lines.append("## Conceptos Técnicos")
         lines.append("")
         for c in concepts[:15]:
-            lines.append(
-                f"- **{c['concept']}** — {c.get('description', '')}"
-            )
+            lines.append(f"- **{c['concept']}** — {c.get('description', '')}")
         lines.append("")
 
     # Tools and technologies
@@ -2467,9 +2977,7 @@ def export_audio_context_markdown(
         lines.append("## Herramientas y Tecnologías")
         lines.append("")
         for t in tools[:15]:
-            lines.append(
-                f"- **{t['tool']}** — {t.get('description', '')}"
-            )
+            lines.append(f"- **{t['tool']}** — {t.get('description', '')}")
         lines.append("")
 
     # Procedures
@@ -2511,7 +3019,9 @@ def export_audio_context_markdown(
         lines.append("## Restricciones")
         lines.append("")
         for c in constraints[:10]:
-            lines.append(f"- [{c.get('severity', 'Bajo')}] [{c.get('type', 'General')}] {c['text'][:150]}")
+            lines.append(
+                f"- [{c.get('severity', 'Bajo')}] [{c.get('type', 'General')}] {c['text'][:150]}"
+            )
         lines.append("")
 
     # Risks
@@ -2520,7 +3030,9 @@ def export_audio_context_markdown(
         lines.append("## Riesgos")
         lines.append("")
         for r in risks[:10]:
-            lines.append(f"- [{r.get('severity', 'Medio')}] [{r.get('type', 'General')}] {r['text'][:150]}")
+            lines.append(
+                f"- [{r.get('severity', 'Medio')}] [{r.get('type', 'General')}] {r['text'][:150]}"
+            )
             if r.get("mitigation"):
                 lines.append(f"  - *Mitigación:* {r['mitigation'][:150]}")
         lines.append("")
@@ -2558,7 +3070,9 @@ def export_audio_context_markdown(
         lines.append("## Tareas Potenciales")
         lines.append("")
         for t in tasks[:10]:
-            lines.append(f"- [{t.get('priority', 'Baja')}] [{t.get('type', 'General')}] {t['text'][:150]}")
+            lines.append(
+                f"- [{t.get('priority', 'Baja')}] [{t.get('type', 'General')}] {t['text'][:150]}"
+            )
         lines.append("")
 
     # Open questions
@@ -2596,12 +3110,16 @@ def export_audio_context_markdown(
     if inferences:
         lines.append("## Inferencias")
         lines.append("")
-        lines.append("*Las siguientes inferencias son deducciones del sistema a partir de los hechos expresados:*")
+        lines.append(
+            "*Las siguientes inferencias son deducciones del sistema a partir de los hechos expresados:*"
+        )
         lines.append("")
         for inf in inferences[:10]:
             lines.append(f"- {inf['text'][:200]}")
             if inf.get("supporting_facts_count", 0) > 0:
-                lines.append(f"  *(Basado en {inf['supporting_facts_count']} hecho(s) expresado(s))*")
+                lines.append(
+                    f"  *(Basado en {inf['supporting_facts_count']} hecho(s) expresado(s))*"
+                )
         lines.append("")
 
     # Confidence by section
@@ -2641,15 +3159,9 @@ def export_visual_context_markdown(
         lines.append("## Resumen de Escenas")
         lines.append("")
         lines.append(f"- Total de escenas: {scene_summary.get('total_scenes', 0)}")
-        lines.append(
-            f"- Duración promedio: {scene_summary.get('average_scene_duration', 0):.1f}s"
-        )
-        lines.append(
-            f"- Escena más corta: {scene_summary.get('shortest_scene_seconds', 0):.1f}s"
-        )
-        lines.append(
-            f"- Escena más larga: {scene_summary.get('longest_scene_seconds', 0):.1f}s"
-        )
+        lines.append(f"- Duración promedio: {scene_summary.get('average_scene_duration', 0):.1f}s")
+        lines.append(f"- Escena más corta: {scene_summary.get('shortest_scene_seconds', 0):.1f}s")
+        lines.append(f"- Escena más larga: {scene_summary.get('longest_scene_seconds', 0):.1f}s")
         lines.append("")
 
     # Diagrams
@@ -2743,6 +3255,7 @@ def export_visual_context_markdown(
 
     return "\n".join(lines)
 
+
 def export_visual_context_mdx(
     context: dict,
     output_path: str = None,
@@ -2776,7 +3289,7 @@ def export_visual_context_mdx(
     kf = context.get("keyframes_count", 0)
     ob = context.get("ocr_blocks_count", 0)
     conf = context.get("confidence", 0)
-    lines.append("**Generado:** <TimeMarker timestamp=\"" + gen + "\" />")
+    lines.append('**Generado:** <TimeMarker timestamp="' + gen + '" />')
     lines.append("**Cambios de escena:** " + str(sc))
     lines.append("**Fotogramas extra\u00eddos:** " + str(kf))
     lines.append("**Bloques OCR:** " + str(ob))
@@ -2791,21 +3304,49 @@ def export_visual_context_mdx(
         avg = scene_summary.get("average_scene_duration", 0)
         mini = scene_summary.get("shortest_scene_seconds", 0)
         maxi = scene_summary.get("longest_scene_seconds", 0)
-        lines.append("<SceneTransition total=" + str(total) + " avgDuration=" + str(avg) + " minDuration=" + str(mini) + " maxDuration=" + str(maxi) + " />")
+        lines.append(
+            "<SceneTransition total="
+            + str(total)
+            + " avgDuration="
+            + str(avg)
+            + " minDuration="
+            + str(mini)
+            + " maxDuration="
+            + str(maxi)
+            + " />"
+        )
         lines.append("")
 
     for d in context.get("diagrams_detected", []):
         lines.append("## Diagramas Detectados")
         lines.append("")
         ev = str(d.get("evidence", ""))[:200].replace('"', "'")
-        lines.append("<DiagramBlock type=\"" + str(d.get("type", "")) + "\" evidence=\"" + ev + "\" frame=\"" + str(d.get("frame", "")) + "\" confidence=" + str(d.get("confidence", 0)) + " />")
+        lines.append(
+            '<DiagramBlock type="'
+            + str(d.get("type", ""))
+            + '" evidence="'
+            + ev
+            + '" frame="'
+            + str(d.get("frame", ""))
+            + '" confidence='
+            + str(d.get("confidence", 0))
+            + " />"
+        )
         lines.append("")
 
     for f in context.get("flows_detected", []):
         lines.append("## Flujos de Trabajo")
         lines.append("")
         ev = str(f.get("evidence", ""))[:200].replace('"', "'")
-        lines.append("<VisualEvidence frame=\"" + str(f.get("frame_index", "")) + "\" text=\"" + ev + "\" step=" + str(f.get("step", 0)) + " />")
+        lines.append(
+            '<VisualEvidence frame="'
+            + str(f.get("frame_index", ""))
+            + '" text="'
+            + ev
+            + '" step='
+            + str(f.get("step", 0))
+            + " />"
+        )
         lines.append("")
 
     for a in context.get("architectures_detected", []):
@@ -2814,14 +3355,32 @@ def export_visual_context_mdx(
         comps = a.get("components_mentioned", [])
         comp_str = ", ".join(comps[:5]) if comps else ""
         ev = str(a.get("evidence", ""))[:200].replace('"', "'")
-        lines.append("<DiagramBlock type=\"" + a.get("architecture_type", "") + "\" evidence=\"" + ev + "\" components=\"" + comp_str.replace('"', "'") + "\" confidence=" + str(a.get("confidence", 0)) + " />")
+        lines.append(
+            '<DiagramBlock type="'
+            + a.get("architecture_type", "")
+            + '" evidence="'
+            + ev
+            + '" components="'
+            + comp_str.replace('"', "'")
+            + '" confidence='
+            + str(a.get("confidence", 0))
+            + " />"
+        )
         lines.append("")
 
     for i_face in context.get("interfaces_catalogued", []):
         lines.append("## Interfaces Detectadas")
         lines.append("")
         ev = str(i_face.get("evidence", ""))[:200].replace('"', "'")
-        lines.append("<VisualEvidence frame=\"" + str(i_face.get("frame_index", "")) + "\" text=\"" + ev + "\" type=\"" + i_face.get("interface_type", "") + "\" />")
+        lines.append(
+            '<VisualEvidence frame="'
+            + str(i_face.get("frame_index", ""))
+            + '" text="'
+            + ev
+            + '" type="'
+            + i_face.get("interface_type", "")
+            + '" />'
+        )
         lines.append("")
 
     vtd = context.get("visual_text", {})
@@ -2830,7 +3389,23 @@ def export_visual_context_mdx(
         lines.append("")
         for bb in vtd["bounding_boxes"][:20]:
             txt = str(bb.get("text", ""))[:100].replace('"', "'")
-            lines.append("<OCREdge text=\"" + txt + "\" x=" + str(bb.get("x", 0)) + " y=" + str(bb.get("y", 0)) + " w=" + str(bb.get("w", 0)) + " h=" + str(bb.get("h", 0)) + " confidence=" + str(bb.get("confidence", 0)) + " frame=\"" + bb.get("frame", "") + "\" />")
+            lines.append(
+                '<OCREdge text="'
+                + txt
+                + '" x='
+                + str(bb.get("x", 0))
+                + " y="
+                + str(bb.get("y", 0))
+                + " w="
+                + str(bb.get("w", 0))
+                + " h="
+                + str(bb.get("h", 0))
+                + " confidence="
+                + str(bb.get("confidence", 0))
+                + ' frame="'
+                + bb.get("frame", "")
+                + '" />'
+            )
         lines.append("")
 
     if vtd.get("full_text"):
@@ -2847,7 +3422,23 @@ def export_visual_context_mdx(
             fp = str(kf.get("frame_path", ""))
             w = kf.get("width", 0)
             h = kf.get("height", 0)
-            lines.append("<VideoFrame timestamp=\"" + ts + "\" src=\"" + fp + "\" title=\"Frame " + ts + " (" + str(w) + "x" + str(h) + ")\" dimensions=\"" + str(w) + "x" + str(h) + "\" />")
+            lines.append(
+                '<VideoFrame timestamp="'
+                + ts
+                + '" src="'
+                + fp
+                + '" title="Frame '
+                + ts
+                + " ("
+                + str(w)
+                + "x"
+                + str(h)
+                + ')" dimensions="'
+                + str(w)
+                + "x"
+                + str(h)
+                + '" />'
+            )
         lines.append("")
 
     summary = context.get("visual_summary", "")
@@ -2861,10 +3452,17 @@ def export_visual_context_mdx(
     if context.get("relationships_detected", []):
         lines.append("## Relaciones Detectadas")
         lines.append("")
-        lines.append("<SectionConfidence section=\"relationships_detected\" score=\"" + str(score) + "\" />")
+        lines.append(
+            '<SectionConfidence section="relationships_detected" score="' + str(score) + '" />'
+        )
         lines.append("")
         for r in context["relationships_detected"]:
-            lines.append("- **" + str(r.get("relationship_type", "")) + "**: " + str(r.get("evidence", ""))[:150])
+            lines.append(
+                "- **"
+                + str(r.get("relationship_type", ""))
+                + "**: "
+                + str(r.get("evidence", ""))[:150]
+            )
         lines.append("")
 
     for u in context.get("uncertainties_and_gaps", []):
@@ -2880,7 +3478,15 @@ def export_visual_context_mdx(
         lines.append("## Evidencia de Escenas")
         lines.append("")
         for ev in context["evidence"]["scenes"]:
-            lines.append("<SceneTransition timestamp=\"" + ev["timestamp_str"] + "\" frame=\"" + ev.get("frame_path", "") + "\" method=\"" + ev.get("method", "unknown") + "\" />")
+            lines.append(
+                '<SceneTransition timestamp="'
+                + ev["timestamp_str"]
+                + '" frame="'
+                + ev.get("frame_path", "")
+                + '" method="'
+                + ev.get("method", "unknown")
+                + '" />'
+            )
         lines.append("")
 
     if output_path:
@@ -2927,7 +3533,7 @@ def export_audio_context_mdx(
     lines.append("# Contexto de Audio")
     lines.append("")
     gen = str(context.get("generated_at", ""))
-    lines.append("**Generado:** <TimeMarker timestamp=\"" + gen + "\" />")
+    lines.append('**Generado:** <TimeMarker timestamp="' + gen + '" />')
     lines.append("**Fuente:** " + str(source.get("title", source.get("url", "N/A"))))
     if source.get("uploader"):
         lines.append("**Canal:** " + str(source["uploader"]))
@@ -2936,7 +3542,7 @@ def export_audio_context_mdx(
     lines.append("**Segmentos:** " + str(context.get("transcript_segments_count", 0)))
     lines.append("**Idioma:** " + str(context.get("language", "N/A")))
     conf = context.get("confidence", 0)
-    lines.append("**Confianza:** <ConfidenceBadge score=\"" + str(conf) + "\" label=\"Confianza\" />")
+    lines.append('**Confianza:** <ConfidenceBadge score="' + str(conf) + '" label="Confianza" />')
     lines.append("")
 
     summary = context.get("executive_summary", "")
@@ -2944,7 +3550,7 @@ def export_audio_context_mdx(
         lines.append("## Resumen Ejecutivo")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("executive_summary", 0)
-        lines.append("<ConfidenceBadge score=\"" + str(cs) + "\" label=\"Secci\u00f3n resumen\" />")
+        lines.append('<ConfidenceBadge score="' + str(cs) + '" label="Secci\u00f3n resumen" />')
         lines.append("")
         lines.append(str(summary))
         lines.append("")
@@ -2954,11 +3560,21 @@ def export_audio_context_mdx(
         lines.append("## \u00cdndice Temporal")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("table_of_contents", 0)
-        lines.append("<SectionConfidence section=\"table_of_contents\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="table_of_contents" score="' + str(cs) + '" />')
         lines.append("")
         for ch in chapters:
             s = str(ch.get("summary", ""))[:200].replace('"', "'")
-            lines.append("<ChapterMarker start=\"" + ch["start_time"] + "\" end=\"" + ch["end_time"] + "\" title=\"" + ch["title"] + "\" summary=\"" + s + "\" />")
+            lines.append(
+                '<ChapterMarker start="'
+                + ch["start_time"]
+                + '" end="'
+                + ch["end_time"]
+                + '" title="'
+                + ch["title"]
+                + '" summary="'
+                + s
+                + '" />'
+            )
         lines.append("")
 
     topics = context.get("topics", [])
@@ -2966,11 +3582,19 @@ def export_audio_context_mdx(
         lines.append("## Temas Principales")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("topics", 0)
-        lines.append("<SectionConfidence section=\"topics\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="topics" score="' + str(cs) + '" />')
         lines.append("")
-        lines.append("<div className=\"topic-grid\">")
+        lines.append('<div className="topic-grid">')
         for t in topics[:10]:
-            lines.append("  <TopicTag title=\"" + str(t["title"]) + "\" mentions=\"" + str(t["mentions"]) + "\" relevance=\"" + str(t.get("relevance", 0)) + "\" />")
+            lines.append(
+                '  <TopicTag title="'
+                + str(t["title"])
+                + '" mentions="'
+                + str(t["mentions"])
+                + '" relevance="'
+                + str(t.get("relevance", 0))
+                + '" />'
+            )
         lines.append("</div>")
         lines.append("")
 
@@ -2978,35 +3602,54 @@ def export_audio_context_mdx(
         lines.append("## Conceptos T\u00e9cnicos")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("technical_concepts", 0)
-        lines.append("<SectionConfidence section=\"technical_concepts\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="technical_concepts" score="' + str(cs) + '" />')
         lines.append("")
         desc = str(c.get("description", ""))
-        lines.append("- **" + c["concept"] + "** \u2014 " + desc + " (" + str(c["mentions"]) + " mentions)")
+        lines.append(
+            "- **" + c["concept"] + "** \u2014 " + desc + " (" + str(c["mentions"]) + " mentions)"
+        )
         lines.append("")
 
     for t in context.get("tools_and_technologies", [])[:15]:
         lines.append("## Herramientas y Tecnolog\u00edas")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("tools_and_technologies", 0)
-        lines.append("<SectionConfidence section=\"tools_and_technologies\" score=\"" + str(cs) + "\" />")
+        lines.append(
+            '<SectionConfidence section="tools_and_technologies" score="' + str(cs) + '" />'
+        )
         lines.append("")
         desc = str(t.get("description", ""))[:200].replace('"', "'")
-        lines.append("<ToolCard name=\"" + t["tool"] + "\" description=\"" + desc + "\" category=\"" + t.get("category", "") + "\" mentions=\"" + str(t["mentions"]) + "\" />")
+        lines.append(
+            '<ToolCard name="'
+            + t["tool"]
+            + '" description="'
+            + desc
+            + '" category="'
+            + t.get("category", "")
+            + '" mentions="'
+            + str(t["mentions"])
+            + '" />'
+        )
         lines.append("")
 
     for p in context.get("procedures", []):
         lines.append("## Procedimientos")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("procedures", 0)
-        lines.append("<SectionConfidence section=\"procedures\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="procedures" score="' + str(cs) + '" />')
         lines.append("")
-        lines.append("### " + p["title"] + " \u2014 Complejidad: " + str(p.get("estimated_complexity", "N/A")))
+        lines.append(
+            "### "
+            + p["title"]
+            + " \u2014 Complejidad: "
+            + str(p.get("estimated_complexity", "N/A"))
+        )
         lines.append("")
         for step in p.get("steps", []):
             cmd = str(step.get("command", ""))
             text_safe = str(step["text"])[:200].replace('"', "'")
             ts = str(step.get("timestamp", ""))
-            lines.append("<TranscriptSegment start=\"" + ts + "\" text=\"" + text_safe + "\" />")
+            lines.append('<TranscriptSegment start="' + ts + '" text="' + text_safe + '" />')
             if cmd:
                 lines.append("```bash\\n" + cmd + "\\n```")
             lines.append("")
@@ -3015,7 +3658,7 @@ def export_audio_context_mdx(
         lines.append("## Decisiones")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("decisions", 0)
-        lines.append("<SectionConfidence section=\"decisions\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="decisions" score="' + str(cs) + '" />')
         lines.append("")
         lines.append("- **" + str(d["text"])[:100] + "**")
         if d.get("rationale"):
@@ -3028,7 +3671,7 @@ def export_audio_context_mdx(
         lines.append("## Requisitos")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("requirements", 0)
-        lines.append("<SectionConfidence section=\"requirements\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="requirements" score="' + str(cs) + '" />')
         lines.append("")
         lines.append("- [" + r.get("type", "General") + "] " + str(r["text"])[:150])
         lines.append("")
@@ -3037,20 +3680,36 @@ def export_audio_context_mdx(
         lines.append("## Restricciones")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("constraints", 0)
-        lines.append("<SectionConfidence section=\"constraints\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="constraints" score="' + str(cs) + '" />')
         lines.append("")
         text_safe = str(c["text"])[:200].replace('"', "'")
-        lines.append("<WarningBox severity=\"" + c.get("severity", "Bajo") + "\" text=\"" + text_safe + "\" type=\"" + c.get("type", "General") + "\" />")
+        lines.append(
+            '<WarningBox severity="'
+            + c.get("severity", "Bajo")
+            + '" text="'
+            + text_safe
+            + '" type="'
+            + c.get("type", "General")
+            + '" />'
+        )
         lines.append("")
 
     for r in context.get("risks", [])[:10]:
         lines.append("## Riesgos")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("risks", 0)
-        lines.append("<SectionConfidence section=\"risks\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="risks" score="' + str(cs) + '" />')
         lines.append("")
         text_safe = str(r["text"])[:200].replace('"', "'")
-        lines.append("<WarningBox severity=\"" + r.get("severity", "Medio") + "\" text=\"" + text_safe + "\" type=\"" + r.get("type", "General") + "\" />")
+        lines.append(
+            '<WarningBox severity="'
+            + r.get("severity", "Medio")
+            + '" text="'
+            + text_safe
+            + '" type="'
+            + r.get("type", "General")
+            + '" />'
+        )
         if r.get("mitigation"):
             lines.append("  - *Mitigaci\u00f3n:* " + str(r["mitigation"])[:150])
         lines.append("")
@@ -3059,17 +3718,25 @@ def export_audio_context_mdx(
         lines.append("## Advertencias")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("warnings", 0)
-        lines.append("<SectionConfidence section=\"warnings\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="warnings" score="' + str(cs) + '" />')
         lines.append("")
         text_safe = str(w["text"])[:200].replace('"', "'")
-        lines.append("<WarningBox severity=\"" + w.get("severity", "Normal") + "\" text=\"" + text_safe + "\" type=\"" + w.get("type", "General") + "\" />")
+        lines.append(
+            '<WarningBox severity="'
+            + w.get("severity", "Normal")
+            + '" text="'
+            + text_safe
+            + '" type="'
+            + w.get("type", "General")
+            + '" />'
+        )
         lines.append("")
 
     for r in context.get("recommendations", [])[:10]:
         lines.append("## Recomendaciones")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("recommendations", 0)
-        lines.append("<SectionConfidence section=\"recommendations\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="recommendations" score="' + str(cs) + '" />')
         lines.append("")
         lines.append("- **[" + r.get("strength", "Sugerencia") + "]** " + str(r["text"])[:150])
         lines.append("")
@@ -3078,7 +3745,7 @@ def export_audio_context_mdx(
         lines.append("## Entidades")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("entities", 0)
-        lines.append("<SectionConfidence section=\"entities\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="entities" score="' + str(cs) + '" />')
         lines.append("")
         lines.append("- **" + e["entity"] + "** (" + e["type"] + ")")
         lines.append("")
@@ -3087,20 +3754,32 @@ def export_audio_context_mdx(
         lines.append("## Tareas Potenciales")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("potential_tasks", 0)
-        lines.append("<SectionConfidence section=\"potential_tasks\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="potential_tasks" score="' + str(cs) + '" />')
         lines.append("")
         text_safe = str(t["text"])[:200].replace('"', "'")
-        lines.append("<TaskItem priority=\"" + t.get("priority", "Baja") + "\" type=\"" + t.get("type", "General") + "\" text=\"" + text_safe + "\" timestamp=\"" + t.get("timestamp", "") + "\" />")
+        lines.append(
+            '<TaskItem priority="'
+            + t.get("priority", "Baja")
+            + '" type="'
+            + t.get("type", "General")
+            + '" text="'
+            + text_safe
+            + '" timestamp="'
+            + t.get("timestamp", "")
+            + '" />'
+        )
         lines.append("")
 
     for q in context.get("open_questions", [])[:10]:
         lines.append("## Preguntas Abiertas")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("open_questions", 0)
-        lines.append("<SectionConfidence section=\"open_questions\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="open_questions" score="' + str(cs) + '" />')
         lines.append("")
         text_safe = str(q["text"])[:200].replace('"', "'")
-        lines.append("<TranscriptSegment start=\"" + q.get("timestamp", "") + "\" text=\"" + text_safe + "\" />")
+        lines.append(
+            '<TranscriptSegment start="' + q.get("timestamp", "") + '" text="' + text_safe + '" />'
+        )
         openness = q.get("confidence_open", 0.5)
         lines.append("  *Confianza de apertura: " + str(round(openness * 100)) + "%*")
         lines.append("")
@@ -3109,35 +3788,73 @@ def export_audio_context_mdx(
         lines.append("## Citas Destacadas")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("quotes", 0)
-        lines.append("<SectionConfidence section=\"quotes\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="quotes" score="' + str(cs) + '" />')
         lines.append("")
         text_safe = str(q["text"])[:200].replace('"', "'")
-        lines.append("<QuoteBlock text=\"" + text_safe + "\" start=\"" + q.get("start", "") + "\" end=\"" + q.get("end", "") + "\" type=\"" + q.get("type", "Observacion") + "\" significance=\"" + str(q.get("significance", 0)) + "\" />")
+        lines.append(
+            '<QuoteBlock text="'
+            + text_safe
+            + '" start="'
+            + q.get("start", "")
+            + '" end="'
+            + q.get("end", "")
+            + '" type="'
+            + q.get("type", "Observacion")
+            + '" significance="'
+            + str(q.get("significance", 0))
+            + '" />'
+        )
         lines.append("")
 
     for f in context.get("facts", [])[:10]:
         lines.append("## Hechos Expresados")
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("facts", 0)
-        lines.append("<SectionConfidence section=\"facts\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="facts" score="' + str(cs) + '" />')
         lines.append("")
-        lines.append("*Los siguientes hechos fueron extra\u00eddos directamente de la transcripci\u00f3n:*")
+        lines.append(
+            "*Los siguientes hechos fueron extra\u00eddos directamente de la transcripci\u00f3n:*"
+        )
         lines.append("")
         text_safe = str(f["text"])[:200].replace('"', "'")
-        lines.append("<FactBlock text=\"" + text_safe + "\" type=\"" + f.get("type", "General") + "\" hasData=\"" + str(f.get("has_quantitative_data", False)) + "\" confidence=\"" + str(f.get("confidence", 0.5)) + "\" />")
+        lines.append(
+            '<FactBlock text="'
+            + text_safe
+            + '" type="'
+            + f.get("type", "General")
+            + '" hasData="'
+            + str(f.get("has_quantitative_data", False))
+            + '" confidence="'
+            + str(f.get("confidence", 0.5))
+            + '" />'
+        )
         lines.append("")
 
     for inf in context.get("inferences", [])[:10]:
         lines.append("## Inferencias")
         lines.append("")
-        lines.append("*Estas inferencias son deducciones del sistema basadas en los hechos expresados anteriormente. No fueron dichas expl\u00edcitamente en el v\u00eddeo.*")
+        lines.append(
+            "*Estas inferencias son deducciones del sistema basadas en los hechos expresados anteriormente. No fueron dichas expl\u00edcitamente en el v\u00eddeo.*"
+        )
         lines.append("")
         cs = context.get("confidence_by_section", {}).get("inferences", 0)
-        lines.append("<SectionConfidence section=\"inferences\" score=\"" + str(cs) + "\" />")
+        lines.append('<SectionConfidence section="inferences" score="' + str(cs) + '" />')
         lines.append("")
         text_safe = str(inf["text"])[:200].replace('"', "'")
         sf = str(inf.get("source_fact", ""))[:200].replace('"', "'")
-        lines.append("<InferenceBlock text=\"" + text_safe + "\" supportingFacts=\"" + str(inf.get("supporting_facts_count", 0)) + "\" confidence=\"" + str(inf.get("confidence", 0.5)) + "\" isSystemInference=\"" + str(inf.get("is_system_inference", True)) + "\" sourceFact=\"" + sf + "\" />")
+        lines.append(
+            '<InferenceBlock text="'
+            + text_safe
+            + '" supportingFacts="'
+            + str(inf.get("supporting_facts_count", 0))
+            + '" confidence="'
+            + str(inf.get("confidence", 0.5))
+            + '" isSystemInference="'
+            + str(inf.get("is_system_inference", True))
+            + '" sourceFact="'
+            + sf
+            + '" />'
+        )
         lines.append("")
 
     conf_by_section = context.get("confidence_by_section", {})
@@ -3149,7 +3866,15 @@ def export_audio_context_mdx(
         for section, score in sorted(conf_by_section.items(), key=lambda x: -x[1]):
             safe = str(section).replace(".", "_").replace(" ", "_")
             label = str(section).replace("_", " ").title()
-            lines.append("<SectionConfidence section=\"" + safe + "\" score=\"" + str(score) + "\" label=\"" + label + "\" />")
+            lines.append(
+                '<SectionConfidence section="'
+                + safe
+                + '" score="'
+                + str(score)
+                + '" label="'
+                + label
+                + '" />'
+            )
         lines.append("")
 
     if output_path:
@@ -3170,7 +3895,9 @@ def export_extracted_knowledge_mdx(
     combined = []
 
     combined.append("---")
-    combined.append("title: Conocimiento Extra\u00edo \u2014 " + str(source.get("title", "V\u00eddeo")))
+    combined.append(
+        "title: Conocimiento Extra\u00edo \u2014 " + str(source.get("title", "V\u00eddeo"))
+    )
     combined.append("generated: " + str(knowledge.get("generated_at", "N/A")))
     combined.append("source_title: " + str(source.get("title", "N/A")))
     combined.append("source_url: " + str(source.get("url", "")))
@@ -3201,7 +3928,11 @@ def export_extracted_knowledge_mdx(
     combined.append("**Generado:** " + str(knowledge.get("generated_at", "N/A")))
     combined.append("**Fuente:** " + str(source.get("title", source.get("url", "N/A"))))
     combined.append("")
-    combined.append("**Confianza combinada:** <ConfidenceBadge score=\"" + str(knowledge.get("confidence_combined", 0)) + "\" label=\"Confianza general (audio 70% + visual 30%)\" />")
+    combined.append(
+        '**Confianza combinada:** <ConfidenceBadge score="'
+        + str(knowledge.get("confidence_combined", 0))
+        + '" label="Confianza general (audio 70% + visual 30%)" />'
+    )
     combined.append("")
 
     combined.append("---")
@@ -3224,7 +3955,9 @@ def export_extracted_knowledge_mdx(
     combined.append("# Parte 2: Contexto Visual")
     combined.append("")
 
-    visual_section = export_visual_context_mdx(knowledge.get("visual_context", {}), output_path=None)
+    visual_section = export_visual_context_mdx(
+        knowledge.get("visual_context", {}), output_path=None
+    )
     visual_lines = visual_section.split("\\n")
     content_start = 0
     for i, line in enumerate(visual_lines):
@@ -3239,7 +3972,15 @@ def export_extracted_knowledge_mdx(
         combined.append("")
         combined.append("# Resumen de Advertencias")
         combined.append("")
-        combined.append("<WarningBox severity=\"" + w.get("severity", "Normal") + "\" text=\"" + str(w.get("message", "")) + "\" type=\"" + w.get("type", "General") + "\" />")
+        combined.append(
+            '<WarningBox severity="'
+            + w.get("severity", "Normal")
+            + '" text="'
+            + str(w.get("message", ""))
+            + '" type="'
+            + w.get("type", "General")
+            + '" />'
+        )
         combined.append("")
 
     result = "\n".join(combined)
@@ -3296,7 +4037,9 @@ def extract_knowledge(
     if strategy in ("auto", "visual", "full"):
         try:
             scenes = detect_scenes(str(video_path))
-            keyframes = extract_keyframes(str(video_path), scenes, str(output_dir or video_path.parent))
+            keyframes = extract_keyframes(
+                str(video_path), scenes, str(output_dir or video_path.parent)
+            )
             ocr_results = batch_ocr([kf.get("path", "") for kf in keyframes if kf.get("path")])
             visual_context = generate_visual_context(
                 video_info={"path": str(video_path)},
@@ -3311,11 +4054,15 @@ def extract_knowledge(
     # Generate audio context
     segments = transcript_result.get("segments", [])
     full_text = " ".join(s.get("text", "") for s in segments if s.get("text"))
-    audio_context = generate_audio_context(segments, full_text, transcript_result.get("source_info"), transcript_result.get("duration"))
+    audio_context = generate_audio_context(
+        segments, full_text, transcript_result.get("source_info"), transcript_result.get("duration")
+    )
 
     # Combine knowledge
     combined_knowledge = {
-        "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+        "generated_at": __import__("datetime")
+        .datetime.now(__import__("datetime").timezone.utc)
+        .isoformat(),
         "source": {
             "video_path": str(video_path),
             "title": video_path.stem,
@@ -3325,17 +4072,29 @@ def extract_knowledge(
         "visual_context": visual_context,
         "audio_info": audio_result,
         "confidence_combined": (
-            audio_context.get("confidence", 0) * 0.7 +
-            (visual_context.get("confidence", 0) if visual_context else 0) * 0.3
+            audio_context.get("confidence", 0) * 0.7
+            + (visual_context.get("confidence", 0) if visual_context else 0) * 0.3
         ),
     }
 
     # Add warnings summary
     warnings_summary = []
     if audio_context.get("warnings_flags", {}).get("has_high_severity_risks"):
-        warnings_summary.append({"type": "Risk", "severity": "Alto", "message": "High severity risks detected in audio context"})
+        warnings_summary.append(
+            {
+                "type": "Risk",
+                "severity": "Alto",
+                "message": "High severity risks detected in audio context",
+            }
+        )
     if visual_context and visual_context.get("uncertainties_and_gaps"):
-        warnings_summary.append({"type": "Visual Uncertainty", "severity": "Medio", "message": "Visual analysis has uncertainties"})
+        warnings_summary.append(
+            {
+                "type": "Visual Uncertainty",
+                "severity": "Medio",
+                "message": "Visual analysis has uncertainties",
+            }
+        )
     combined_knowledge["warnings_summary"] = warnings_summary
 
     # Save to output directory if provided
@@ -3343,6 +4102,7 @@ def extract_knowledge(
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         import json
+
         with open(output_dir / f"{video_path.stem}_knowledge.json", "w") as f:
             json.dump(combined_knowledge, f, indent=2, ensure_ascii=False)
 

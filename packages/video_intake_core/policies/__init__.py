@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -26,8 +26,8 @@ class PolicyResolver:
 
     def __init__(
         self,
-        config_path: Optional[str | Path] = None,
-        config_dict: Optional[dict[str, Any]] = None,
+        config_path: str | Path | None = None,
+        config_dict: dict[str, Any] | None = None,
     ):
         self.config: dict[str, Any] = {}
 
@@ -45,19 +45,24 @@ class PolicyResolver:
     @property
     def transcription(self) -> Any:
         """Access transcription policy as object with attributes."""
+
         class TranscriptionPolicy:
             def __init__(self, policy: dict[str, Any]):
                 self.model = policy.get("model", "tiny")
                 self.language = policy.get("language")
                 self.local_engine = policy.get("local_engine", "whisper")
-                self.strategy_order = policy.get("strategy_order", ["platform_captions", "local_captions", "whisper"])
+                self.strategy_order = policy.get(
+                    "strategy_order", ["platform_captions", "local_captions", "whisper"]
+                )
                 self.fallback_enabled = policy.get("fallback_enabled", True)
                 self.device = policy.get("device", "cpu")
+
         return TranscriptionPolicy(self._transcription_policy)
 
     @property
     def visual(self) -> Any:
         """Access visual policy as object with attributes."""
+
         class VisualPolicy:
             def __init__(self, policy: dict[str, Any]):
                 self.scene_detection = policy.get("scene_detection", True)
@@ -67,22 +72,28 @@ class PolicyResolver:
                 self.vision_fallback_enabled = policy.get("vision_fallback_enabled", False)
                 self.scene_detection_threshold = policy.get("scene_detection_threshold", 30.0)
                 self.min_scene_length = policy.get("min_scene_length", 2.0)
+
         return VisualPolicy(self._visual_policy)
 
     @property
     def models(self) -> Any:
         """Access models policy as object with attributes."""
+
         class ModelsPolicy:
             def __init__(self, policy: dict[str, Any]):
                 self.priority = policy.get("priority", {})
                 self.allow_external_providers = policy.get("allow_external_providers", False)
-                self.require_explicit_approval_for_paid = policy.get("require_explicit_approval_for_paid", True)
+                self.require_explicit_approval_for_paid = policy.get(
+                    "require_explicit_approval_for_paid", True
+                )
                 self.configured_providers = policy.get("configured_providers", {})
+
         return ModelsPolicy(self._models_policy)
 
     @property
     def security(self) -> Any:
         """Access security policy as object with attributes."""
+
         class SecurityPolicy:
             def __init__(self, policy: dict[str, Any]):
                 self.strict_url_validation = policy.get("strict_url_validation", True)
@@ -92,6 +103,7 @@ class PolicyResolver:
                 self.redact_sensitive_data = policy.get("redact_sensitive_data", False)
                 self.prompt_injection_protection = policy.get("prompt_injection_protection", True)
                 self.sanitize_filenames = policy.get("sanitize_filenames", True)
+
         return SecurityPolicy(self._security_policy)
 
     def _load_config(self, path: str | Path) -> None:
@@ -118,7 +130,7 @@ class PolicyResolver:
             ]
         return strategies
 
-    def get_transcription_language(self) -> Optional[str]:
+    def get_transcription_language(self) -> str | None:
         """Get the preferred transcription language."""
         return self._transcription_policy.get("language")
 
@@ -129,6 +141,10 @@ class PolicyResolver:
     def get_transcription_model(self) -> str:
         """Get the default transcription model."""
         return self._transcription_policy.get("model", "tiny")
+
+    def get_whisper_model_size(self) -> str:
+        """Get the Whisper model size to use (tiny, base, small, medium, large)."""
+        return self._transcription_policy.get("whisper_model", "base")
 
     def is_transcription_fallback_enabled(self) -> bool:
         """Check if fallback to alternative strategies is enabled."""
@@ -192,9 +208,7 @@ class PolicyResolver:
 
     def is_paid_model_approval_required(self) -> bool:
         """Check if explicit approval is required for paid models."""
-        return self._models_policy.get(
-            "require_explicit_approval_for_paid", True
-        )
+        return self._models_policy.get("require_explicit_approval_for_paid", True)
 
     def get_configured_providers(self) -> dict[str, Any]:
         """Get the list of configured model providers."""
@@ -238,33 +252,23 @@ class PolicyResolver:
 
     def get_max_video_duration_minutes(self) -> int:
         """Get the maximum video duration in minutes."""
-        return self.config.get("limits", {}).get(
-            "max_video_duration_minutes", 600
-        )
+        return self.config.get("limits", {}).get("max_video_duration_minutes", 600)
 
     def get_max_download_size_mb(self) -> int:
         """Get the maximum download size in MB."""
-        return self.config.get("limits", {}).get(
-            "max_download_size_mb", 5000
-        )
+        return self.config.get("limits", {}).get("max_download_size_mb", 5000)
 
     def get_max_batch_items(self) -> int:
         """Get the maximum number of items in a batch."""
-        return self.config.get("limits", {}).get(
-            "max_batch_items", 50
-        )
+        return self.config.get("limits", {}).get("max_batch_items", 50)
 
     def get_max_parallel_jobs(self) -> int:
         """Get the maximum number of parallel jobs."""
-        return self.config.get("limits", {}).get(
-            "max_parallel_jobs", 4
-        )
+        return self.config.get("limits", {}).get("max_parallel_jobs", 4)
 
     def get_timeout_seconds(self) -> int:
         """Get the default timeout in seconds."""
-        return self.config.get("limits", {}).get(
-            "timeout_seconds", 3600
-        )
+        return self.config.get("limits", {}).get("timeout_seconds", 3600)
 
     # ------------------------------------------------------------------
     # Storage policy
@@ -272,27 +276,19 @@ class PolicyResolver:
 
     def get_storage_root_dir(self) -> str:
         """Get the root directory for artifact storage."""
-        return self.config.get("storage", {}).get(
-            "root_dir", "./artifacts"
-        )
+        return self.config.get("storage", {}).get("root_dir", "./artifacts")
 
     def get_artifact_retention_days(self) -> int:
         """Get the artifact retention period in days."""
-        return self.config.get("storage", {}).get(
-            "artifact_retention_days", 90
-        )
+        return self.config.get("storage", {}).get("artifact_retention_days", 90)
 
     def get_max_storage_gb(self) -> int:
         """Get the maximum storage in GB."""
-        return self.config.get("storage", {}).get(
-            "max_storage_gb", 100
-        )
+        return self.config.get("storage", {}).get("max_storage_gb", 100)
 
     def get_cleanup_policy(self) -> str:
         """Get the cleanup policy."""
-        return self.config.get("storage", {}).get(
-            "cleanup_policy", "age"
-        )
+        return self.config.get("storage", {}).get("cleanup_policy", "age")
 
     # ------------------------------------------------------------------
     # Acquisition policy
@@ -307,27 +303,74 @@ class PolicyResolver:
 
     def get_preferred_video_quality(self) -> str:
         """Get the preferred video quality."""
-        return self.config.get("acquisition", {}).get(
-            "preferred_video_quality", "best"
-        )
+        return self.config.get("acquisition", {}).get("preferred_video_quality", "best")
 
     def get_preferred_audio_quality(self) -> str:
         """Get the preferred audio quality."""
-        return self.config.get("acquisition", {}).get(
-            "preferred_audio_quality", "best"
-        )
+        return self.config.get("acquisition", {}).get("preferred_audio_quality", "best")
 
     def is_captions_first(self) -> bool:
         """Check if captions should be tried before transcription."""
-        return self.config.get("acquisition", {}).get(
-            "captions_first", True
-        )
+        return self.config.get("acquisition", {}).get("captions_first", True)
 
     def is_cache_enabled(self) -> bool:
         """Check if download/cache is enabled."""
-        return self.config.get("acquisition", {}).get(
-            "cache_enabled", True
+        return self.config.get("acquisition", {}).get("cache_enabled", True)
+
+    def get_output_format(self) -> dict[str, Any]:
+        """Get the default output format for downloaded videos.
+
+        Returns a dict with the normalized container/codecs to guarantee
+        universal compatibility (iPhone, WhatsApp, TV, etc.):
+
+        {
+            "enabled": bool,       # apply normalization by default
+            "container": str,      # e.g. "mp4"
+            "video_codec": str,    # e.g. "h264"
+            "audio_codec": str,    # e.g. "aac"
+            "faststart": bool,     # place moov atom at the start
+        }
+
+        The "enabled" flag can be forced off with VITK_OUTPUT_FORMAT=none.
+        """
+        fmt = self.config.get("acquisition", {}).get("output_format", {}) or {}
+        import os
+
+        env = os.environ.get("VITK_OUTPUT_FORMAT", "").strip().lower()
+        if env and env in {"none", "disable", "disabled", "0", "false"}:
+            fmt["enabled"] = False
+        return {
+            "enabled": bool(fmt.get("enabled", True)),
+            "container": str(fmt.get("container", "mp4") or "mp4"),
+            "video_codec": str(fmt.get("video_codec", "h264") or "h264"),
+            "audio_codec": str(fmt.get("audio_codec", "aac") or "aac"),
+            "faststart": bool(fmt.get("faststart", True)),
+        }
+
+    def get_acquisition_auth(self) -> dict[str, Any]:
+        """Get the authentication options for restricted content.
+
+        Some content (private accounts, age-gated, audience-limited) is only
+        served to authenticated sessions. Returns the configured cookie source:
+
+        {
+            "cookies_from_browser": str,   # e.g. "chrome" or ""
+            "cookies_path": str,           # path to a Netscape cookies file or ""
+        }
+
+        Overridable via VITK_COOKIES_FROM_BROWSER and VITK_COOKIES env vars.
+        """
+        import os
+
+        auth = self.config.get("acquisition", {}).get("auth", {}) or {}
+        cookies_from_browser = (
+            os.environ.get("VITK_COOKIES_FROM_BROWSER", "")
+            or str(auth.get("cookies_from_browser") or "").strip()
         )
+        cookies_path = (
+            os.environ.get("VITK_COOKIES", "") or str(auth.get("cookies_path") or "").strip()
+        )
+        return {"cookies_from_browser": cookies_from_browser, "cookies_path": cookies_path}
 
     # ------------------------------------------------------------------
     # Memory policy
@@ -339,21 +382,15 @@ class PolicyResolver:
 
     def get_default_memory_provider(self) -> str:
         """Get the default memory provider."""
-        return self.config.get("memory", {}).get(
-            "default_provider", "local"
-        )
+        return self.config.get("memory", {}).get("default_provider", "local")
 
     def is_memory_confirmation_required(self) -> bool:
         """Check if confirmation is required before storing memory."""
-        return self.config.get("memory", {}).get(
-            "require_confirmation", True
-        )
+        return self.config.get("memory", {}).get("require_confirmation", True)
 
     def get_max_context_tokens(self) -> int:
         """Get the maximum tokens for session context."""
-        return self.config.get("memory", {}).get(
-            "max_context_tokens", 4000
-        )
+        return self.config.get("memory", {}).get("max_context_tokens", 4000)
 
     # ------------------------------------------------------------------
     # Host policy
@@ -365,21 +402,15 @@ class PolicyResolver:
 
     def get_session_context_strategy(self) -> str:
         """Get the session context strategy."""
-        return self.config.get("host", {}).get(
-            "session_context_strategy", "compact"
-        )
+        return self.config.get("host", {}).get("session_context_strategy", "compact")
 
     def is_auto_detect_messages_enabled(self) -> bool:
         """Check if automatic message detection is enabled."""
-        return self.config.get("host", {}).get(
-            "auto_detect_messages", True
-        )
+        return self.config.get("host", {}).get("auto_detect_messages", True)
 
     def is_auto_detect_attachments_enabled(self) -> bool:
         """Check if automatic attachment detection is enabled."""
-        return self.config.get("host", {}).get(
-            "auto_detect_attachments", True
-        )
+        return self.config.get("host", {}).get("auto_detect_attachments", True)
 
 
 # ----------------------------------------------------------------------
@@ -387,7 +418,11 @@ class PolicyResolver:
 # ----------------------------------------------------------------------
 
 
-def resolve_policy(config_path: str | Path | None = None, config_dict: dict[str, Any] | None = None, config_yaml: str | Path | None = None) -> PolicyResolver:
+def resolve_policy(
+    config_path: str | Path | None = None,
+    config_dict: dict[str, Any] | None = None,
+    config_yaml: str | Path | None = None,
+) -> PolicyResolver:
     """
     Create a PolicyResolver instance from config file or dict.
 
@@ -405,7 +440,12 @@ def resolve_policy(config_path: str | Path | None = None, config_dict: dict[str,
     return PolicyResolver(config_path=config_path, config_dict=config_dict)
 
 
-def resolve_source_policy(source: str | None = None, config_path: str | Path | None = None, config_dict: dict[str, Any] | None = None, config_yaml: str | Path | None = None) -> PolicyResolver:
+def resolve_source_policy(
+    source: str | None = None,
+    config_path: str | Path | None = None,
+    config_dict: dict[str, Any] | None = None,
+    config_yaml: str | Path | None = None,
+) -> PolicyResolver:
     """
     Create a PolicyResolver with source-specific defaults.
 
