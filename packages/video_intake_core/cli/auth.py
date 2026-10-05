@@ -178,8 +178,8 @@ def detect_browser_cookies() -> dict[str, Any]:
                                 p_name = line.split("=", 1)[1].strip()
                                 if p_name not in profiles:
                                     profiles.append(p_name)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("No se pudo leer profiles.ini en %s: %s", profiles_ini, e)
 
                 # Buscar cookies.sqlite en subdirectorios
                 for c_file in config_dir.glob("**/cookies.sqlite"):
@@ -492,8 +492,8 @@ def _get_current_auth_config(config_path: str | None = None) -> dict[str, Any]:
             try:
                 resolver = PolicyResolver(config_path=str(cand))
                 return resolver.get_acquisition_auth()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error cargando auth desde %s: %s", cand, e)
     return {"cookies_from_browser": "", "cookies_path": ""}
 
 

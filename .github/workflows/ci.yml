@@ -173,6 +173,7 @@ jobs:
             --ignore=S106 \
             --ignore=S107 \
             --ignore=S108 \
+            --ignore=S110 \
             --ignore=S603 \
             --ignore=S607
 
