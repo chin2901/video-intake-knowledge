@@ -1,0 +1,878 @@
+{
+  "metadata_initial": {
+    "status": "running",
+    "restart_count": 0,
+    "started_at": "2026-10-06T22:46:02.134729294Z",
+    "health_status": "healthy"
+  },
+  "metadata_final": {
+    "status": "running",
+    "restart_count": 0,
+    "started_at": "2026-10-06T22:46:02.134729294Z",
+    "health_status": "healthy"
+  },
+  "concurrency_metrics": [
+    {
+      "endpoint": "/api/health",
+      "tier": 5,
+      "total_requests": 25,
+      "success_count": 25,
+      "error_count": 0,
+      "min_ms": 2.49,
+      "p50_ms": 3.74,
+      "p90_ms": 6.78,
+      "p95_ms": 7.15,
+      "p99_ms": 14.36,
+      "max_ms": 15.45,
+      "mean_ms": 5.08,
+      "throughput_rps": 23.57,
+      "status_codes": {
+        "200": 25
+      },
+      "avg_cpu_perc": 0.1,
+      "max_cpu_perc": 0.1,
+      "baseline_mem_mb": 53.96,
+      "max_mem_mb": 53.96
+    },
+    {
+      "endpoint": "/api/health",
+      "tier": 10,
+      "total_requests": 50,
+      "success_count": 50,
+      "error_count": 0,
+      "min_ms": 3.78,
+      "p50_ms": 7.33,
+      "p90_ms": 18.9,
+      "p95_ms": 21.32,
+      "p99_ms": 26.25,
+      "max_ms": 31.95,
+      "mean_ms": 9.59,
+      "throughput_rps": 24.73,
+      "status_codes": {
+        "200": 50
+      },
+      "avg_cpu_perc": 0.09,
+      "max_cpu_perc": 0.09,
+      "baseline_mem_mb": 54.31,
+      "max_mem_mb": 54.31
+    },
+    {
+      "endpoint": "/api/health",
+      "tier": 25,
+      "total_requests": 125,
+      "success_count": 125,
+      "error_count": 0,
+      "min_ms": 4.51,
+      "p50_ms": 27.62,
+      "p90_ms": 65.04,
+      "p95_ms": 79.74,
+      "p99_ms": 91.45,
+      "max_ms": 117.33,
+      "mean_ms": 32.53,
+      "throughput_rps": 58.6,
+      "status_codes": {
+        "200": 125
+      },
+      "avg_cpu_perc": 0.09,
+      "max_cpu_perc": 0.09,
+      "baseline_mem_mb": 54.27,
+      "max_mem_mb": 54.27
+    },
+    {
+      "endpoint": "/api/health",
+      "tier": 50,
+      "total_requests": 250,
+      "success_count": 250,
+      "error_count": 0,
+      "min_ms": 8.19,
+      "p50_ms": 52.47,
+      "p90_ms": 1911.38,
+      "p95_ms": 1985.82,
+      "p99_ms": 2062.57,
+      "max_ms": 2167.67,
+      "mean_ms": 422.8,
+      "throughput_rps": 62.29,
+      "status_codes": {
+        "200": 250
+      },
+      "avg_cpu_perc": 0.08,
+      "max_cpu_perc": 0.11,
+      "baseline_mem_mb": 54.48,
+      "max_mem_mb": 54.72
+    },
+    {
+      "endpoint": "/api/info",
+      "tier": 5,
+      "total_requests": 5,
+      "success_count": 5,
+      "error_count": 0,
+      "min_ms": 2004.65,
+      "p50_ms": 2005.5,
+      "p90_ms": 2005.72,
+      "p95_ms": 2005.72,
+      "p99_ms": 2005.72,
+      "max_ms": 2006.23,
+      "mean_ms": 2005.49,
+      "throughput_rps": 1.31,
+      "status_codes": {
+        "200": 5
+      },
+      "avg_cpu_perc": 0.09,
+      "max_cpu_perc": 0.13,
+      "baseline_mem_mb": 54.72,
+      "max_mem_mb": 59.68
+    },
+    {
+      "endpoint": "/api/info",
+      "tier": 10,
+      "total_requests": 10,
+      "success_count": 10,
+      "error_count": 0,
+      "min_ms": 2004.52,
+      "p50_ms": 2005.31,
+      "p90_ms": 2006.04,
+      "p95_ms": 2006.04,
+      "p99_ms": 2006.04,
+      "max_ms": 2007.34,
+      "mean_ms": 2005.57,
+      "throughput_rps": 2.49,
+      "status_codes": {
+        "200": 10
+      },
+      "avg_cpu_perc": 0.04,
+      "max_cpu_perc": 0.08,
+      "baseline_mem_mb": 0.0,
+      "max_mem_mb": 67.88
+    },
+    {
+      "endpoint": "/api/info",
+      "tier": 25,
+      "total_requests": 25,
+      "success_count": 25,
+      "error_count": 0,
+      "min_ms": 2004.49,
+      "p50_ms": 2007.98,
+      "p90_ms": 2009.96,
+      "p95_ms": 2010.08,
+      "p99_ms": 2010.86,
+      "max_ms": 2010.86,
+      "mean_ms": 2008.1,
+      "throughput_rps": 6.23,
+      "status_codes": {
+        "200": 25
+      },
+      "avg_cpu_perc": 109.39,
+      "max_cpu_perc": 218.79,
+      "baseline_mem_mb": 0.0,
+      "max_mem_mb": 85.31
+    },
+    {
+      "endpoint": "/api/info",
+      "tier": 50,
+      "total_requests": 50,
+      "success_count": 50,
+      "error_count": 0,
+      "min_ms": 1993.16,
+      "p50_ms": 3999.37,
+      "p90_ms": 4015.25,
+      "p95_ms": 4015.57,
+      "p99_ms": 4020.14,
+      "max_ms": 4021.68,
+      "mean_ms": 3091.13,
+      "throughput_rps": 8.3,
+      "status_codes": {
+        "200": 50
+      },
+      "avg_cpu_perc": 131.82,
+      "max_cpu_perc": 214.44,
+      "baseline_mem_mb": 85.31,
+      "max_mem_mb": 97.04
+    },
+    {
+      "endpoint": "/api/process",
+      "tier": 5,
+      "total_requests": 5,
+      "success_count": 5,
+      "error_count": 0,
+      "min_ms": 2004.45,
+      "p50_ms": 2005.95,
+      "p90_ms": 2006.98,
+      "p95_ms": 2006.98,
+      "p99_ms": 2006.98,
+      "max_ms": 2007.42,
+      "mean_ms": 2005.95,
+      "throughput_rps": 1.25,
+      "status_codes": {
+        "200": 5
+      },
+      "avg_cpu_perc": 0.16,
+      "max_cpu_perc": 0.24,
+      "baseline_mem_mb": 96.78,
+      "max_mem_mb": 99.96
+    },
+    {
+      "endpoint": "/api/process",
+      "tier": 10,
+      "total_requests": 10,
+      "success_count": 10,
+      "error_count": 0,
+      "min_ms": 2006.85,
+      "p50_ms": 2007.66,
+      "p90_ms": 2008.35,
+      "p95_ms": 2008.35,
+      "p99_ms": 2008.35,
+      "max_ms": 2009.84,
+      "mean_ms": 2007.91,
+      "throughput_rps": 2.49,
+      "status_codes": {
+        "200": 10
+      },
+      "avg_cpu_perc": 29.72,
+      "max_cpu_perc": 89.05,
+      "baseline_mem_mb": 0.0,
+      "max_mem_mb": 110.1
+    },
+    {
+      "endpoint": "/api/process",
+      "tier": 25,
+      "total_requests": 25,
+      "success_count": 25,
+      "error_count": 0,
+      "min_ms": 2005.33,
+      "p50_ms": 4011.19,
+      "p90_ms": 4013.33,
+      "p95_ms": 4013.89,
+      "p99_ms": 4014.29,
+      "max_ms": 4015.08,
+      "mean_ms": 3370.77,
+      "throughput_rps": 4.15,
+      "status_codes": {
+        "200": 25
+      },
+      "avg_cpu_perc": 99.14,
+      "max_cpu_perc": 213.74,
+      "baseline_mem_mb": 0.0,
+      "max_mem_mb": 145.3
+    },
+    {
+      "endpoint": "/api/process",
+      "tier": 50,
+      "total_requests": 50,
+      "success_count": 50,
+      "error_count": 0,
+      "min_ms": 2002.92,
+      "p50_ms": 6005.02,
+      "p90_ms": 8011.07,
+      "p95_ms": 8020.12,
+      "p99_ms": 8022.73,
+      "max_ms": 8027.25,
+      "mean_ms": 5299.57,
+      "throughput_rps": 4.98,
+      "status_codes": {
+        "200": 50
+      },
+      "avg_cpu_perc": 122.11,
+      "max_cpu_perc": 211.32,
+      "baseline_mem_mb": 0.0,
+      "max_mem_mb": 149.2
+    }
+  ],
+  "storage_metrics": {
+    "zero_bloat_purge": {
+      "files_initial": 0,
+      "bytes_initial": 0,
+      "files_peak": 10,
+      "bytes_peak": 1210510,
+      "downloads_attempted": 10,
+      "downloads_succeeded": 10,
+      "files_post_download": 0,
+      "bytes_post_download": 0,
+      "zero_bloat_verified": true
+    },
+    "race_condition": {
+      "concurrent_readers": 8,
+      "status_codes": [
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200,
+        200
+      ],
+      "checksum_identical": true,
+      "subsequent_download_code": 404,
+      "files_post_race": 0,
+      "bytes_post_race": 0
+    },
+    "low_disk_simulation": {
+      "baseline_free_gb": 124.32,
+      "simulated_free_gb": 18.0,
+      "health_status_low": "warning_disk_low",
+      "storage_safe_low": false,
+      "process_status_code": 507,
+      "process_detail": "Almacenamiento temporal en zona de seguridad. Espere unos minutos a la purga automatica.",
+      "restored_free_gb": 124.32,
+      "restored_storage_safe": true,
+      "success": true
+    }
+  },
+  "security_metrics": [
+    {
+      "id": "SEC-01",
+      "category": "Boundary/Schema",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{}",
+      "expected_codes": [
+        422
+      ],
+      "actual_code": 422,
+      "duration_ms": 1.97,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"url\"],\"msg\":\"Field required\",\"input\"",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-02",
+      "category": "Boundary/Schema",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': None}",
+      "expected_codes": [
+        422
+      ],
+      "actual_code": 422,
+      "duration_ms": 1.7,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"url\"],\"msg\":\"Input should be a v",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-03",
+      "category": "Boundary/URL",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': ''}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.74,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"La URL no puede estar vacia\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-04",
+      "category": "Boundary/URL",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': '   \\t\\n  '}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.65,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"La URL no puede estar vacia\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-05",
+      "category": "Boundary/Type",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 12345}",
+      "expected_codes": [
+        422
+      ],
+      "actual_code": 422,
+      "duration_ms": 1.85,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"url\"],\"msg\":\"Input should be a v",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-06",
+      "category": "Boundary/Type",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': True}",
+      "expected_codes": [
+        422
+      ],
+      "actual_code": 422,
+      "duration_ms": 1.68,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"url\"],\"msg\":\"Input should be a v",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-07",
+      "category": "Boundary/Type",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': ['https://example.com']}",
+      "expected_codes": [
+        422
+      ],
+      "actual_code": 422,
+      "duration_ms": 1.75,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"url\"],\"msg\":\"Input should be a v",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-08",
+      "category": "Boundary/URL",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'not_a_valid_url_string'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.74,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"URL no valida: 'not_a_valid_url_string'. Debe comenzar por http:// o",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-09",
+      "category": "Boundary/URL",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'https://'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 115.68,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] https:: Unable to downlo",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-10",
+      "category": "Boundary/Proto",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'ftp://test.com/v.mp4'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.93,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"URL no valida: 'ftp://test.com/v.mp4'. Debe comenzar por http:// o ht",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-11",
+      "category": "Boundary/Proto",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'javascript:alert(1)'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.91,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"URL no valida: 'javascript:alert(1)'. Debe comenzar por http:// o htt",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-12",
+      "category": "Boundary/Proto",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'file:///etc/passwd'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.78,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"URL no valida: 'file:///etc/passwd'. Debe comenzar por http:// o http",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-13",
+      "category": "Boundary/Size",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}",
+      "expected_codes": [
+        400,
+        422
+      ],
+      "actual_code": 400,
+      "duration_ms": 139.18,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] aaaaaaaaaaaaaaaaaaaaaaaa",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-14",
+      "category": "Injection",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'https://example.com/?q=<script>alert(1)</script>'}",
+      "expected_codes": [
+        400,
+        404
+      ],
+      "actual_code": 400,
+      "duration_ms": 911.28,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: Unsupported URL: https://example.c",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-15",
+      "category": "Injection",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'https://example.com/; rm -rf /; $(whoami)'}",
+      "expected_codes": [
+        400,
+        404
+      ],
+      "actual_code": 400,
+      "duration_ms": 134.04,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] ; $(whoami): Unable to d",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-16",
+      "category": "Injection",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': \"https://example.com/test' OR '1'='1\"}",
+      "expected_codes": [
+        400,
+        404
+      ],
+      "actual_code": 400,
+      "duration_ms": 133.06,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] test' OR '1'='1: Unable",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-17",
+      "category": "Process/Mode",
+      "method": "POST",
+      "path": "/api/process",
+      "payload_summary": "{'url': 'https://archive.org/details/test'}",
+      "expected_codes": [
+        422
+      ],
+      "actual_code": 422,
+      "duration_ms": 1.96,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":[{\"type\":\"missing\",\"loc\":[\"body\",\"mode\"],\"msg\":\"Field required\",\"input",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-18",
+      "category": "Process/Mode",
+      "method": "POST",
+      "path": "/api/process",
+      "payload_summary": "{'url': 'https://archive.org/details/test', 'mode': None}",
+      "expected_codes": [
+        422
+      ],
+      "actual_code": 422,
+      "duration_ms": 1.79,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"mode\"],\"msg\":\"Input should be a",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-19",
+      "category": "Process/Mode",
+      "method": "POST",
+      "path": "/api/process",
+      "payload_summary": "{'url': 'https://archive.org/details/test', 'mode': 'invalid_mode'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.7,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Modo no valido: 'invalid_mode'. Debe ser 'video', 'audio' o 'markdown",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-20",
+      "category": "Process/Mode",
+      "method": "POST",
+      "path": "/api/process",
+      "payload_summary": "{'url': 'https://archive.org/details/test', 'mode': ''}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.56,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Modo no valido: ''. Debe ser 'video', 'audio' o 'markdown'.\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-21",
+      "category": "Process/URL",
+      "method": "POST",
+      "path": "/api/process",
+      "payload_summary": "{'url': '', 'mode': 'markdown'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.72,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"La URL no puede estar vacia\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-22",
+      "category": "Process/URL",
+      "method": "POST",
+      "path": "/api/process",
+      "payload_summary": "{'url': 'xyz_not_a_url', 'mode': 'markdown'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 1.67,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"URL no valida: 'xyz_not_a_url'. Debe comenzar por http:// o https://\"",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-23",
+      "category": "SSRF",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'http://127.0.0.1:8090'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 137.57,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: Unsupported URL: http://127.0.0.1:",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-24",
+      "category": "SSRF",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'http://localhost:8090'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 135.51,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: Unsupported URL: http://localhost:",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-25",
+      "category": "SSRF",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'http://[::1]:8090'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 114.93,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] [::1]:8090: Unable to do",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-26",
+      "category": "SSRF",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'http://172.18.0.1:8090'}",
+      "expected_codes": [
+        400
+      ],
+      "actual_code": 400,
+      "duration_ms": 115.1,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] 172.18.0: Unable to down",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-27",
+      "category": "SSRF",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'http://192.168.1.1:8090'}",
+      "expected_codes": [
+        400,
+        404
+      ],
+      "actual_code": 400,
+      "duration_ms": 1150.29,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] 192.168.1: Unable to dow",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-28",
+      "category": "SSRF",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'http://169.254.169.254/opc/v1/instance/'}",
+      "expected_codes": [
+        400,
+        403,
+        404
+      ],
+      "actual_code": 400,
+      "duration_ms": 119.61,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] instance: Unable to down",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-29",
+      "category": "SSRF",
+      "method": "POST",
+      "path": "/api/info",
+      "payload_summary": "{'url': 'http://169.254.169.254/opc/v2/instance/'}",
+      "expected_codes": [
+        400,
+        403,
+        404
+      ],
+      "actual_code": 400,
+      "duration_ms": 119.4,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"No se pudo procesar la URL: ERROR: [generic] instance: Unable to down",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-30",
+      "category": "Traversal",
+      "method": "GET",
+      "path": "/api/download/../../../../etc/passwd",
+      "payload_summary": "(none)",
+      "expected_codes": [
+        400,
+        404
+      ],
+      "actual_code": 404,
+      "duration_ms": 1.68,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Not Found\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-31",
+      "category": "Traversal",
+      "method": "GET",
+      "path": "/api/download/%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+      "payload_summary": "(none)",
+      "expected_codes": [
+        400,
+        404
+      ],
+      "actual_code": 404,
+      "duration_ms": 1.4,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Not Found\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-32",
+      "category": "Traversal",
+      "method": "GET",
+      "path": "/api/download/.env",
+      "payload_summary": "(none)",
+      "expected_codes": [
+        404
+      ],
+      "actual_code": 404,
+      "duration_ms": 3.57,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Archivo expirado o no encontrado\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-33",
+      "category": "Download",
+      "method": "GET",
+      "path": "/api/download/00000000_nonexistent_video.mp4",
+      "payload_summary": "(none)",
+      "expected_codes": [
+        404
+      ],
+      "actual_code": 404,
+      "duration_ms": 1.62,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Archivo expirado o no encontrado\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-34",
+      "category": "HTTP Route",
+      "method": "POST",
+      "path": "/api/health",
+      "payload_summary": "{}",
+      "expected_codes": [
+        405
+      ],
+      "actual_code": 405,
+      "duration_ms": 1.45,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Method Not Allowed\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-35",
+      "category": "HTTP Route",
+      "method": "DELETE",
+      "path": "/api/health",
+      "payload_summary": "(none)",
+      "expected_codes": [
+        405
+      ],
+      "actual_code": 405,
+      "duration_ms": 1.35,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Method Not Allowed\"}",
+      "verdict": "PASS"
+    },
+    {
+      "id": "SEC-36",
+      "category": "HTTP Route",
+      "method": "GET",
+      "path": "/api/nonexistent_path_probe_test",
+      "payload_summary": "(none)",
+      "expected_codes": [
+        404
+      ],
+      "actual_code": 404,
+      "duration_ms": 1.46,
+      "leaked_500": false,
+      "detail_snippet": "{\"detail\":\"Not Found\"}",
+      "verdict": "PASS"
+    }
+  ],
+  "final_storage": {
+    "files": 0,
+    "bytes": 0
+  }
+}

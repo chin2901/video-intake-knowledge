@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Video Intake — Extractor Multimedia & Conocimiento</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f5f7ff',
+              100: '#ebf0fe',
+              200: '#ced9fd',
+              500: '#4f46e5',
+              600: '#4338ca',
+              700: '#3730a3',
+            }
+          },
+          animation: {
+            'float-slow': 'float 8s ease-in-out infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-10px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+      box-shadow: 0 20px 40px -15px rgba(79, 70, 229, 0.08), 0 0 25px rgba(0, 0, 0, 0.02);
+    }
+    .preview-glass {
+      background: rgba(248, 250, 252, 0.9);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/40 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white relative overflow-x-hidden">
+
+  <!-- Ambient Glow Backgrounds -->
+  <div class="fixed top-[-10%] left-[-5%] w-[45vw] h-[45vw] max-w-[550px] max-h-[550px] bg-gradient-to-tr from-indigo-300/25 to-violet-200/25 rounded-full blur-3xl pointer-events-none animate-float-slow -z-10"></div>
+  <div class="fixed bottom-[-10%] right-[-5%] w-[50vw] h-[50vw] max-w-[600px] max-h-[600px] bg-gradient-to-bl from-pink-200/20 via-purple-200/20 to-indigo-200/20 rounded-full blur-3xl pointer-events-none -z-10"></div>
+
+  <!-- Header -->
+  <header class="border-b border-slate-200/70 bg-white/70 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer select-none" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/25 text-white">
+          <i class="fa-solid fa-play text-sm ml-0.5"></i>
+        </div>
+        <div>
+          <span class="text-lg font-bold tracking-tight text-slate-900 flex items-center gap-1.5">
+            Video Intake
+            <span class="px-2 py-0.5 text-[11px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-full">Hub</span>
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
+        <span class="flex h-2 w-2 relative">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        </span>
+        <span>Servicio Activo</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-4xl mx-auto px-5 py-12 w-full flex flex-col justify-center">
+
+    <!-- Hero Title -->
+    <div class="text-center space-y-4 mb-9">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 border border-slate-200/80 shadow-sm text-xs font-semibold text-slate-700">
+        <i class="fa-solid fa-sparkles text-indigo-500"></i>
+        <span>Descarga directa & Extracción de conocimiento</span>
+      </div>
+      
+      <h1 class="text-4xl sm:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
+        Todo el contenido de tus vídeos,<br/>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-500">en el formato que necesitas</span>
+      </h1>
+      
+      <p class="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto font-normal leading-relaxed">
+        Pega un enlace de YouTube, TikTok, Instagram o Twitter para descargar el vídeo en alta definición, obtener el audio en MP3 o extraer el resumen y transcripción en Markdown.
+      </p>
+    </div>
+
+    <!-- Main Card -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 transition-all relative">
+      <div class="space-y-5">
+
+        <!-- Input Bar with Paste Button -->
+        <div class="relative flex items-center">
+          <div class="absolute left-4.5 text-slate-400 text-lg flex items-center pointer-events-none">
+            <i class="fa-solid fa-link"></i>
+          </div>
+          
+          <input 
+            type="text" 
+            id="video-url" 
+            placeholder="Pega aquí el enlace del vídeo (YouTube, TikTok, Instagram, Twitter...)" 
+            class="w-full bg-slate-50/80 border border-slate-200/90 rounded-2xl pl-12 pr-44 py-4 text-base text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition shadow-inner"
+            onkeydown="if(event.key === 'Enter') inspectUrl()"
+          />
+
+          <div class="absolute right-2.5 flex items-center gap-2">
+            <button 
+              id="btn-paste"
+              onclick="pasteClipboard()" 
+              title="Pegar enlace del portapapeles"
+              class="hidden sm:flex bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-3 py-2.5 rounded-xl transition items-center gap-1.5 border border-slate-200/70"
+            >
+              <i class="fa-regular fa-clipboard"></i>
+              <span>Pegar</span>
+            </button>
+
+            <button 
+              id="btn-inspect"
+              onclick="inspectUrl()" 
+              class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-semibold px-4.5 py-2.5 rounded-xl transition shadow-md shadow-indigo-600/20 flex items-center gap-1.5"
+            >
+              <span>Explorar</span>
+              <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Video Preview Card -->
+        <div id="preview-card" class="hidden preview-glass rounded-2xl p-4 sm:p-5 transition-all duration-300">
+          <div class="flex flex-col sm:flex-row gap-4.5 items-center">
+            <div class="relative w-full sm:w-44 h-28 rounded-xl overflow-hidden shadow-sm flex-shrink-0 bg-slate-200">
+              <img id="thumb-img" src="" alt="Thumbnail" class="w-full h-full object-cover" />
+              <div class="absolute bottom-2 right-2 bg-slate-900/80 backdrop-blur text-white text-[11px] font-medium px-2 py-0.5 rounded-md flex items-center gap-1">
+                <i class="fa-regular fa-clock text-[10px]"></i>
+                <span id="preview-duration">0:00</span>
+              </div>
+            </div>
+            
+            <div class="flex-1 space-y-1.5 w-full text-left">
+              <h3 id="preview-title" class="text-base font-bold text-slate-900 line-clamp-2 leading-snug">Título del vídeo</h3>
+              <p id="preview-uploader" class="text-sm font-semibold text-indigo-600 flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-check text-xs"></i>
+                <span id="uploader-text">Canal</span>
+              </p>
+              <div class="flex items-center gap-4 text-xs text-slate-500 pt-0.5">
+                <span id="preview-views" class="flex items-center gap-1">
+                  <i class="fa-regular fa-eye"></i> 0 reproducciones
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
+          
+          <!-- Download Video Button -->
+          <button 
+            onclick="processMedia('video')" 
+            class="group text-left p-4 rounded-2xl bg-white hover:bg-indigo-50/40 border border-slate-200/90 hover:border-indigo-300 shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3.5"
+          >
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center text-lg transition-colors flex-shrink-0 shadow-sm">
+              <i class="fa-solid fa-film"></i>
+            </div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm group-hover:text-indigo-900 transition-colors">Vídeo MP4</div>
+              <div class="text-xs text-slate-500">Descarga en alta definición</div>
+            </div>
+          </button>
+
+          <!-- Download Audio Button -->
+          <button 
+            onclick="processMedia('audio')" 
+            class="group text-left p-4 rounded-2xl bg-white hover:bg-violet-50/40 border border-slate-200/90 hover:border-violet-300 shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3.5"
+          >
+            <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white flex items-center justify-center text-lg transition-colors flex-shrink-0 shadow-sm">
+              <i class="fa-solid fa-headphones"></i>
+            </div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm group-hover:text-purple-900 transition-colors">Audio MP3</div>
+              <div class="text-xs text-slate-500">Audio directo sin vídeo</div>
+            </div>
+          </button>
+
+          <!-- Download Markdown Button -->
+          <button 
+            onclick="processMedia('markdown')" 
+            class="group text-left p-4 rounded-2xl bg-white hover:bg-emerald-50/40 border border-slate-200/90 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3.5"
+          >
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center text-lg transition-colors flex-shrink-0 shadow-sm">
+              <i class="fa-solid fa-file-lines"></i>
+            </div>
+            <div>
+              <div class="font-bold text-slate-900 text-sm group-hover:text-emerald-900 transition-colors">Contexto (.MD)</div>
+              <div class="text-xs text-slate-500">Transcripción y notas</div>
+            </div>
+          </button>
+
+        </div>
+
+        <!-- Status & Feedback Box -->
+        <div id="progress-box" class="hidden mt-4 p-4 rounded-2xl border text-sm flex items-center gap-3 transition-all">
+          <i id="progress-icon" class="fa-solid fa-spinner fa-spin text-indigo-600 text-lg"></i>
+          <span id="progress-msg" class="font-medium text-slate-700">Procesando solicitud...</span>
+        </div>
+
+        <!-- Markdown Viewer Card (Expandible) -->
+        <div id="md-viewer" class="hidden mt-5 preview-glass rounded-2xl p-5 border border-emerald-200/70 text-left transition-all">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+              <i class="fa-solid fa-book-open"></i> Vista Previa del Contexto
+            </span>
+            <div class="flex items-center gap-2">
+              <button onclick="copyMarkdownText()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition flex items-center gap-1">
+                <i class="fa-regular fa-copy"></i>
+                <span id="copy-btn-text">Copiar</span>
+              </button>
+              <button onclick="document.getElementById('md-viewer').classList.add('hidden')" class="text-xs text-slate-400 hover:text-slate-600 p-1">
+                <i class="fa-solid fa-xmark text-sm"></i>
+              </button>
+            </div>
+          </div>
+          <pre id="md-text-content" class="text-xs font-mono text-slate-700 whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed bg-white/70 p-3.5 rounded-xl border border-slate-200/70"></pre>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Supported Platforms Badge List -->
+    <div class="mt-8 flex items-center justify-center gap-6 text-slate-400 text-sm flex-wrap">
+      <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Compatible con:</span>
+      <span class="flex items-center gap-1.5 hover:text-slate-600 transition"><i class="fa-brands fa-youtube text-red-500"></i> YouTube</span>
+      <span class="flex items-center gap-1.5 hover:text-slate-600 transition"><i class="fa-brands fa-tiktok text-slate-800"></i> TikTok</span>
+      <span class="flex items-center gap-1.5 hover:text-slate-600 transition"><i class="fa-brands fa-instagram text-pink-500"></i> Instagram</span>
+      <span class="flex items-center gap-1.5 hover:text-slate-600 transition"><i class="fa-brands fa-x-twitter text-slate-800"></i> Twitter / X</span>
+      <span class="flex items-center gap-1.5 hover:text-slate-600 transition"><i class="fa-brands fa-facebook text-blue-600"></i> Facebook</span>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200/60 py-6 text-center text-xs text-slate-400">
+    <p>Video Intake Knowledge Hub &copy; 2026 — Procesamiento multimedia directo y seguro</p>
+  </footer>
+
+  <script>
+    let currentMarkdownText = '';
+
+    async function pasteClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          document.getElementById('video-url').value = text;
+          inspectUrl();
+        }
+      } catch (e) {
+        alert('Por favor pega el enlace manualmente en el campo de texto.');
+      }
+    }
+
+    async function inspectUrl() {
+      const url = document.getElementById('video-url').value.trim();
+      if (!url) return alert('Por favor pega un enlace válido.');
+      
+      showProgress('Consultando información del vídeo...', true);
+      try {
+        const res = await fetch('/api/info', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({url: url})
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Error al analizar el enlace');
+        }
+        const data = await res.json();
+        
+        document.getElementById('preview-card').classList.remove('hidden');
+        document.getElementById('thumb-img').src = data.thumbnail || '';
+        document.getElementById('preview-title').textContent = data.title;
+        document.getElementById('uploader-text').textContent = data.uploader;
+        const mins = Math.floor(data.duration / 60);
+        const secs = data.duration % 60;
+        document.getElementById('preview-duration').textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+        document.getElementById('preview-views').innerHTML = '<i class="fa-regular fa-eye"></i> ' + Number(data.view_count).toLocaleString() + ' reproducciones';
+
+        hideProgress();
+      } catch (err) {
+        showProgress(err.message, false, true);
+      }
+    }
+
+    async function processMedia(mode) {
+      const url = document.getElementById('video-url').value.trim();
+      if (!url) return alert('Por favor pega un enlace antes de continuar.');
+
+      const modeNames = {
+        'video': 'el vídeo en MP4',
+        'audio': 'el audio en MP3',
+        'markdown': 'el resumen y transcripción (.md)'
+      };
+
+      showProgress('Generando ' + modeNames[mode] + '... Por favor espera unos instantes.', true);
+
+      try {
+        const res = await fetch('/api/process', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({url: url, mode: mode})
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || 'No se pudo completar el procesamiento');
+        }
+
+        const data = await res.json();
+        showProgress('¡Completado! Iniciando descarga...', false, false, true);
+
+        // Si incluye contenido Markdown, desplegar visor interactivo
+        if (data.markdown_content) {
+          currentMarkdownText = data.markdown_content;
+          document.getElementById('md-text-content').textContent = data.markdown_content;
+          document.getElementById('md-viewer').classList.remove('hidden');
+        }
+
+        // Disparar descarga en navegador
+        const a = document.createElement('a');
+        a.href = data.download_url;
+        a.download = data.filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(() => {
+          showProgress('Descarga completada correctamente.', false, false, true);
+        }, 2500);
+
+      } catch (err) {
+        showProgress('Error: ' + err.message, false, true);
+      }
+    }
+
+    async function copyMarkdownText() {
+      if (!currentMarkdownText) return;
+      try {
+        await navigator.clipboard.writeText(currentMarkdownText);
+        const btnText = document.getElementById('copy-btn-text');
+        btnText.textContent = '¡Copiado!';
+        setTimeout(() => { btnText.textContent = 'Copiar'; }, 2000);
+      } catch (e) {
+        alert('Copia el texto directamente del visor.');
+      }
+    }
+
+    function showProgress(msg, loading = true, isError = false, isSuccess = false) {
+      const box = document.getElementById('progress-box');
+      const icon = document.getElementById('progress-icon');
+      const text = document.getElementById('progress-msg');
+
+      box.classList.remove('hidden');
+      text.textContent = msg;
+
+      if (loading) {
+        icon.className = 'fa-solid fa-spinner fa-spin text-indigo-600 text-lg';
+        box.className = 'mt-4 p-4 rounded-2xl border text-sm flex items-center gap-3 bg-indigo-50/80 border-indigo-200 text-indigo-900 shadow-sm';
+      } else if (isError) {
+        icon.className = 'fa-solid fa-circle-exclamation text-rose-500 text-lg';
+        box.className = 'mt-4 p-4 rounded-2xl border text-sm flex items-center gap-3 bg-rose-50/80 border-rose-200 text-rose-900 shadow-sm';
+      } else if (isSuccess) {
+        icon.className = 'fa-solid fa-circle-check text-emerald-600 text-lg';
+        box.className = 'mt-4 p-4 rounded-2xl border text-sm flex items-center gap-3 bg-emerald-50/80 border-emerald-200 text-emerald-900 shadow-sm';
+      }
+    }
+
+    function hideProgress() {
+      document.getElementById('progress-box').classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

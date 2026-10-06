@@ -1,0 +1,27 @@
+services:
+  video-web:
+    build: .
+    container_name: video-intake-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8090:8090"
+    volumes:
+      - ./app:/app/app
+      - ./storage:/app/storage
+    environment:
+      - STORAGE_DIR=/app/storage
+      - FILE_TTL_SECONDS=1800
+      - MIN_FREE_DISK_GB=20.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: video-cloudflared
+    restart: unless-stopped
+    command: tunnel run --token ${TUNNEL_TOKEN}
+    depends_on:
+      - video-web
