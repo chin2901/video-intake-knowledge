@@ -1,8 +1,9 @@
 import uuid
+import asyncio
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from yt_dlp.utils import YoutubeDLError
@@ -73,7 +74,8 @@ async def get_video_info(req: URLRequest):
         logger.error(f'Error inesperado en get_video_info: {e}', exc_info=True)
         raise HTTPException(status_code=500, detail=f'Error interno del servidor: {str(e)}')
 
-def remove_file(filepath: Path):
+async def remove_file_delayed(filepath: Path, delay: float = 0.5):
+    await asyncio.sleep(delay)
     try:
         if filepath.exists():
             filepath.unlink()
@@ -138,13 +140,13 @@ async def process_video(req: ProcessRequest):
         raise HTTPException(status_code=500, detail=f'Error procesando video: {str(e)}')
 
 @app.get('/api/download/{filename}')
-async def download_file(filename: str, background_tasks: BackgroundTasks):
+async def download_file(filename: str):
     safe_name = Path(filename).name
     file_path = STORAGE_DIR / safe_name
     if not file_path.exists():
         raise HTTPException(status_code=404, detail='Archivo expirado o no encontrado')
 
-    background_tasks.add_task(remove_file, file_path)
+    asyncio.create_task(remove_file_delayed(file_path, delay=0.5))
 
     media_type = 'application/octet-stream'
     if safe_name.endswith('.mp4'):

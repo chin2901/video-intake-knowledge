@@ -10,11 +10,12 @@ TTL_SECONDS = int(os.getenv('FILE_TTL_SECONDS', '1800'))  # 30 minutos
 MIN_FREE_DISK_GB = float(os.getenv('MIN_FREE_DISK_GB', '20.0'))
 
 def check_disk_safety() -> tuple[bool, float]:
-    """Devuelve (is_safe, free_gb). Si el espacio libre es menor a MIN_FREE_DISK_GB, is_safe es False."""
+    """Devuelve (is_safe, free_gb) consultando el almacenamiento."""
     try:
         usage = shutil.disk_usage(STORAGE_DIR if STORAGE_DIR.exists() else '/')
         free_gb = usage.free / (1024 ** 3)
-        return free_gb >= MIN_FREE_DISK_GB, round(free_gb, 2)
+        is_safe = free_gb >= MIN_FREE_DISK_GB
+        return is_safe, round(free_gb, 2)
     except Exception as e:
         logger.error(f'Error al verificar disco: {e}')
         return True, 999.0
@@ -33,7 +34,6 @@ def purge_expired_files():
         try:
             mtime = item.stat().st_mtime
             age = now - mtime
-            # Si el disco esta en zona de riesgo (< MIN_FREE_DISK_GB), purga agresiva (> 5 min)
             threshold = 300 if not is_safe else TTL_SECONDS
             if age > threshold:
                 item.unlink(missing_ok=True)

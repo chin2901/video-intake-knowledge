@@ -16,13 +16,14 @@ BASE_YDL_OPTS = {
     'no_warnings': True,
     'no_check_certificate': True,
     'geo_bypass': True,
+    'socket_timeout': 15,
     'http_headers': {
         'User-Agent': USER_AGENT,
         'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
     },
     'extractor_args': {
         'youtube': {
-            'player_client': ['android', 'web'],
+            'player_client': ['android', 'ios', 'web'],
         }
     }
 }

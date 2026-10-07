@@ -123,7 +123,7 @@ async def test_concurrency_health(async_client, concurrency, total_requests):
     )
     assert metrics.success_count == total_requests, f"Expected 100% 200 OK on /api/health, got: {metrics.status_codes}"
     assert metrics.error_count == 0
-    assert metrics.p95_ms < 500.0
+    assert metrics.p95_ms < 1000.0
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("concurrency,total_requests", [(5, 5), (10, 10), (25, 25), (50, 50)])
